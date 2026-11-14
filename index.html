@@ -142,6 +142,18 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
   border-radius:999px;background:rgba(10,12,28,.9);border:1px solid var(--line);opacity:0;
   transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
+/* 인트로 */
+#intro{position:fixed;inset:0;z-index:30;background:radial-gradient(ellipse at 50% 62%,#141a3a 0%,#080a1c 58%,#020309 100%);transition:opacity 1.8s ease;cursor:pointer}
+#intro.out{opacity:0;pointer-events:none}
+#introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#introText{position:absolute;left:50%;top:clamp(56px,17vh,170px);transform:translateX(-50%);text-align:center;color:#eadcbe;
+  font-size:clamp(19px,4.4vw,30px);line-height:1.8;white-space:nowrap;opacity:0;filter:blur(6px);transition:opacity 1.1s ease,filter 1.1s ease;text-shadow:0 0 18px rgba(10,12,30,.9)}
+#introText.on{opacity:1;filter:blur(0)}
+#introText.title{color:#f1d6a0;font-size:clamp(34px,8vw,56px);font-weight:700;letter-spacing:.2em;line-height:1.3}
+#introText small{display:block;color:#8f97b8;font-size:.36em;font-weight:400;letter-spacing:.08em;margin-top:.4em}
+#introSkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:#6f7796;
+  font:inherit;font-size:14px;padding:10px 12px;cursor:pointer}
+#introSkip:hover{color:#a4abc6}
 </style>
 </head>
 <body class="wide">
@@ -186,6 +198,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
   </div>
 </aside>
 
+<div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
@@ -1857,6 +1870,97 @@ async function savePfp() {
   downloadCanvas(c, `서천꽃밭_${user.name}_프사.png`);
 }
 
+/* ---------- 인트로: 서천꽃밭이 무엇인지 천천히 받아들이게 ---------- */
+// 처음 온 이: 다섯 문장과 꽃이 피어나는 장면 / 다시 온 이: 짧게, 내 꽃이 피어남 / 받은 링크: 보낸 이의 꽃이 기다림
+function runIntro(mode, onEnd) {
+  const box = $('intro'), cv = $('introCv'), tx = $('introText'), g = cv.getContext('2d');
+  let w = 0, h = 0, dpr = 1, done = false, t0 = performance.now();
+  const size = () => { dpr = Math.min(devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; cv.width = w * dpr; cv.height = h * dpr; };
+  size(); addEventListener('resize', size);
+  const L = (...lines) => lines;   // 한 장면의 문장: 뜻 단위로 줄을 나눈다
+  let steps, center, others = [], total;
+  const pickVaried = () => {      // 생김새가 서로 다른 꽃 여섯 송이
+    const seen = new Set(), out = []; let sd = (Math.random() * 1e9) | 0;
+    while (out.length < 6) { sd = (sd + 2654435761) >>> 0; const P = gen(sd), key = P.fused ? 'fused' : P.many ? 'many' : P.shape; if (seen.has(key)) continue; seen.add(key); out.push(P); }
+    return out;
+  };
+  if (mode === 'friend') {
+    center = { P: friend.P, b0: 2.2, b1: 6.4 };
+    steps = [[.5, 3.4, L('서쪽 하늘 끝,', '서천꽃밭에서')], [3.9, 7.4, L(`${friend.name}의 꽃이`, '당신을 기다리고 있다.')]]; total = 7.9;
+  } else if (mode === 'back') {
+    center = { P: user.P, b0: .6, b1: 4.6 };
+    steps = [[.5, 3.3, L('서천꽃밭에', '다시 바람이 분다.')], [3.8, 7, L(`${user.name}의 꽃은`, '그대로 피어 있다.')]]; total = 7.5;
+  } else {
+    center = { P: gen((Math.random() * 1e9) >>> 0), b0: 7.9, b1: 11.6, dot: 4.6 };
+    others = pickVaried().map((P, i) => ({ P, a: -Math.PI / 2 + (i + .5) * TAU / 6, b0: 11.8 + i * .45, b1: 14.6 + i * .45 }));
+    steps = [[.6, 3.6, L('서쪽 하늘 끝,', '해가 지는 곳 너머에')], [4.1, 7.1, L('서천꽃밭이 있다.')],
+      [7.6, 11, L('세상에 사람이 하나 태어나면', '그곳에 꽃이 한 송이 핀다.')], [11.5, 14.9, L('그 꽃들은', '하나하나 서로 다르다.')],
+      [15.4, 18.6, L('당신의 꽃도', '지금 그곳에 피어 있다.')], [19, 21.6, 'title']];
+    total = 21.9;
+  }
+  if (RM) { if (center) { center.b0 = 0; center.b1 = .01; } others.forEach(o => { o.b0 = 0; o.b1 = .01; }); }
+  const stars = Array.from({ length: 170 }, () => [Math.random(), Math.random(), .4 + Math.random() * 1.3, Math.random() * TAU]);
+  let shown = -1;
+  const show = i => {
+    shown = i; tx.classList.remove('on');
+    setTimeout(() => {
+      if (done) return;
+      tx.replaceChildren(); tx.classList.toggle('title', steps[i][2] === 'title');
+      if (steps[i][2] === 'title') { tx.append('서천꽃밭'); const sm = document.createElement('small'); sm.textContent = '제주 신화 속 꽃밭'; tx.append(sm); }
+      else steps[i][2].forEach((l, k) => { if (k) tx.append(document.createElement('br')); tx.append(l); });
+      tx.classList.add('on');
+    }, shown > 0 ? 0 : 0);
+  };
+  const end = () => {
+    if (done) return; done = true;
+    box.classList.add('out'); tx.classList.remove('on');
+    store.set('introSeen', true);
+    setTimeout(() => { box.remove(); removeEventListener('resize', size); }, 1900);
+    onEnd && onEnd();
+  };
+  box.addEventListener('click', e => { if (performance.now() - t0 > 500 || e.target.id === 'introSkip') end(); });
+  addEventListener('keydown', function k(e) { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { removeEventListener('keydown', k); end(); } });
+  const bloom = (o, t) => clamp01((t - o.b0) / (o.b1 - o.b0));
+  (function tick() {
+    if (done && !box.isConnected) return;
+    const t = (performance.now() - t0) / 1000;
+    for (let i = 0; i < steps.length; i++) {
+      if (t >= steps[i][0] && t < steps[i][1] && shown !== i) show(i);
+      if (t >= steps[i][1] && shown === i && tx.classList.contains('on')) tx.classList.remove('on');
+    }
+    if (t >= total) end();
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    // 서쪽(왼쪽) 지평선의 노을: 첫 문장 동안만 은은하게
+    if (mode === 'first') {
+      const a = clamp01(t / 1.5) * (1 - clamp01((t - 4) / 2.5));
+      if (a > 0) { const sg = g.createRadialGradient(-w * .1, h * .78, 0, -w * .1, h * .78, Math.max(w, h) * .75); sg.addColorStop(0, `rgba(240,150,110,${(.32 * a).toFixed(3)})`); sg.addColorStop(.4, `rgba(150,80,120,${(.12 * a).toFixed(3)})`); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(0, 0, w, h); }
+    }
+    for (const [x, y, r, ph] of stars) { g.globalAlpha = .25 + .35 * (RM ? .5 : .5 + .5 * Math.sin(t * 1.3 + ph)); g.fillStyle = '#cfd6ff'; g.beginPath(); g.arc(x * w, y * h, r, 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
+    // 꽃은 글자 아래 남은 자리에: 가로 화면에서도 글자와 겹치지 않게
+    const yTop = h * .36, yBot = h * .95, cx = w / 2, cy = (yTop + yBot) / 2, m = Math.min(w, yBot - yTop), drift = RM ? 0 : t * .03;
+    if (center.dot != null && t > center.dot && t < center.b0 + .8) {   // 한 점의 빛으로 먼저 온다
+      const a = clamp01((t - center.dot) / 1.2) * (1 - clamp01((t - center.b0) / .8)), rr = m * .06 * (1 + .15 * Math.sin(t * 3));
+      const dg = g.createRadialGradient(cx, cy, 0, cx, cy, rr); dg.addColorStop(0, `rgba(255,240,210,${a})`); dg.addColorStop(1, 'rgba(255,240,210,0)');
+      g.fillStyle = dg; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.fill();
+    }
+    const R0 = m * (mode === 'first' ? .19 : .24);
+    for (const o of others) {
+      const b = bloom(o, t); if (b <= 0) continue;
+      const rx = cx + Math.cos(o.a + drift * .5) * Math.min(w * .5 - R0 * .75, m * .5), ry = cy + Math.sin(o.a + drift * .5) * m * .36;
+      g.save(); g.translate(rx, ry); g.rotate(o.P.rot0 + drift); g.globalAlpha = .9; drawFlower(g, o.P, R0 * .55, { g: b, px: R0 * .55 * dpr }); g.restore();
+    }
+    const b = bloom(center, t);
+    if (b > 0) {
+      const th = center.P.L[0].th, hg = g.createRadialGradient(cx, cy, R0 * .2, cx, cy, R0 * 2);
+      hg.addColorStop(0, hsla(th[0], th[1], th[2], .22 * b)); hg.addColorStop(1, hsla(th[0], th[1], th[2], 0));
+      g.fillStyle = hg; g.beginPath(); g.arc(cx, cy, R0 * 2, 0, TAU); g.fill();
+      g.save(); g.translate(cx, cy); g.rotate(center.P.rot0 + drift); drawFlower(g, center.P, R0, { g: b, px: R0 * dpr, dew: true }); g.restore();
+    }
+    requestAnimationFrame(tick);
+  })();
+}
+
 /* ---------- 시작 ---------- */
 addEventListener('resize', layout);
 new ResizeObserver(measureStage).observe(panel);
@@ -1878,11 +1982,12 @@ whenSized(function start() {
     refreshSpecials();
   }
   const ri = ((Math.random() * 600) | 0) - 300, rj = ((Math.random() * 600) | 0) - 300;
+  let afterIntro = null;
   if (s && n && /^[0-9a-z]{1,8}$/.test(s) && user && (parseInt(s, 36) >>> 0) === user.seed) {
     // 내 꽃 링크(새로고침 포함): 친구 꽃이 아니라 내 꽃으로 간다
     cam.x = user.i + 40; cam.y = user.j - 25; cam.ppu = 2;
     hideHint();
-    setTimeout(goMine, 700);
+    afterIntro = () => setTimeout(goMine, 300);
   } else if (s && n && /^[0-9a-z]{1,8}$/.test(s)) {
     // 받은 링크: 보낸 사람의 꽃으로 날아간다
     const c = parseInt(q.get('c') || '0', 10);
@@ -1890,7 +1995,7 @@ whenSized(function start() {
     refreshSpecials();
     cam.x = friend.i + 40; cam.y = friend.j - 25; cam.ppu = 2;
     hideHint();
-    setTimeout(() => focusCell(friend.i, friend.j), 700);
+    afterIntro = () => setTimeout(() => focusCell(friend.i, friend.j), 300);
   } else {
     // 첫 장면: 꽃 몇 송이에서 시작해 끝없는 꽃밭으로 물러난다
     const [x, y] = cellCenter(ri, rj);
@@ -1904,7 +2009,10 @@ whenSized(function start() {
       anim = { f, t0: 0, dur: 20, sw, ease: u => u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2, startLate: true };
     }
   }
-  requestAnimationFrame(ms => { if (anim && anim.startLate) anim.t0 = ms / 1000 + 1.2; frame(ms); });
+  if (anim && anim.startLate) anim.t0 = 1e9;   // 인트로가 끝날 때까지 첫 장면을 멈춰 둔다
+  const mode = friend ? 'friend' : user && store.get('introSeen', false) ? 'back' : 'first';
+  runIntro(mode, () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); });
+  requestAnimationFrame(ms => frame(ms));
 });
 </script>
 </body>
