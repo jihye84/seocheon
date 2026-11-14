@@ -300,11 +300,21 @@ function gen(seed, hue, palO, force) {
   P.layers = pickW(r, [[1, 3], [2, 4], [3, 3], [4, 1]]);
   if (force.layers) P.layers = force.layers;
   if (count >= 16 && P.layers > 3) P.layers = 3;
-  const step = .14 + r() * .12;
+  // 겹겹 꽃(국화·민들레처럼 꽃잎이 아주 많고 여러 겹): 따로 뽑는다. 가운데부터 물드는 꽃과 한 빛깔인 꽃
+  const r10 = mulberry32(seed ^ 0x2545f491);
+  P.many = null;
+  if (r10() < .08 && !force.flat && !force.count) {
+    count = [34, 40, 48, 55, 64][(r10() * 5) | 0];
+    P.shape = ['lance', 'spoon', 'fringe', 'round'][(r10() * 4) | 0];
+    P.count = count; P.layers = 3 + ((r10() * 3) | 0);
+    P.many = { grad: r10() < .55, gh: (r10() - .5) * 60 };
+  }
+  const step = (.14 + r() * .12) * (P.many ? .55 : 1);
   const pw = { round: .55, point: .42, notch: .6, fringe: .58, spoon: .74, lance: .5, ruffle: .55 }[P.shape] + (r() - .5) * .12;
   P.a = shapeA(pw);
   P.b = { round: .65, point: 1.05, notch: .7, fringe: .8, spoon: .6, lance: 1.15, ruffle: .75 }[P.shape];
   let wf = .8 + r() * .6; if (P.shape === 'lance') wf *= .5;
+  if (P.many) wf *= 1.15;   // 가는 꽃잎이 촘촘히 맞닿되 많이 겹치지는 않게
   P.curl = r() < .3 ? (r() < .5 ? -1 : 1) * (.12 + r() * .22) : 0;
   P.ruffK = 3 + ((r() * 4) | 0); P.ruffPh = r() * TAU; P.ruffA = .05 + r() * .06;
   P.teeth = 5 + ((r() * 5) | 0); P.notchD = .1 + r() * .1;
@@ -321,9 +331,14 @@ function gen(seed, hue, palO, force) {
     case 6: tip = [0, 0, 97 + r() * 3 + r() * 0]; base = [0, 0, 84 + r() * 5 + r() * 0]; break;
     default: tip = [h, 10 + r() * 15, 92 + r() * 5]; base = [h, 35 + r() * 30, 76 + r() * 8];
   }
+  if (P.many) {   // 가운데부터 물듦: 밑동을 짙고 다른 빛으로 / 한 빛깔: 밑동도 끝과 같게
+    if (P.many.grad) base = P.pal === 6 ? [0, 0, Math.max(62, tip[2] - 22)] : [tip[0] + P.many.gh, Math.min(95, tip[1] + 10), Math.max(14, tip[2] - 38)];
+    else base = tip.slice();
+  }
   P.tipHSL = tip; P.baseHSL = base;
   let lHue = (r() - .5) * 36, lL = (r() < .5 ? -1 : 1) * (4 + r() * 9);
   if (force.flat) { lHue *= .15; lL = Math.abs(lL) * .6; }
+  if (P.many && !P.many.grad) { lHue *= .15; lL *= .3; }
   P.L = [];
   for (let k = 0; k < P.layers; k++) {
     const len = Math.max(.32, 1 - k * step * (count >= 12 ? 1.2 : 1));
@@ -378,7 +393,7 @@ function gen(seed, hue, palO, force) {
   // 솜털(할미꽃·솜다리처럼 꽃잎 가장자리에 보송한 털): 이것도 따로 뽑는다
   const r3 = mulberry32(seed ^ 0x51ed27a3);
   P.fuzz = null;
-  if (r3() < .15 && !force.flat) {
+  if (r3() < .15 && !force.flat && !P.many) {   // 꽃잎이 아주 많은 꽃은 솜털을 그리면 너무 무거워 뺀다
     const H = [], n = 70 + ((r3() * 40) | 0), hl = .012 + r3() * .014;
     for (let q = 0; q < n; q++) { const ss = .1 + .88 * (q + r3() * .8) / n; H.push([ss, q & 1 ? 1 : -1, hl * (.6 + r3() * .7), (r3() - .5) * .9]); }
     P.fuzz = H;
@@ -463,7 +478,7 @@ function colorWord(hsl) {
   let w = '붉은빛'; for (const [m, n] of T) { if (h < m) { w = n; break; } }
   return l <= 44 ? '짙은 ' + w : w;
 }
-const COUNT_KO = { 3: '세', 4: '네', 5: '다섯', 6: '여섯', 7: '일곱', 8: '여덟', 9: '아홉', 10: '열', 12: '열두', 13: '열세', 16: '열여섯', 21: '스물한' };
+const COUNT_KO = { 3: '세', 4: '네', 5: '다섯', 6: '여섯', 7: '일곱', 8: '여덟', 9: '아홉', 10: '열', 12: '열두', 13: '열세', 16: '열여섯', 21: '스물한', 34: '서른네', 40: '마흔', 48: '마흔여덟', 55: '쉰다섯', 64: '예순네' };
 const SHAPE_NAME = { round: '둥근꽃', point: '별꽃', notch: '오목꽃', fringe: '술꽃', spoon: '부채꽃', lance: '실꽃', ruffle: '물결꽃' };
 const SHAPE_KO = { round: '둥근 꽃잎', point: '뾰족한 꽃잎', notch: '끝이 오목한 꽃잎', fringe: '술 달린 꽃잎', spoon: '끝이 넓은 꽃잎', lance: '가는 꽃잎', ruffle: '물결 꽃잎' };
 const CENTER_KO = { dots: '씨앗 꽃술', stamen: '실 꽃술', bud: '봉오리 속', ring: '고리 꽃술' };
@@ -505,7 +520,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: P.fused ? `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.breaker ? ' · 깃털무늬' : ''}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
+    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.many && P.many.grad ? ' · 속빛 물듦' : ''}${P.breaker ? ' · 깃털무늬' : ''}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -642,6 +657,21 @@ function drawCenter(g, P, cs, lw, px) {
   }
 }
 /* 이슬방울: 바깥 꽃잎 위에 두세 방울 */
+/* 꽃잎이 아주 많은 꽃(겹겹 꽃): 크기가 8% 넘게 바뀔 때만 다시 그리고, 그 사이에는 그려 둔 그림을 쓴다 */
+const bigCache = new WeakMap();
+function drawBigCached(ctx, P, R) {
+  const key = Math.round(Math.log(R * DPR) / Math.log(1.08));
+  let c = bigCache.get(P);
+  if (!c || c.key !== key) {
+    const Rp = Math.pow(1.08, key), half = Math.ceil(Rp * 1.45), cv = document.createElement('canvas');
+    cv.width = cv.height = half * 2;
+    const g2 = cv.getContext('2d'); g2.translate(half, half);
+    drawFlower(g2, P, Rp, { g: 1, px: Rp, dew: true });
+    c = { key, cv, Rp, half }; bigCache.set(P, c);
+  }
+  const k = R * DPR / c.Rp, w = c.half * 2 * k / DPR;
+  ctx.drawImage(c.cv, -w / 2, -w / 2, w, w);
+}
 function drawDew(g, P, a) {
   const r = mulberry32(P.seed ^ 0xde3), L = P.L[0], n = 2 + ((r() * 2) | 0);
   g.save(); g.globalAlpha = a;
@@ -698,7 +728,7 @@ function drawFlower(g, P, R, o) {
     if (FU) { fill.addColorStop(0, P.throat); fill.addColorStop(Math.min(.45, FU.f * .6), Ly.base); fill.addColorStop(1, Ly.tip); }   // 가운데 목구멍이 깊어 보이게
     else { fill.addColorStop(0, Ly.base); fill.addColorStop(.3, Ly.base); fill.addColorStop(1, Ly.tip); }
     g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
-    const vein = P.vein && px > 60, fine = px > 110;
+    const vein = P.vein && px > 60 && P.count <= 21, fine = px > 110 && P.count <= 21;   // 꽃잎이 아주 많으면 잔결·잎맥은 생략(무겁고 보이지도 않음)
     // 꽃잎이 살짝 휘어 보이도록: 한쪽은 밝게, 한쪽은 그늘지게
     let curve = null;
     if (px > 48) {
@@ -868,6 +898,14 @@ function drawFlower(g, P, R, o) {
         g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
       g.restore();
+    }
+    if (!FU && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
+      g.save(); g.rotate(Ly.rot + twist);
+      g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip();
+      g.fillStyle = fill; g.fill(path);
+      if (curve) { g.fillStyle = curve; g.fill(path); }
+      if (px > 40) { g.strokeStyle = Ly.edge; g.lineWidth = lw * .8; g.stroke(path); }
+      g.restore(); g.fillStyle = fill;
     }
   }
   g.globalAlpha = 1;
@@ -1502,7 +1540,8 @@ function drawSpecial(sp, t) {
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, R * 2.4, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(sx, sy);
     ctx.rotate(P.rot0 + .035 * Math.sin(t * .55) + wr); const br = 1 + .012 * Math.sin(t * 1.3); ctx.scale(br, br);
-    drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
+    if (gNow >= 1 && P.count > 21 && R * DPR < 900) drawBigCached(ctx, P, R);   // 꽃잎이 아주 많은 꽃은 다 핀 뒤 한 번 그려 두고 다시 쓴다
+    else drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
     ctx.restore();
     if (sp.kind === 'myth' && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛
       ctx.globalCompositeOperation = 'lighter';
