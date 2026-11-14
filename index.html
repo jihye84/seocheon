@@ -640,17 +640,26 @@ function drawFlower(g, P, R, o) {
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
         const W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
         const at = (v, ss) => [ss * len, (v.t + v.wob * Math.sin(ss * 7 + v.ph) * ss) * W(ss) * .9 + P.curl * len * ss * ss];
+        const w0 = lw * Math.max(2.2, px / 70);   // 밑동은 굵고 끝으로 갈수록 가늘게
         for (const v of P.net) {
-          g.lineWidth = lw * Math.max(1.2, px / 120); g.beginPath();
-          for (let ss = .04; ss <= v.end; ss += .04) { const [x, y] = at(v, ss); ss < .05 ? g.moveTo(x, y) : g.lineTo(x, y); }
-          g.stroke();
-          g.lineWidth = lw * Math.max(.8, px / 220); g.beginPath();
+          let [px0, py0] = at(v, .03);
+          for (let ss = .06; ss <= v.end + 1e-6; ss += .03) {
+            const [x, y] = at(v, ss), u = ss / v.end;
+            g.lineWidth = w0 * (1 - .82 * u); g.beginPath(); g.moveTo(px0, py0); g.lineTo(x, y); g.stroke();
+            px0 = x; py0 = y;
+          }
           for (const [s0, d, bl] of v.br) {
             if (s0 > v.end) continue;
-            const [x, y] = at(v, s0); g.moveTo(x, y);
-            g.quadraticCurveTo(x + bl * len * .5, y + d * bl * len * .25, x + bl * len, y + d * bl * len * .55);
+            const [x, y] = at(v, s0), bw = w0 * (1 - .82 * s0 / v.end) * .7;
+            const cx = x + bl * len * .5, cy = y + d * bl * len * .25, ex = x + bl * len, ey = y + d * bl * len * .55;
+            let qx = x, qy = y;
+            for (let z = 1; z <= 6; z++) {
+              const tt = z / 6, a1 = (1 - tt) * (1 - tt), a2 = 2 * (1 - tt) * tt, a3 = tt * tt;
+              const nx = a1 * x + a2 * cx + a3 * ex, ny = a1 * y + a2 * cy + a3 * ey;
+              g.lineWidth = bw * (1 - .85 * tt); g.beginPath(); g.moveTo(qx, qy); g.lineTo(nx, ny); g.stroke();
+              qx = nx; qy = ny;
+            }
           }
-          g.stroke();
         }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
