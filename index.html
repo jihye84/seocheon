@@ -373,6 +373,20 @@ function gen(seed, hue, palO, force) {
     for (let q = 0; q < n; q++) { const ss = .1 + .88 * (q + r3() * .8) / n; H.push([ss, q & 1 ? 1 : -1, hl * (.6 + r3() * .7), (r3() - .5) * .9]); }
     P.fuzz = H;
   }
+  // 핏줄무늬(난초·칸나처럼 꽃잎 밑동에서 갈라져 뻗는 줄): 이것도 따로 뽑는다
+  const r4 = mulberry32(seed ^ 0x6a09e667);
+  P.net = null;
+  if (r4() < .15 && P.pal !== 6 && !force.flat && count <= 13) {
+    const m = 3 + ((r4() * 5) | 0), N = [];
+    for (let q = 0; q < m; q++) {
+      const t = m === 1 ? 0 : -.75 + 1.5 * q / (m - 1) + (r4() - .5) * .12, br = [];
+      const nb = 1 + ((r4() * 3) | 0);
+      for (let z = 0; z < nb; z++) br.push([.25 + r4() * .45, r4() < .5 ? -1 : 1, .08 + r4() * .12]);
+      N.push({ t, end: .62 + r4() * .3, wob: (r4() - .5) * .25, ph: r4() * TAU, br });
+    }
+    const vl = P.pal === 5 ? 40 : Math.max(16, base[2] - 30);
+    P.net = N; P.netCol = hsla(P.pal === 5 ? h : base[0] - 14, Math.min(92, (P.pal === 5 ? 55 : base[1]) + 15), vl, .75);
+  }
   if (!custom) genCache.set(seed, P);
   return P;
 }
@@ -434,7 +448,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}${P.fuzz ? ' · 솜털' : ''}`,
+    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}${P.net ? ' · 핏줄무늬' : ''}${P.fuzz ? ' · 솜털' : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -622,6 +636,24 @@ function drawFlower(g, P, R, o) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
       g.fill(path);
       if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
+      if (P.net && k === P.layers - 1 && px > 40 && es > .5) {   // 핏줄무늬
+        g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
+        const W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
+        const at = (v, ss) => [ss * len, (v.t + v.wob * Math.sin(ss * 7 + v.ph) * ss) * W(ss) * .9 + P.curl * len * ss * ss];
+        for (const v of P.net) {
+          g.lineWidth = lw * Math.max(1.2, px / 120); g.beginPath();
+          for (let ss = .04; ss <= v.end; ss += .04) { const [x, y] = at(v, ss); ss < .05 ? g.moveTo(x, y) : g.lineTo(x, y); }
+          g.stroke();
+          g.lineWidth = lw * Math.max(.8, px / 220); g.beginPath();
+          for (const [s0, d, bl] of v.br) {
+            if (s0 > v.end) continue;
+            const [x, y] = at(v, s0); g.moveTo(x, y);
+            g.quadraticCurveTo(x + bl * len * .5, y + d * bl * len * .25, x + bl * len, y + d * bl * len * .55);
+          }
+          g.stroke();
+        }
+        g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
+      }
       if (P.spots && k === P.layers - 1 && px > 34 && es > .5) {   // 점박이
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.fillStyle = P.spotCol; g.beginPath();
         for (const [ss, t, rr] of P.spots) {
