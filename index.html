@@ -356,6 +356,15 @@ function gen(seed, hue, palO, force) {
     P.leaves.push({ ang: la0 + i * (TAU / nl) + (r() - .5) * .6, len: 1.08 + r() * .22, wid: .16 + r() * .12, col: hsla(lh, ls, ll), col2: hsla(lh + 10, ls + 5, ll + 14) });
   }
   P.sepal = hsla(110 + r() * 30, 35, 28);
+  // 점박이(나리꽃처럼 꽃잎 안쪽에 흩뿌린 점): 따로 뽑아서 다른 생김새는 그대로 둔다
+  const r2 = mulberry32(seed ^ 0x2f6e2b1);
+  P.spots = null;
+  if (r2() < .22 && P.pal !== 6 && !force.flat && count <= 13) {
+    const n = 7 + ((r2() * 12) | 0), big = .7 + r2() * .7, S = [];
+    for (let q = 0; q < n; q++) S.push([.16 + Math.pow(r2(), 1.2) * .52, (r2() - .5) * 1.4, (.015 + r2() * .02) * big]);
+    const sl = P.pal === 5 ? 34 : Math.max(14, base[2] - 34);
+    P.spots = S; P.spotCol = hsla(P.pal === 5 ? h : base[0] - 8, Math.min(92, (P.pal === 5 ? 55 : base[1]) + 12), sl, .82);
+  }
   if (!custom) genCache.set(seed, P);
   return P;
 }
@@ -417,7 +426,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}`,
+    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -605,6 +614,14 @@ function drawFlower(g, P, R, o) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
       g.fill(path);
       if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
+      if (P.spots && k === P.layers - 1 && px > 34 && es > .5) {   // 점박이
+        g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.fillStyle = P.spotCol; g.beginPath();
+        for (const [ss, t, rr] of P.spots) {
+          const w = wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b), x = ss * len, y = t * w * .75 + P.curl * len * ss * ss, rd = rr * len;
+          g.moveTo(x + rd * 1.6, y); g.ellipse(x, y, rd * 1.6, rd, 0, 0, TAU);
+        }
+        g.fill(); g.restore(); g.fillStyle = fill;
+      }
       if (px > 40) g.stroke(path);
       if (fine) {   // 잔결
         g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = lw * .7; g.beginPath();
