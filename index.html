@@ -1379,7 +1379,7 @@ const PENTA = [0, 2, 4, 7, 9];
 function melodyOf(P) {
   if (P._mel) return P._mel;
   const r = mulberry32(P.seed ^ 0xabc), root = 55 + Math.round(((P.hue % 360) / 360) * 12);
-  const n = 5 + (P.count % 4), beat = { round: .34, spoon: .34, notch: .3, ruffle: .26, fringe: .24, point: .27, lance: .3 }[P.shape];
+  const n = 5 + (P.count % 4), beat = { round: .34, spoon: .34, notch: .3, ruffle: .26, fringe: .24, point: .27, lance: .3, frill: .28 }[P.shape] || .3;
   let d = (r() * 5) | 0; const notes = []; let t = 0;
   for (let k = 0; k < n; k++) {
     const last = k === n - 1;
