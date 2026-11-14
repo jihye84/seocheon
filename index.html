@@ -425,6 +425,9 @@ function gen(seed, hue, palO, force) {
     const eh = 340 + r6() * 16;
     P.eye = { se, F, c0: hsla(eh, 82, 34), c1: hsla(eh, 85, 42, .85) };
   }
+  // 윤기(동백·미나리아재비처럼 두꺼운 꽃잎에 비치는 반사광): 따로 뽑는다
+  const r8 = mulberry32(seed ^ 0x510e527f);
+  P.gloss = r8() < .15 && !force.flat ? { k: .55 + r8() * .45, sharp: r8() < .5 } : null;
   if (!custom) genCache.set(seed, P);
   return P;
 }
@@ -486,7 +489,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: P.fused ? `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
+    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -772,6 +775,27 @@ function drawFlower(g, P, R, o) {
           g.moveTo(x + rd * 1.6, y); g.ellipse(x, y, rd * 1.6, rd, 0, 0, TAU);
         }
         g.fill(); g.restore(); g.fillStyle = fill;
+      }
+      if (P.gloss && px > 30 && es > .6) {   // 윤기: 빛(화면 왼쪽 위)을 향한 꽃잎일수록 또렷한 반사광
+        const m = g.getTransform(), an = Math.atan2(m.b, m.a), face = Math.cos(an - Math.atan2(-.8, -.6));
+        const ins = P.gloss.k * (.45 + .55 * (face * .5 + .5)) * (es - .6) / .4;
+        if (ins > .04) {
+          const ly = -Math.sin(-an) * .6 + Math.cos(-an) * -.8;   // 꽃잎 안에서 빛이 오는 쪽(좌우)
+          const hx = len * .56, wv = FU ? Math.sin(Math.PI / P.count) * len * .55 : wid * Math.pow(Math.sin(Math.PI * Math.pow(.56, P.a)), P.b), hy = (ly > 0 ? 1 : -1) * wv * .28;
+          const sd = ly > 0 ? 1 : -1;
+          g.save(); g.clip(path);
+          const dk = g.createLinearGradient(0, sd * wv, 0, -sd * wv);   // 빛 반대쪽은 살짝 어둡게 — 두께감
+          dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(.55, 'rgba(0,0,0,0)'); dk.addColorStop(1, `rgba(10,0,20,${(.22 * ins).toFixed(3)})`);
+          g.fillStyle = dk; g.fill(path);
+          g.translate(hx, hy); g.rotate(-sd * .12); g.scale(len * .42, Math.max(wv * .42, len * .06));
+          const hg = g.createRadialGradient(0, 0, 0, 0, 0, 1);   // 넓게 번진 윤
+          hg.addColorStop(0, `rgba(255,255,255,${(.35 * ins).toFixed(3)})`); hg.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = hg; g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill();
+          const sg = g.createRadialGradient(0, 0, 0, 0, 0, 1);   // 또렷한 반사광: 가장자리가 갑자기 끊긴다
+          sg.addColorStop(0, `rgba(255,255,255,${(.92 * ins).toFixed(3)})`); sg.addColorStop(.75, `rgba(255,255,255,${(.75 * ins).toFixed(3)})`); sg.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = sg; g.beginPath(); g.ellipse(-.05, sd * .18, P.gloss.sharp ? .62 : .5, P.gloss.sharp ? .2 : .26, 0, 0, TAU); g.fill();
+          g.restore(); g.fillStyle = fill;
+        }
       }
       if (px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
       if (P.fuzz && px > 64 && es > .6 && (!FU || n === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
