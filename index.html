@@ -693,11 +693,8 @@ function drawFlower(g, P, R, o) {
   if (gr <= 0) return;
   g.save(); g.scale(R, R);
   const lw = 1 / R;
-  // 비스듬히 보기(꽃 독사진): 꽃이 놓인 면을 뒤로 눕혀(tilt) 바라본다. 꽃잎은 겹마다 조금씩 일어서서 잔처럼 오므라든다
-  const TL = o.tilt || 0, ct = Math.cos(TL), st = Math.sin(TL), spin = o.spin || 0;
-  const flat = () => { g.transform(1, 0, 0, ct, 0, 0); g.rotate(spin); };   // 꽃이 놓인 면 그대로
   const leafS = full ? 1 : ease3(clamp01((gr - .06) / .25));
-  if (leafS > 0) for (const L of P.leaves) { g.save(); if (TL) flat(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw); g.restore(); }
+  if (leafS > 0) for (const L of P.leaves) { g.save(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw); g.restore(); }
   const sepS = full ? 0 : ease3(clamp01(gr / .14)), sepA = 1 - clamp01((gr - .72) / .22);
   if (sepS > 0 && sepA > 0) {     // 꽃받침
     g.globalAlpha = sepA;
@@ -739,29 +736,13 @@ function drawFlower(g, P, R, o) {
       curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
       curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
     }
-    let order = [...Array(P.count).keys()];
-    const elev = TL ? (FU ? 0 : Math.min(1.0, (P.many ? .2 : .18) + k * (P.many ? .32 : .26) + (P.layers === 1 ? .04 : 0))) : 0;
-    const zk = TL ? k * .045 : 0;
-    const place = ang => {   // 꽃잎 하나를 3차원으로 세워 화면에 비춘다 (평평한 꽃잎을 기울인 것은 화면에서 평행사변형 변환 하나로 그려진다)
-      const ce = Math.cos(elev), se = Math.sin(elev), cp = Math.cos(ang), sp = Math.sin(ang);
-      g.transform(cp * ce, sp * ce * ct - se * st, -sp, cp * ct, 0, -zk * st);
-    };
-    if (TL) {   // 먼 꽃잎부터 가까운 꽃잎 순서로
-      const dep = n => { const a = spin + Ly.rot + n * step + twist; return Math.sin(a) * Math.cos(elev) * st + Math.sin(elev) * ct; };
-      order.sort((a, b) => dep(a) - dep(b));
-    }
-    for (let oi = 0; oi < order.length; oi++) {
-      const n = order[oi];
-      g.save(); if (TL) place(spin + Ly.rot + n * step + twist); else g.rotate(Ly.rot + n * step + twist);
+    for (let n = 0; n < P.count; n++) {
+      g.save(); g.rotate(Ly.rot + n * step + twist);
       if (!FU) {
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
-        if (TL && elev > .25) {   // 비스듬히 볼 때: 가까운 쪽에 선 꽃잎은 등을 보이니 조금 그늘지게
-          const nd = Math.sin(spin + Ly.rot + n * step + twist), sh = .26 * Math.max(0, nd) * Math.sin(elev);
-          if (sh > .01) { g.fillStyle = `rgba(15,5,25,${sh.toFixed(3)})`; g.fill(path); g.fillStyle = fill; }
-        }
       } else {
-        if (oi === 0) g.fill(path);
+        if (n === 0) g.fill(path);
         if (FU.star && px > 24) {      // 나팔꽃·도라지처럼 갈래 가운데로 뻗는 밝은 띠
           g.save(); g.clip(path); g.fillStyle = P.starCol; g.beginPath();
           const bw = Math.sin(Math.PI / P.count) * len * .42;
@@ -883,8 +864,8 @@ function drawFlower(g, P, R, o) {
           g.restore(); g.fillStyle = fill;
         }
       }
-      if (px > 40 && (!FU || oi === order.length - 1)) g.stroke(path);
-      if (P.fuzz && px > 64 && es > .6 && (!FU || oi === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
+      if (px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
+      if (P.fuzz && px > 64 && es > .6 && (!FU || n === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
         g.save(); g.globalAlpha = (es - .6) / .4;
         g.fillStyle = 'rgba(255,255,255,.07)'; g.fill(path);
         g.clip(path); g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = lw * 7; g.stroke(path);   // 가장자리가 보송하게 번짐
@@ -918,7 +899,7 @@ function drawFlower(g, P, R, o) {
       }
       g.restore();
     }
-    if (!FU && !TL && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
+    if (!FU && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
       g.save(); g.rotate(Ly.rot + twist);
       g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip();
       g.fillStyle = fill; g.fill(path);
@@ -928,8 +909,7 @@ function drawFlower(g, P, R, o) {
     }
   }
   g.globalAlpha = 1;
-  if (TL) { g.translate(0, -(P.layers - 1) * .045 * st - .03 * st); flat(); }   // 꽃술은 가장 안쪽 겹 높이에
-  if (o.dew && px > 130 && gr > .9 && !TL) drawDew(g, P, clamp01((gr - .9) / .1));
+  if (o.dew && px > 130 && gr > .9) drawDew(g, P, clamp01((gr - .9) / .1));
   const cs = full ? 1 : ease3(clamp01((gr - .6) / .3));
   if (P.tuft && px > 40 && cs > 0 && P.tuft.kind === 'ring') drawTuft(g, P, cs, lw, px);
   if (cs > 0) drawCenter(g, P, cs, lw, px);
@@ -1757,8 +1737,7 @@ function pngFlower(g, P, x, y, R, th) {
   const halo = g.createRadialGradient(x, y, R * .2, x, y, R * 1.9);
   halo.addColorStop(0, hsla(th[0], th[1], th[2], .26)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
   g.fillStyle = halo; g.beginPath(); g.arc(x, y, R * 1.9, 0, TAU); g.fill();
-  // 꽃 독사진은 정수리에서 내려다보지 않고 살짝 비스듬히 (약 38°)
-  g.save(); g.translate(x, y + R * .08); drawFlower(g, P, R, { g: 1, px: R, dew: true, tilt: .66, spin: P.rot0 }); g.restore();
+  g.save(); g.translate(x, y); g.rotate(P.rot0); drawFlower(g, P, R, { g: 1, px: R, dew: true }); g.restore();
 }
 function downloadCanvas(c, name) {
   c.toBlob(b => {
