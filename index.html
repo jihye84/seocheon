@@ -346,7 +346,7 @@ function gen(seed, hue, palO, force) {
     const th = [tip[0] + lHue * k, tip[1], tip[2] + lL * k], bh = [base[0] + lHue * k, base[1], base[2] + lL * k];
     P.L.push({
       len, wmax, rot: k * (Math.PI / count) + (r() - .5) * .25,
-      tip: hsla(...th), base: hsla(...bh), edge: hsla(bh[0], bh[1], bh[2] - 20, .35), th
+      tip: hsla(...th), base: hsla(...bh), edge: hsla(bh[0], bh[1], bh[2] - 20, .35), th, bh
     });
   }
   // 통꽃(개나리·도라지·나팔꽃처럼 꽃잎이 밑에서 하나로 붙음): 따로 뽑는다. 붙은 깊이가 꽃마다 다르다
@@ -711,14 +711,25 @@ function drawFlower(g, P, R, o) {
     g.globalAlpha = 1;
   }
   const step = TAU / P.count;
-  for (let k = 0; k < P.layers; k++) {
-    const Ly = P.L[k];
+  // 겹꽃(3겹 이상)과 겹겹 꽃: 꽃잎을 겹마다 고리로 두르지 않고, 장미·동백·국화처럼 137.5°(황금각)씩 돌며 나선으로 한 장씩 붙인다
+  const SP = !P.fused && (P.many || P.layers >= 3), NT = P.count * P.layers;
+  let lastBand = 0;
+  for (let k = 0; k < (SP ? NT : P.layers); k++) {
+    let Ly = P.L[k], kf = k, top = k === P.layers - 1, band = k;
+    if (SP) {    // 바깥(0)에서 안쪽으로: 길이·빛깔이 끊김 없이 이어지는 꽃잎 한 장
+      kf = k / (NT - 1) * (P.layers - 1);
+      const k0 = Math.floor(kf), k1 = Math.min(P.layers - 1, k0 + 1), f = kf - k0, A = P.L[k0], B = P.L[k1], mx = (a, b) => a + (b - a) * f;
+      const th = A.th.map((v, i) => mx(v, B.th[i])), bh = A.bh.map((v, i) => mx(v, B.bh[i]));
+      Ly = { len: mx(A.len, B.len), wmax: mx(A.wmax, B.wmax), rot: k * 2.39996, tip: hsla(...th), base: hsla(...bh), edge: hsla(bh[0], bh[1], bh[2] - 20, .35), th };
+      top = k >= NT - P.count; band = Math.round(kf);
+    }
     if (budS <= 0) break;
-    const e = full ? 1 : clamp01((gr - .34 - k * .07) / .5), es = e * e * (3 - 2 * e);
-    const cLen = cb * (1 - k * .14), cWid = cLen * .62;    // 오므린 꽃봉오리일 때 꽃잎 크기
+    const e = full ? 1 : clamp01((gr - .34 - kf * .07) / .5), es = e * e * (3 - 2 * e);
+    const cLen = cb * (1 - kf * .14), cWid = cLen * .62;    // 오므린 꽃봉오리일 때 꽃잎 크기
     const len = cLen + (Ly.len - cLen) * es, wid = cWid + (Ly.wmax - cWid) * es, twist = (1 - es) * 1.2;
     if (len < .004) continue;
-    if (k > 0) {
+    const newBand = band !== lastBand; lastBand = band;
+    if (SP ? (newBand && band > 0) : k > 0) {
       const sh = g.createRadialGradient(0, 0, 0, 0, 0, len * 1.14);
       sh.addColorStop(0, 'rgba(0,0,0,.34)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh; g.beginPath(); g.arc(0, 0, len * 1.14, 0, TAU); g.fill();
@@ -736,7 +747,7 @@ function drawFlower(g, P, R, o) {
       curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
       curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
     }
-    for (let n = 0; n < P.count; n++) {
+    for (let n = 0; n < (SP ? 1 : P.count); n++) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
       if (!FU) {
         g.fill(path);
@@ -754,7 +765,7 @@ function drawFlower(g, P, R, o) {
           g.beginPath(); g.moveTo(len * .05, 0); g.lineTo(len * (FU.f + .02), 0); g.stroke(); g.restore();
         }
       }
-      if (P.eye && k === P.layers - 1 && px > 20 && es > .4) {   // 단심
+      if (P.eye && top && px > 20 && es > .4) {   // 단심
         const E = P.eye, re = E.se * len;
         g.save(); g.clip(path); g.globalAlpha = Math.min(1, (es - .4) / .4);
         const eg = g.createRadialGradient(0, 0, 0, 0, 0, re);
@@ -771,7 +782,7 @@ function drawFlower(g, P, R, o) {
         }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
-      if (P.net && k === P.layers - 1 && px > 40 && es > .5) {   // 핏줄무늬
+      if (P.net && top && px > 40 && es > .5) {   // 핏줄무늬
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
         const W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
         const at = (v, ss) => [ss * len, (v.t + v.wob * Math.sin(ss * 7 + v.ph) * ss) * W(ss) * .9 + P.curl * len * ss * ss];
@@ -829,7 +840,7 @@ function drawFlower(g, P, R, o) {
         }
         g.restore(); g.fillStyle = fill;
       }
-      if (P.spots && k === P.layers - 1 && px > 34 && es > .5) {   // 점박이
+      if (P.spots && top && px > 34 && es > .5) {   // 점박이
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.fillStyle = P.spotCol; g.beginPath();
         for (const [ss, t, rr] of P.spots) {
           const w = wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b), x = ss * len, y = t * w * .75 + P.curl * len * ss * ss, rd = rr * len;
@@ -899,7 +910,7 @@ function drawFlower(g, P, R, o) {
       }
       g.restore();
     }
-    if (!FU && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
+    if (!FU && !SP && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
       g.save(); g.rotate(Ly.rot + twist);
       g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip();
       g.fillStyle = fill; g.fill(path);
