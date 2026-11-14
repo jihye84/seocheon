@@ -39,6 +39,12 @@
 <meta name="description" content="서쪽 하늘 끝 서천꽃밭에는 세상 사람마다 자기 꽃이 한 송이씩 피어 있다.">
 <meta property="og:title" content="서천꽃밭">
 <meta property="og:description" content="세상 사람마다 한 송이씩, 하나하나 서로 다른 꽃">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jihye84.github.io/seocheon/">
+<meta property="og:image" content="https://jihye84.github.io/seocheon/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
@@ -79,6 +85,11 @@ input[type=date]{color-scheme:dark}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .traits{line-height:1.6}
+.motto{color:#eadcbe;line-height:1.6;font-size:.95em}
+#snd{position:fixed;z-index:6;right:clamp(12px,2vw,28px);top:clamp(12px,2vh,24px);min-height:40px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--line);background:rgba(12,15,34,.55);color:var(--dim);cursor:pointer;font-size:.82em}
+#snd.off{opacity:.6}
+body.narrow #snd{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
 .loc{color:var(--faint);font-size:.86em}
 .swatch{display:flex;gap:6px;margin:.1em 0}
 .swatch i{width:1.1em;height:1.1em;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
@@ -115,7 +126,7 @@ body.narrow .note{display:none}
   .pbody{margin-top:.5em} .view{gap:.45em} form{gap:.4em}
   .colors{grid-template-columns:repeat(11,1fr);gap:4px} .colors button{width:min(26px,100%)}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
-  .fname{font-size:1.4em}
+  .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:.88em;line-height:1.45}
 }
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:.8em;text-align:right;pointer-events:none;line-height:1.5}
@@ -123,7 +134,7 @@ body.narrow #hud{top:max(12px,env(safe-area-inset-top));bottom:auto}
 #hint{position:fixed;z-index:4;left:50%;top:clamp(14px,3vh,30px);transform:translateX(-50%);
   color:var(--dim);font-size:.85em;pointer-events:none;transition:opacity 1.2s;text-align:center;white-space:nowrap}
 body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 2.2em)}
-#toast{position:fixed;z-index:9;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 20px;
+#toast{position:fixed;z-index:9;left:50%;top:clamp(56px,11vh,110px);transform:translateX(-50%);white-space:nowrap;padding:12px 20px;
   border-radius:999px;background:rgba(10,12,28,.9);border:1px solid var(--line);opacity:0;
   transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
@@ -152,6 +163,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
     <section class="view off" id="vCard" aria-live="polite">
       <div class="owner" id="cOwner"></div>
       <div class="fname" id="cName"></div>
+      <div class="motto" id="cMotto"></div>
       <div class="swatch" id="cSw"></div>
       <div id="cPick"><div class="pickname"><span>빛깔 바꾸기</span><b id="pnCard"></b></div>
         <div class="colors" id="pickCard"></div></div>
@@ -159,6 +171,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <div class="loc" id="cLoc"></div>
       <div class="btns">
         <button id="bFar" class="wide" type="button">꽃밭 멀리 보기</button>
+        <button id="bPair" type="button" hidden>두 꽃 나란히 보기</button>
         <button id="bSave" type="button">이미지 저장</button>
         <button id="bShare" type="button">링크 보내기</button>
         <button id="bMine" class="wide" type="button" hidden>내 꽃으로 돌아가기</button>
@@ -170,6 +183,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"></div>
+<button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
 
 <script>
@@ -265,18 +279,22 @@ const SEPAL = { shape: 'point', a: shapeA(.38), b: 1, curl: 0 };
 const BUDP = { shape: 'round', a: shapeA(.6), b: .6, curl: .35 };
 
 const genCache = new Map();
-function gen(seed, hue, palO) {
-  const custom = palO != null;
+function gen(seed, hue, palO, force) {
+  const custom = palO != null || !!force;
   let P = custom ? null : genCache.get(seed); if (P) return P;
   if (genCache.size > 40000) genCache.clear();
   const r = mulberry32(seed ^ 0x5bd1e995);
-  P = { seed, hue: hue == null ? hueOf(seed) : hue, pal: custom ? palO : palOf(seed) };
+  P = { seed, hue: hue == null ? hueOf(seed) : hue, pal: palO != null ? palO : palOf(seed) };
+  force = force || {};
   P.shape = pickW(r, SHAPES);
   let count = pickW(r, COUNTS);
   if (P.shape === 'lance' && count < 8) count = [8, 12, 13, 16, 21][(r() * 5) | 0];
   if ((P.shape === 'fringe' || P.shape === 'notch') && count > 13) count = 8;
+  if (force.shape) P.shape = force.shape;
+  if (force.count) count = force.count;
   P.count = count;
   P.layers = pickW(r, [[1, 3], [2, 4], [3, 3], [4, 1]]);
+  if (force.layers) P.layers = force.layers;
   if (count >= 16 && P.layers > 3) P.layers = 3;
   const step = .14 + r() * .12;
   const pw = { round: .55, point: .42, notch: .6, fringe: .58, spoon: .74, lance: .5, ruffle: .55 }[P.shape] + (r() - .5) * .12;
@@ -299,7 +317,8 @@ function gen(seed, hue, palO) {
     default: tip = [h, 10 + r() * 15, 92 + r() * 5]; base = [h, 35 + r() * 30, 76 + r() * 8];
   }
   P.tipHSL = tip; P.baseHSL = base;
-  const lHue = (r() - .5) * 36, lL = (r() < .5 ? -1 : 1) * (4 + r() * 9);
+  let lHue = (r() - .5) * 36, lL = (r() < .5 ? -1 : 1) * (4 + r() * 9);
+  if (force.flat) { lHue *= .15; lL = Math.abs(lL) * .6; }
   P.L = [];
   for (let k = 0; k < P.layers; k++) {
     const len = Math.max(.32, 1 - k * step * (count >= 12 ? 1.2 : 1));
@@ -312,6 +331,7 @@ function gen(seed, hue, palO) {
   }
   // 꽃술
   P.cType = pickW(r, [['dots', 4], ['stamen', 3], ['bud', 2], ['ring', 2]]);
+  if (force.cType) P.cType = force.cType;
   const inner = P.L[P.layers - 1].len;
   P.cR = Math.min(inner * .55, P.cType === 'bud' ? .2 + r() * .12 : .1 + r() * .14);
   const ct = pickW(r, [['gold', 4], ['dark', 3], ['same', 2], ['pale', 2]]);
@@ -352,8 +372,43 @@ const COUNT_KO = { 3: '세', 4: '네', 5: '다섯', 6: '여섯', 7: '일곱', 8:
 const SHAPE_NAME = { round: '둥근꽃', point: '별꽃', notch: '오목꽃', fringe: '술꽃', spoon: '부채꽃', lance: '실꽃', ruffle: '물결꽃' };
 const SHAPE_KO = { round: '둥근 꽃잎', point: '뾰족한 꽃잎', notch: '끝이 오목한 꽃잎', fringe: '술 달린 꽃잎', spoon: '끝이 넓은 꽃잎', lance: '가는 꽃잎', ruffle: '물결 꽃잎' };
 const CENTER_KO = { dots: '씨앗 꽃술', stamen: '실 꽃술', bud: '봉오리 속', ring: '고리 꽃술' };
+/* 꽃말: 빛깔에서 앞 구절, 꽃잎 모양에서 뒤 구절 */
+const MOTTO_A = {
+  red: ['뜨겁게 피어나며,', '망설임 없이 붉게,', '가슴속 불씨를 품고,'],
+  orange: ['저물녘에도 따스하게,', '노을을 닮아 넉넉하게,', '햇볕을 오래 기억하며,'],
+  yellow: ['아낌없이 나누며,', '햇살을 모아 두었다가,', '작은 빛도 크게 비추며,'],
+  green: ['새싹처럼 싱그럽게,', '비 온 뒤 풀잎처럼,', '언제나 다시 돋아나며,'],
+  cyan: ['맑은 물처럼 흐르며,', '시냇물 소리를 닮아,', '고인 데 없이 맑게,'],
+  sky: ['멀리까지 닿으며,', '구름 너머를 바라보며,', '넓은 하늘을 품고,'],
+  blue: ['깊고 고요하게,', '바다처럼 너그럽게,', '밤하늘처럼 묵묵히,'],
+  violet: ['꿈을 놓지 않으며,', '새벽빛을 기다리며,', '조용한 신비를 품고,'],
+  purple: ['은은한 향기처럼,', '오래 곱씹은 마음으로,', '깊은 정을 품고,'],
+  pink: ['다정하게 다가가며,', '봄볕처럼 살갑게,', '웃음을 머금고,'],
+  white: ['처음처럼 맑게,', '눈처럼 조용히,', '아무것도 감추지 않고,']
+};
+const MOTTO_B = {
+  round: ['둥근 마음을 지키는 꽃', '모난 데 없이 감싸 주는 꽃'],
+  point: ['곧은 뜻을 세우는 꽃', '별을 향해 뻗어 가는 꽃'],
+  notch: ['빈자리를 품어 주는 꽃', '넉넉한 품을 가진 꽃'],
+  fringe: ['작은 것까지 살피는 꽃', '섬세하게 귀 기울이는 꽃'],
+  spoon: ['활짝 편 손으로 건네는 꽃', '가진 것을 기꺼이 펼치는 꽃'],
+  lance: ['가늘어도 꺾이지 않는 꽃', '끝까지 견디어 내는 꽃'],
+  ruffle: ['기쁨에 춤추는 꽃', '바람과 함께 노래하는 꽃']
+};
+function hueFamily(hsl) {
+  const [h0, s, l] = hsl, h = ((h0 % 360) + 360) % 360;
+  if (s < 30 && l >= 86) return 'white';
+  return h < 15 || h >= 350 ? 'red' : h < 40 ? 'orange' : h < 70 ? 'yellow' : h < 160 ? 'green' : h < 195 ? 'cyan'
+    : h < 222 ? 'sky' : h < 250 ? 'blue' : h < 290 ? 'violet' : h < 325 ? 'purple' : 'pink';
+}
+function mottoOf(P) {
+  if (P.motto) return P.motto;
+  const A = MOTTO_A[hueFamily(P.tipHSL)], B = MOTTO_B[P.shape];
+  return [A[mix(P.seed, 0x3141) % A.length], B[mix(P.seed, 0x2718) % B.length]];
+}
 function describe(P) {
   return {
+    motto: mottoOf(P),
     name: `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
     traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
@@ -475,6 +530,21 @@ function drawCenter(g, P, cs, lw, px) {
     softDisc(g, cR * .26, r, P.c2, alphaOf(P.c2, .9));
   }
 }
+/* 이슬방울: 바깥 꽃잎 위에 두세 방울 */
+function drawDew(g, P, a) {
+  const r = mulberry32(P.seed ^ 0xde3), L = P.L[0], n = 2 + ((r() * 2) | 0);
+  g.save(); g.globalAlpha = a;
+  for (let k = 0; k < n; k++) {
+    const pi = (r() * P.count) | 0, sAlong = .5 + r() * .3, side = (r() - .5) * .9;
+    const th = L.rot + pi * TAU / P.count, rad = L.len * sAlong, lat = L.wmax * side * .6 + P.curl * L.len * sAlong * sAlong;
+    const x = Math.cos(th) * rad - Math.sin(th) * lat, y = Math.sin(th) * rad + Math.cos(th) * lat, dr = .028 + r() * .02;
+    const gr = g.createRadialGradient(x - dr * .3, y - dr * .3, dr * .1, x, y, dr);
+    gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(.6, 'rgba(255,255,255,.08)'); gr.addColorStop(1, 'rgba(30,20,50,.35)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, dr, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x - dr * .35, y - dr * .35, dr * .2, 0, TAU); g.fill();
+  }
+  g.restore();
+}
 /* g: 꽃 중심으로 옮긴 캔버스, R: 꽃잎 반지름(px), o.g: 피어난 정도 0~1 */
 function drawFlower(g, P, R, o) {
   const gr = o.g == null ? 1 : o.g, px = o.px || R;
@@ -482,6 +552,17 @@ function drawFlower(g, P, R, o) {
   const lw = 1 / R;
   const leafS = gr >= 1 ? 1 : ease3(clamp01(gr / .22));
   if (leafS > 0) for (const L of P.leaves) { g.save(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw); g.restore(); }
+  if (gr < .45) {   // 꽃봉오리
+    const bs = ease3(clamp01(gr / .14)), ba = 1 - clamp01((gr - .22) / .2);
+    if (bs > 0 && ba > 0) {
+      g.globalAlpha = ba;
+      g.fillStyle = P.L[0].base; g.beginPath(); g.arc(0, 0, .17 * bs, 0, TAU); g.fill();
+      const sp = petalPath(.3 * bs, .1 * bs, SEPAL);
+      g.fillStyle = P.sepal;
+      for (let n = 0; n < 5; n++) { g.save(); g.rotate(P.rot0 + n * TAU / 5); g.fill(sp); g.restore(); }
+      g.globalAlpha = 1;
+    }
+  }
   const step = TAU / P.count;
   for (let k = 0; k < P.layers; k++) {
     const Ly = P.L[k];
@@ -498,11 +579,27 @@ function drawFlower(g, P, R, o) {
     const fill = g.createRadialGradient(0, 0, 0, 0, 0, len);
     fill.addColorStop(0, Ly.base); fill.addColorStop(.3, Ly.base); fill.addColorStop(1, Ly.tip);
     g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
-    const vein = P.vein && px > 60;
+    const vein = P.vein && px > 60, fine = px > 110;
+    // 꽃잎이 살짝 휘어 보이도록: 한쪽은 밝게, 한쪽은 그늘지게
+    let curve = null;
+    if (px > 48) {
+      curve = g.createLinearGradient(0, -wid, 0, wid);
+      curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
+      curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
+    }
     for (let n = 0; n < P.count; n++) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
       g.fill(path);
+      if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
       if (px > 40) g.stroke(path);
+      if (fine) {   // 잔결
+        g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = lw * .7; g.beginPath();
+        for (const side of [-1, 1]) for (const f of [.3, .55]) {
+          g.moveTo(len * .14, P.curl * len * .02);
+          g.quadraticCurveTo(len * .45, side * wid * f * .7 + P.curl * len * .2, len * .74, side * wid * f + P.curl * len * .55);
+        }
+        g.stroke(); g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
+      }
       if (vein) {
         g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = lw * .9;
         g.beginPath(); g.moveTo(len * .1, P.curl * len * .01);
@@ -513,19 +610,9 @@ function drawFlower(g, P, R, o) {
     }
   }
   g.globalAlpha = 1;
+  if (o.dew && px > 130 && gr > .85) drawDew(g, P, clamp01((gr - .85) / .15));
   const cs = gr >= 1 ? 1 : ease3(clamp01((gr - .4) / .4));
   if (cs > 0) drawCenter(g, P, cs, lw, px);
-  if (gr < .45) {   // 꽃봉오리
-    const bs = ease3(clamp01(gr / .14)), ba = 1 - clamp01((gr - .22) / .2);
-    if (bs > 0 && ba > 0) {
-      g.globalAlpha = ba;
-      g.fillStyle = P.L[0].base; g.beginPath(); g.arc(0, 0, .17 * bs, 0, TAU); g.fill();
-      const sp = petalPath(.3 * bs, .1 * bs, SEPAL);
-      g.fillStyle = P.sepal;
-      for (let n = 0; n < 5; n++) { g.save(); g.rotate(P.rot0 + n * TAU / 5); g.fill(sp); g.restore(); }
-      g.globalAlpha = 1;
-    }
-  }
   g.restore();
 }
 
@@ -642,19 +729,51 @@ function flyTo(x, y, ppu, done, minDur = 1.6) {
 }
 
 /* ---------- 상태 ---------- */
-let now = 0, user = null, focus = null, lastInput = -99, opening = false;
+let now = 0, user = null, friend = null, focus = null, lastInput = -99, opening = false, pair = null;
 const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem('seocheon.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('seocheon.' + k, JSON.stringify(v)); } catch (e) { } } };
 const cellOfSeed = s => [(mix(s, 0xA1B2) % 801) - 400, (mix(s, 0xC3D4) % 801) - 400];
-function cellCenter(i, j) {
-  if (user && i === user.i && j === user.j) return [i + .5, j + .5, .95, user.seed];
-  const s = h2(i, j);
-  return [i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5, .62 + ((s >>> 19) & 255) / 255 * .3, s];
-}
-function focusP() {
-  if (focus.mine) return user.P;
-  const s = cellCenter(focus.i, focus.j)[3]; return cellP(focus.i, focus.j, s);
-}
+const keyOf = (i, j) => (i + 32768) * 65536 + (j + 32768);
 const focusPPU = size => Math.min(stg.w, stg.h) * .74 / size;
+
+/* ---------- 신화 속 꽃(이공본풀이) ---------- */
+const MYTH_REVIVE = ['제주 무가 「이공본풀이」에서', '꽃감관의 아들 할락궁이는', '서천꽃밭의 꽃으로', '죽은 어머니를 되살렸다.'];
+const MYTHS = [
+  { id: 'bone', name: '뼈살이꽃', at: [-163, 88], hue: 44, pal: 5, force: { flat: true, shape: 'point', count: 6, layers: 3, cType: 'stamen' },
+    motto: ['흩어진 뼈를 모아,', '다시 이어 붙이는 꽃'], glow: [45, 70, 88], story: MYTH_REVIVE },
+  { id: 'flesh', name: '살살이꽃', at: [214, -57], hue: 14, pal: 3, force: { flat: true, shape: 'round', count: 5, layers: 3, cType: 'bud' },
+    motto: ['뼈 위에', '살을 다시 돋게 하는 꽃'], glow: [18, 85, 80], story: MYTH_REVIVE },
+  { id: 'blood', name: '피살이꽃', at: [-71, -238], hue: 352, pal: 0, force: { flat: true, shape: 'ruffle', count: 8, layers: 2, cType: 'dots' },
+    motto: ['멈춘 몸에', '피를 다시 돌게 하는 꽃'], glow: [355, 85, 66], story: MYTH_REVIVE },
+  { id: 'breath', name: '숨살이꽃', at: [97, 251], hue: 196, pal: 3, force: { flat: true, shape: 'notch', count: 5, layers: 2, cType: 'ring' },
+    motto: ['끊어진 숨을', '다시 쉬게 하는 꽃'], glow: [196, 80, 80], story: MYTH_REVIVE },
+  { id: 'laugh', name: '웃음꽃', at: [-286, -129], hue: 48, pal: 0, force: { flat: true, shape: 'fringe', count: 8, layers: 3, cType: 'dots' },
+    motto: ['보는 이를', '멈출 수 없이 웃게 하는 꽃'], glow: [48, 95, 70],
+    story: ['「이공본풀이」에서 할락궁이는', '이 꽃으로 원수의 집안을', '멈출 수 없는 웃음에 빠뜨렸다.'] }
+];
+const mythFound = new Set(store.get('myth', []));
+for (const m of MYTHS) {
+  m.kind = 'myth'; m.seed = strHash('서천꽃밭|' + m.id); m.i = m.at[0]; m.j = m.at[1]; m.size = .95;
+  m.P = gen(m.seed, m.hue, m.pal, m.force); m.P.motto = m.motto; m.bloomT = null;
+}
+
+/* 특별한 칸: 신화 속 꽃, 받은 링크의 꽃, 내 꽃 */
+const specials = new Map();
+function refreshSpecials() {
+  specials.clear();
+  for (const m of MYTHS) specials.set(keyOf(m.i, m.j), m);
+  if (friend) specials.set(keyOf(friend.i, friend.j), friend);
+  if (user) specials.set(keyOf(user.i, user.j), user);
+}
+refreshSpecials();
+function cellCenter(i, j) {
+  const sp = specials.get(keyOf(i, j));
+  if (sp) return [i + .5, j + .5, sp.size, sp.seed, sp];
+  const s = h2(i, j);
+  return [i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5, .62 + ((s >>> 19) & 255) / 255 * .3, s, null];
+}
+function focusP() { return focus.sp ? focus.sp.P : cellP(focus.i, focus.j, focus.seed); }
 
 /* 고를 수 있는 꽃 빛깔 — 모양은 그대로, 빛깔만 바뀐다 */
 const COLORS = [
@@ -670,58 +789,84 @@ function buildPicker(el, nameEl, onPick) {
   el.innerHTML = '';
   COLORS.forEach((c, k) => {
     const b = document.createElement('button'); b.type = 'button'; b.title = c.n; b.setAttribute('aria-label', c.n);
-    b.style.background = swatchBg(c);
-    b.onclick = () => onPick(k);
-    el.appendChild(b);
+    b.style.background = swatchBg(c); b.onclick = () => onPick(k); el.appendChild(b);
   });
   el._name = nameEl;
 }
-function markPicker(el, k) {
-  [...el.children].forEach((b, i) => b.setAttribute('aria-pressed', i === k));
-  el._name.textContent = COLORS[k].n;
-}
+function markPicker(el, k) { [...el.children].forEach((b, i) => b.setAttribute('aria-pressed', i === k)); el._name.textContent = COLORS[k].n; }
 function userP(seed, ck) {
   const c = COLORS[ck] || COLORS[0];
-  if (!c.white && c.h == null) return gen(seed);
+  if (!c.white && c.h == null) {
+    const h = hueOf(seed);   // 맡기기: 풀빛 꽃잎은 피한다
+    return h > 75 && h < 160 ? gen(seed, (h + 120) % 360, palOf(seed)) : gen(seed);
+  }
   let pal = palOf(seed), hue = c.h;
-  if (c.white) pal = 5;
+  if (c.white) { pal = 5; hue = hueOf(seed); }
   else {
     if (pal === 5) pal = 0;
     if (pal === 4 && hue > 38 && hue < 90) pal = 0;     // 짙은 노랑은 흙빛이 되므로 피한다
     hue = (hue + ((mix(seed, 0x77) % 100) / 100 - .5) * 14 + 360) % 360;
   }
-  if (c.white) hue = hueOf(seed);
   return gen(seed, hue, pal);
 }
-function setUser(name, seed) {
+function makePerson(kind, name, seed, color) {
   const [i, j] = cellOfSeed(seed);
-  user = { name, seed, i, j, bloomT: null, color: pickedColor, P: userP(seed, pickedColor) };
-  try { const u = new URL(location.href); u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); else u.searchParams.delete('c'); history.replaceState(null, '', u); } catch (e) { }
+  return { kind, name, seed, i, j, size: .95, color, bloomT: null, P: userP(seed, color) };
 }
-function goMine() {
-  if (!user) return;
-  focus = { i: user.i, j: user.j, mine: true };
+function setUser(name, seed) {
+  const keepBloom = user && user.seed === seed ? user.bloomT : null;
+  user = makePerson('user', name, seed, pickedColor); user.bloomT = keepBloom;
+  refreshSpecials();
+  try { const u = new URL(location.href); u.search = ''; u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); history.replaceState(null, '', u); } catch (e) { }
+}
+const shareURL = () => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('n', user.name); u.searchParams.set('s', user.seed.toString(36)); if (user.color) u.searchParams.set('c', user.color); return u.toString(); } catch (e) { return location.href; } };
+
+/* ---------- 초점 맞추기 ---------- */
+function focusCell(i, j, opts = {}) {
+  const [x, y, size, seed, sp] = cellCenter(i, j);
+  const same = focus && focus.i === i && focus.j === j && cam.ppu > focusPPU(size) * .6;
+  focus = { i, j, x, y, size, seed, sp, kind: sp ? sp.kind : 'other' };
+  if (pair) exitPair();
   showCard();
   opening = false;
-  flyTo(user.i + .5, user.j + .5, focusPPU(.95), () => { if (user.bloomT == null) user.bloomT = now; }, 2.2);
+  if (same) { playMelody(focusP(), .9); return; }
+  flyTo(x, y, focusPPU(size), () => {
+    if (focus.i !== i || focus.j !== j) return;
+    if (sp) {
+      if (sp.bloomT == null) sp.bloomT = now;
+      playMelody(sp.P, 1, .8);
+      if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
+        mythFound.add(sp.id); store.set('myth', [...mythFound]);
+        setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
+      }
+    } else playMelody(focusP(), .6);
+  }, opts.minDur || (sp ? 2.2 : 1.2));
 }
+const goMine = () => user && focusCell(user.i, user.j);
+
 function showCard() {
-  const mine = focus && focus.mine;
-  const P = focusP();
-  const D = describe(P);
-  $('cOwner').textContent = mine ? `${user.name}의 꽃` : '이름 모를 이의 꽃';
-  $('cName').textContent = D.name;
-  $('cTraits').textContent = D.traits;
+  const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
+  $('cOwner').textContent = k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
+  $('cName').textContent = k === 'myth' ? sp.name : D.name;
+  $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
+  $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
   $('cLoc').textContent = `서천꽃밭 ${focus.i + 1000}번째 이랑 · ${focus.j + 1000}번째 자리`;
   $('cSw').innerHTML = D.colors.map(c => `<i style="background:${c}"></i>`).join('');
-  $('bShare').hidden = !mine;
-  $('cPick').hidden = !mine; $('cSw').hidden = mine;
+  const mine = k === 'user', canPair = !!(user && friend && friend.seed !== user.seed) && (k === 'user' || k === 'friend');
+  $('cPick').hidden = !mine; $('cSw').hidden = mine || k === 'myth';
   if (mine) markPicker($('pickCard'), user.color);
-  $('bMine').hidden = mine; $('bMine').textContent = user ? '내 꽃으로 돌아가기' : '내 꽃 찾기';
-  $('bFar').hidden = !mine; $('bSave').classList.toggle('wide', !mine);
+  $('bFar').hidden = !mine; $('bFar').classList.toggle('wide', !canPair);
+  $('bPair').hidden = !canPair; $('bPair').classList.toggle('wide', !mine);
+  $('bPair').textContent = pair ? '꽃밭으로 돌아가기' : '두 꽃 나란히 보기';
+  $('bShare').hidden = !mine;
+  $('bSave').classList.toggle('wide', !mine);
+  $('bMine').hidden = mine;
+  $('bMine').textContent = user ? '내 꽃으로 돌아가기' : k === 'friend' ? '내 꽃도 찾아 옆에 두기' : '내 꽃 찾기';
+  $('bNew').hidden = !mine;
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
 }
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function showIntro() {
   $('vCard').classList.add('off'); $('vIntro').classList.remove('off');
   setSheet(true);
@@ -736,7 +881,7 @@ function setSheet(open) {
 $('toggle').onclick = () => setSheet(panel.classList.contains('collapsed'));
 
 $('f').addEventListener('submit', e => {
-  e.preventDefault();
+  e.preventDefault(); audio();
   const name = $('inName').value.trim().slice(0, 12); if (!name) { $('inName').focus(); return; }
   const bd = $('inBirth').value.replace(/\D/g, '');
   let birth = '';
@@ -756,8 +901,9 @@ buildPicker($('pickCard'), $('pnCard'), k => {
   if (!user) return;
   pickedColor = k; markPicker($('pickIntro'), k);
   setUser(user.name, user.seed);
+  focus.sp = user;
   showCard();
-  if (cam.ppu > focusPPU(.95) * .35) user.bloomT = now; else goMine();
+  if (cam.ppu > focusPPU(.95) * .35) { user.bloomT = now; playMelody(user.P, .9, .5); } else goMine();
 });
 markPicker($('pickIntro'), 0);
 /* 생일: 숫자만 이어서 치면 자동으로 1984.03.15 꼴이 된다 */
@@ -769,24 +915,114 @@ $('bNew').onclick = () => showIntro();
 $('bMine').onclick = () => user ? goMine() : showIntro();
 $('bFar').onclick = () => {
   if (!user) return;
-  const near = cam.ppu > focusPPU(.95) * .35;
-  if (near) flyTo(user.i + .5, user.j + .5, 1.8, null, 3); else goMine();
+  if (cam.ppu > focusPPU(.95) * .35) flyTo(user.i + .5, user.j + .5, 1.8, null, 3); else goMine();
 };
+$('bPair').onclick = () => pair ? exitPair() : enterPair();
 $('bSave').onclick = () => savePNG();
 $('bShare').onclick = async () => {
   if (!user) return;
-  const url = location.href, D = describe(user.P);
+  const url = shareURL(), D = describe(user.P);
   if (navigator.share && matchMedia('(pointer:coarse)').matches) {
     try { await navigator.share({ title: '서천꽃밭', text: `${user.name}의 꽃 — ${D.name}`, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
   }
   try { await navigator.clipboard.writeText(url); toast('링크를 복사했어요'); } catch (e) { prompt('이 주소를 복사해 보내세요', url); }
 };
 let toastT = 0;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1800); }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200); }
 let hintGone = false;
 function hideHint() { if (!hintGone) { hintGone = true; $('hint').style.opacity = 0; } }
 setTimeout(hideHint, 12000);
 if (matchMedia('(pointer:coarse)').matches) $('hint').textContent = '끌어서 둘러보고, 두 손가락으로 가까이 · 멀리';
+
+/* ---------- 두 꽃 나란히 ---------- */
+function enterPair() {
+  if (!user || !friend) return;
+  pair = { t0: now }; anim = null;
+  $('bPair').textContent = '꽃밭으로 돌아가기';
+  playMelody(friend.P, .9, .6); playMelody(user.P, .9, 3.2);
+}
+function exitPair() { pair = null; if (focus) $('bPair').textContent = '두 꽃 나란히 보기'; }
+
+/* ---------- 소리: 꽃마다 다른 선율 ---------- */
+let AC = null, master = null, soundOn = store.get('sound', true);
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = .2;
+      // 은은한 울림(간단한 메아리)
+      const dl = AC.createDelay(1), fb = AC.createGain(), lp = AC.createBiquadFilter();
+      dl.delayTime.value = .27; fb.gain.value = .32; lp.type = 'lowpass'; lp.frequency.value = 2400;
+      master.connect(AC.destination); master.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(AC.destination);
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === 'suspended') AC.resume().catch(() => { });
+  return AC;
+}
+addEventListener('pointerdown', audio, { once: true });
+addEventListener('keydown', audio, { once: true });
+function updSnd() { $('snd').textContent = soundOn ? '♪ 소리 켜짐' : '♪ 소리 꺼짐'; $('snd').classList.toggle('off', !soundOn); }
+$('snd').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); updSnd(); if (soundOn) { audio(); if (focus) playMelody(focusP(), .8); } };
+updSnd();
+const PENTA = [0, 2, 4, 7, 9];
+function melodyOf(P) {
+  if (P._mel) return P._mel;
+  const r = mulberry32(P.seed ^ 0xabc), root = 55 + Math.round(((P.hue % 360) / 360) * 12);
+  const n = 5 + (P.count % 4), beat = { round: .34, spoon: .34, notch: .3, ruffle: .26, fringe: .24, point: .27, lance: .3 }[P.shape];
+  let d = (r() * 5) | 0; const notes = []; let t = 0;
+  for (let k = 0; k < n; k++) {
+    const last = k === n - 1;
+    if (last) d = Math.round(d / 5) * 5;                         // 마지막 음은 으뜸음 쪽으로
+    const midi = root + 12 + Math.floor(d / 5) * 12 + PENTA[((d % 5) + 5) % 5];
+    const len = last ? 2.4 : [1, 1, 1, .5, 1.5, 2][(r() * 6) | 0];
+    notes.push([t, midi, len * beat]);
+    t += len * beat;
+    d += [-2, -1, -1, 1, 1, 2, 3][(r() * 7) | 0]; d = Math.max(0, Math.min(9, d));
+  }
+  const wave = P.shape === 'point' || P.shape === 'lance' ? 'triangle' : 'sine';
+  return (P._mel = { notes, wave, vib: P.shape === 'ruffle' || P.shape === 'fringe' });
+}
+function playMelody(P, vol = 1, delay = 0) {
+  if (!soundOn || !audio()) return;
+  const M = melodyOf(P), t0 = AC.currentTime + .05 + delay;
+  for (const [t, midi, len] of M.notes) {
+    const f = 440 * Math.pow(2, (midi - 69) / 12), st = t0 + t, dur = Math.max(.5, len * 2.2);
+    for (const [mul, amp, type] of [[1, 1, M.wave], [2, .28, 'sine'], [3.01, .07, 'sine']]) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = f * mul;
+      if (M.vib && mul === 1) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = 5.2; lg.gain.value = f * .006; l.connect(lg); lg.connect(o.frequency); l.start(st); l.stop(st + dur); }
+      g.gain.setValueAtTime(0, st); g.gain.linearRampToValueAtTime(.32 * amp * vol, st + .015); g.gain.exponentialRampToValueAtTime(.0001, st + dur);
+      o.connect(g); g.connect(master); o.start(st); o.stop(st + dur + .05);
+    }
+  }
+}
+
+/* ---------- 바람 ---------- */
+const winds = []; let lastWind = null;
+function addWind(sx, sy) {
+  if (RM) return;
+  if (lastWind) {
+    const dx = sx - lastWind.x, dy = sy - lastWind.y, d = Math.hypot(dx, dy), dt = now - lastWind.t;
+    if (d < 10 || dt < .035) return;
+    const [wx, wy] = toWorld(sx, sy);
+    winds.push({ x: wx, y: wy, sx, sy, dx: dx / d, dy: dy / d, s: Math.min(1, d / dt / 1400), t: now });
+    if (winds.length > 16) winds.shift();
+  }
+  lastWind = { x: sx, y: sy, t: now };
+}
+const WLIFE = 2.2;
+function windAt(wx, wy) {     // [돌림, x 밀림, y 밀림] — 지나간 자리에서 물결처럼 흔들리다 잦아든다
+  let rot = 0, ox = 0, oy = 0;
+  const R0 = 140 / cam.ppu;
+  for (const w of winds) {
+    const a = now - w.t; if (a > WLIFE) continue;
+    const dx = wx - w.x, dy = wy - w.y, d2 = (dx * dx + dy * dy) / (R0 * R0);
+    if (d2 > 9) continue;
+    const k = w.s * Math.exp(-d2) * Math.exp(-a * 1.7) * Math.sin(a * 8 - Math.sqrt(d2) * 2);
+    rot += k * .5 * (w.dx * dy - w.dy * dx >= 0 ? 1 : -1); ox += k * w.dx * .07; oy += k * w.dy * .07;
+  }
+  return [rot, ox, oy];
+}
 
 /* ---------- 손·마우스 ---------- */
 const ptrs = new Map(); let drag = null, vel = [0, 0], pinch = null;
@@ -794,12 +1030,15 @@ cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, [e.clientX, e.clientY]);
   anim = null; opening = false; lastInput = now; vel = [0, 0];
+  lastWind = { x: e.clientX, y: e.clientY, t: now };
   if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, t: now };
   else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2 }; if (drag) drag.moved = true; }
 });
 cv.addEventListener('pointermove', e => {
+  if (ptrs.size < 2 && !pair) addWind(e.clientX, e.clientY);
   if (!ptrs.has(e.pointerId)) return;
   ptrs.set(e.pointerId, [e.clientX, e.clientY]); lastInput = now;
+  if (pair) return;
   if (ptrs.size >= 2 && pinch) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
     cam.x -= (mx - pinch.mx) / cam.ppu; cam.y -= (my - pinch.my) / cam.ppu;
@@ -826,28 +1065,37 @@ function endPtr(e) {
 }
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
 cv.addEventListener('wheel', e => {
-  e.preventDefault(); anim = null; opening = false; lastInput = now; hideHint();
+  e.preventDefault(); if (pair) return;
+  anim = null; opening = false; lastInput = now; hideHint();
   const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
   zoomAt(e.clientX, e.clientY, Math.exp(-dy * .0016));
 }, { passive: false });
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape' && pair) exitPair();
   if (e.key === '+' || e.key === '=') zoomAt(stg.x, stg.y, 1.4);
   if (e.key === '-') zoomAt(stg.x, stg.y, 1 / 1.4);
 });
+const screenOf = (wx, wy) => [stg.x + (wx - cam.x) * cam.ppu, stg.y + (wy - cam.y) * cam.ppu];
 function tap(sx, sy) {
+  if (pair) { exitPair(); return; }
   const [wx, wy] = toWorld(sx, sy);
-  if (cam.ppu < 24) { flyTo(wx, wy, Math.min(cam.ppu * 4, 90), null, 1.2); return; }
+  if (cam.ppu < 24) {
+    // 멀리서도 반짝이는 표시(신화 속 꽃·내 꽃·받은 꽃)를 누르면 그리로 간다
+    let best = null;
+    for (const sp of specials.values()) {
+      const [px, py] = screenOf(sp.i + .5, sp.j + .5), d = Math.hypot(px - sx, py - sy);
+      if (d < 26 && (!best || d < best.d)) best = { sp, d };
+    }
+    if (best) { focusCell(best.sp.i, best.sp.j); return; }
+    flyTo(wx, wy, Math.min(cam.ppu * 4, 90), null, 1.2); return;
+  }
   const ci = Math.floor(wx), cj = Math.floor(wy); let best = null;
   for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
     const i = ci + di, j = cj + dj, [x, y, size] = cellCenter(i, j), d = Math.hypot(wx - x, wy - y);
-    if (d < size * .62 && (!best || d < best.d)) best = { i, j, d, x, y, size };
+    if (d < size * .62 && (!best || d < best.d)) best = { i, j, d };
   }
-  if (!best) return;
-  if (user && best.i === user.i && best.j === user.j) { goMine(); return; }
-  focus = { i: best.i, j: best.j, mine: false };
-  showCard();
-  flyTo(best.x, best.y, focusPPU(best.size), null, 1.2);
+  if (best) focusCell(best.i, best.j);
 }
 
 /* ---------- 그리기 ---------- */
@@ -861,7 +1109,7 @@ function drawDots(x0, y0, x1, y1, alpha) {
   bkCount.fill(0);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     if (n >= MAXD) break;
-    if (user && i === user.i && j === user.j) continue;
+    if (specials.has(keyOf(i, j))) continue;
     const s = h2(i, j), b = bucketOf(s, cellHue(i, j, s));
     const wx = i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, wy = j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5;
     const size = .62 + ((s >>> 19) & 255) / 255 * .3;
@@ -887,14 +1135,16 @@ function drawDots(x0, y0, x1, y1, alpha) {
 }
 
 function drawSprites(x0, y0, x1, y1, alpha, t) {
-  const ppu = cam.ppu;
+  const ppu = cam.ppu, windy = winds.length > 0;
   const i0 = Math.floor(x0) - 1, i1 = Math.ceil(x1), j0 = Math.floor(y0) - 1, j1 = Math.ceil(y1);
   const cx = stg.x, cy = stg.y;
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-    if (user && i === user.i && j === user.j) continue;
+    if (specials.has(keyOf(i, j))) continue;
     const s = h2(i, j);
-    const wx = i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, wy = j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5;
+    let wx = i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, wy = j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5;
     const size = .62 + ((s >>> 19) & 255) / 255 * .3;
+    let wr = 0;
+    if (windy) { const w = windAt(wx, wy); wr = w[0]; wx += w[1]; wy += w[2]; }
     const sx = cx + (wx - cam.x) * ppu, sy = cy + (wy - cam.y) * ppu, dpx = ppu * size * 1.34;
     if (sx < -dpx || sy < -dpx || sx > W + dpx || sy > H + dpx) continue;
     const dev = dpx * DPR, bi = dev < 40 ? 0 : dev < 80 ? 1 : dev < 160 ? 2 : dev < 320 ? 3 : 4;
@@ -907,7 +1157,7 @@ function drawSprites(x0, y0, x1, y1, alpha, t) {
       ctx.fillStyle = DOT_CSS[bucketOf(s, P.hue)]; ctx.beginPath(); ctx.arc(sx, sy, ppu * size * .2, 0, TAU); ctx.fill();
       continue;
     }
-    const ang = P.rot0 + .05 * Math.sin(t * .6 + (s & 1023) * .01), k = dpx / spr.width;
+    const ang = P.rot0 + .05 * Math.sin(t * .6 + (s & 1023) * .01) + wr, k = dpx / spr.width;
     const c = Math.cos(ang) * k * DPR, sn = Math.sin(ang) * k * DPR;
     ctx.globalAlpha = a;
     ctx.setTransform(c, sn, -sn, c, sx * DPR, sy * DPR);
@@ -916,37 +1166,111 @@ function drawSprites(x0, y0, x1, y1, alpha, t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = 1;
 }
 
-function drawUser(t) {
-  if (!user) return;
-  const ppu = cam.ppu, sx = stg.x + (user.i + .5 - cam.x) * ppu, sy = stg.y + (user.j + .5 - cam.y) * ppu;
-  const R = ppu * .95 / 2;
+/* 특별한 꽃(내 꽃·받은 꽃·신화 속 꽃) */
+function bloomOf(sp, t) {
+  if (sp.kind === 'myth' && mythFound.has(sp.id) && sp.bloomT == null) return 1;
+  return sp.bloomT == null ? .07 : RM ? 1 : clamp01((t - sp.bloomT) / 5.5);
+}
+function drawSpecial(sp, t) {
+  const ppu = cam.ppu;
+  let wx = sp.i + .5, wy = sp.j + .5, wr = 0;
+  if (winds.length) { const w = windAt(wx, wy); wr = w[0] * .6; wx += w[1] * .5; wy += w[2] * .5; }
+  const [sx, sy] = screenOf(wx, wy), R = ppu * sp.size / 2;
   if (sx < -R * 3 || sy < -R * 3 || sx > W + R * 3 || sy > H + R * 3) return;
-  const P = user.P;
-  // 가까이 볼 때: 둘레를 살짝 어둡게
-  const fo = smooth(90, 260, ppu) * (focus && focus.mine ? 1 : .4);
-  if (fo > 0) {
-    const vg = ctx.createRadialGradient(sx, sy, R * 1.05, sx, sy, R * 3.2);
-    vg.addColorStop(0, 'rgba(3,4,12,0)'); vg.addColorStop(1, `rgba(3,4,12,${.62 * fo})`);
-    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-  }
+  const P = sp.P, th = sp.kind === 'myth' ? sp.glow : P.L[0].th;
   if (R > 2) {
-    const th = P.L[0].th, halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * 1.9);
-    halo.addColorStop(0, hsla(th[0], th[1], th[2], .22)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, R * 1.9, 0, TAU); ctx.fill();
-    const g = user.bloomT == null ? .07 : RM ? 1 : clamp01((t - user.bloomT) / 5.5);
+    const pulse = sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22;
+    const halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * (sp.kind === 'myth' ? 2.4 : 1.9));
+    halo.addColorStop(0, hsla(th[0], th[1], th[2] - 10, pulse)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, R * 2.4, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(sx, sy);
-    ctx.rotate(P.rot0 + .035 * Math.sin(t * .55)); const br = 1 + .012 * Math.sin(t * 1.3); ctx.scale(br, br);
-    drawFlower(ctx, P, R, { g, px: R * DPR });
+    ctx.rotate(P.rot0 + .035 * Math.sin(t * .55) + wr); const br = 1 + .012 * Math.sin(t * 1.3); ctx.scale(br, br);
+    drawFlower(ctx, P, R, { g: bloomOf(sp, t), px: R * DPR, dew: true });
     ctx.restore();
+    if (sp.kind === 'myth' && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 7; k++) {
+        const a = t * (.25 + k * .03) + k * TAU / 7, rr = R * (1.25 + .12 * Math.sin(t + k)), s = Math.max(6, Math.min(40, R * .12));
+        ctx.globalAlpha = .4 + .3 * Math.sin(t * 2 + k);
+        ctx.drawImage(mote, sx + Math.cos(a) * rr - s / 2, sy + Math.sin(a) * rr - s / 2, s, s);
+      }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
   }
-  // 멀리서도 내 꽃 자리가 보이게
+  // 멀리서도 자리가 보이게
   const ma = 1 - smooth(18, 60, ppu);
   if (ma > 0) {
-    const rr = 11 + 3 * Math.sin(t * 2.2);
-    ctx.strokeStyle = `rgba(241,214,160,${.85 * ma})`; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.stroke();
-    ctx.fillStyle = `rgba(255,236,200,${ma})`; ctx.beginPath(); ctx.arc(sx, sy, 2.2, 0, TAU); ctx.fill();
+    if (sp.kind === 'myth') {
+      ctx.globalCompositeOperation = 'lighter';
+      const s = 20 + 6 * Math.sin(t * 2.4 + sp.i);
+      ctx.globalAlpha = ma * (mythFound.has(sp.id) ? .55 : .95);
+      ctx.drawImage(mote, sx - s / 2, sy - s / 2, s, s);
+      ctx.fillStyle = hsla(th[0], 90, 85, ma); ctx.beginPath(); ctx.arc(sx, sy, 1.8, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    } else {
+      const rr = 11 + 3 * Math.sin(t * 2.2), col = sp.kind === 'user' ? '241,214,160' : '170,205,255';
+      ctx.strokeStyle = `rgba(${col},${.85 * ma})`; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.stroke();
+      ctx.fillStyle = `rgba(${col},${ma})`; ctx.beginPath(); ctx.arc(sx, sy, 2.2, 0, TAU); ctx.fill();
+    }
   }
+}
+function drawFocusVeil() {
+  if (!focus) return;
+  const fo = smooth(90, 260, cam.ppu) * (focus.sp ? 1 : .7);
+  if (fo <= 0) return;
+  const [sx, sy] = screenOf(focus.x, focus.y), R = cam.ppu * focus.size / 2;
+  const vg = ctx.createRadialGradient(sx, sy, R * 1.05, sx, sy, R * 3.2);
+  vg.addColorStop(0, 'rgba(3,4,12,0)'); vg.addColorStop(1, `rgba(3,4,12,${.62 * fo})`);
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
+/* 서쪽 하늘: 지금 시각에 따라 화면 서쪽(왼쪽) 가장자리에 하늘빛이 번진다 */
+let skyCache = null, skyKey = '';
+function skyColors() {
+  const d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+  if (h >= 5 && h < 7.5) return ['새벽', [12, 70, 74], [215, 60, 70], .26];
+  if (h >= 7.5 && h < 16) return ['낮', [215, 60, 68], [235, 50, 60], .14];
+  if (h >= 16 && h < 19.5) return ['노을', [22, 90, 62], [342, 70, 58], .3];
+  if (h >= 19.5 && h < 21.5) return ['저녁', [275, 55, 55], [325, 50, 50], .22];
+  return ['밤', [232, 60, 50], [255, 50, 45], .16];
+}
+function drawSky() {
+  const [name, c1, c2, a] = skyColors(), k = name + W + 'x' + H;
+  if (k !== skyKey) {
+    skyKey = k; skyCache = document.createElement('canvas');
+    skyCache.width = Math.max(1, W >> 2); skyCache.height = Math.max(1, H >> 2);
+    const g = skyCache.getContext('2d'), w = skyCache.width, h = skyCache.height;
+    const lg = g.createLinearGradient(0, 0, w * .5, 0);
+    lg.addColorStop(0, hsla(c1[0], c1[1], c1[2], a)); lg.addColorStop(.45, hsla(c2[0], c2[1], c2[2], a * .35)); lg.addColorStop(1, hsla(c2[0], c2[1], c2[2], 0));
+    g.fillStyle = lg; g.fillRect(0, 0, w, h);
+    const rg = g.createRadialGradient(0, h * .62, 0, 0, h * .62, w * .42);
+    rg.addColorStop(0, hsla(c1[0], c1[1], c1[2] + 8, a * .9)); rg.addColorStop(1, hsla(c1[0], c1[1], c1[2], 0));
+    g.fillStyle = rg; g.fillRect(0, 0, w, h);
+  }
+  ctx.drawImage(skyCache, 0, 0, W, H);
+}
+
+/* 두 꽃 나란히 */
+function drawPair(t) {
+  const a = clamp01((t - pair.t0) / .8);
+  ctx.fillStyle = `rgba(3,4,12,${.84 * a})`; ctx.fillRect(0, 0, W, H);
+  const R = Math.min(stg.w / 5.2, stg.h / 3.6), cy = stg.y - R * .2, fs = Math.max(13, Math.min(28, R * .17));
+  [friend, user].forEach((sp, k) => {
+    const cx = stg.x + (k ? 1 : -1) * R * 1.28, th = sp.P.L[0].th;
+    ctx.globalAlpha = a;
+    const halo = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.8);
+    halo.addColorStop(0, hsla(th[0], th[1], th[2], .2)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.8, 0, TAU); ctx.fill();
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(sp.P.rot0 + .035 * Math.sin(t * .55 + k));
+    drawFlower(ctx, sp.P, R, { g: RM ? 1 : clamp01((t - pair.t0 - .3 - k * 1.4) / 5), px: R * DPR, dew: true });
+    ctx.restore();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#a4abc6'; ctx.font = `400 ${fs * .8}px "Gowun Batang", serif`;
+    ctx.fillText(`${sp.name}의 꽃`, cx, cy + R * 1.3);
+    ctx.fillStyle = '#f1d6a0'; ctx.font = `700 ${fs}px "Gowun Batang", serif`;
+    ctx.fillText(describe(sp.P).name, cx, cy + R * 1.3 + fs * 1.4);
+  });
+  ctx.globalAlpha = 1;
 }
 
 function fmtCount(n) {
@@ -959,9 +1283,7 @@ function fmtCount(n) {
 let lastT = 0, firstFrame = true;
 function frame(ms) {
   now = ms / 1000; const dt = Math.min(.05, now - (lastT || now)); lastT = now; frameNo++;
-  // 무대 중심을 부드럽게 따라가기
   if (firstFrame) { stg.x = stg.tx; stg.y = stg.ty; } else { stg.x += (stg.tx - stg.x) * .12; stg.y += (stg.ty - stg.y) * .12; }
-  // 카메라
   if (anim) {
     const u = clamp01((now - anim.t0) / anim.dur), [x, y, w] = anim.f(anim.ease(u));
     cam.x = x; cam.y = y; cam.ppu = anim.sw / w;
@@ -969,15 +1291,17 @@ function frame(ms) {
   } else if (!drag && !pinch && (vel[0] || vel[1])) {
     cam.x += vel[0] * dt; cam.y += vel[1] * dt; const k = Math.pow(.04, dt); vel[0] *= k; vel[1] *= k;
     if (Math.abs(vel[0]) + Math.abs(vel[1]) < 1e-3 / cam.ppu) vel = [0, 0];
-  } else if (!RM && !drag && now - lastInput > 6 && !(focus && cam.ppu > 60)) {
+  } else if (!RM && !drag && !pair && now - lastInput > 6 && !(focus && cam.ppu > 60)) {
     cam.x += dt * 4 / cam.ppu; cam.y += dt * 1.5 / cam.ppu;   // 아무도 만지지 않으면 천천히 흘러감
   }
-
+  while (winds.length && now - winds[0].t > WLIFE) winds.shift();
   if (!(cam.ppu > 0) || !isFinite(cam.ppu) || !isFinite(cam.x) || !isFinite(cam.y)) { anim = null; cam.ppu = Math.max(2, Math.min(stg.w, stg.h) / 3 || 60); if (!isFinite(cam.x)) cam.x = 0; if (!isFinite(cam.y)) cam.y = 0; }
+
   const ppu = cam.ppu;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(bgCanvas, 0, 0, W, H);
+  drawSky();
   const x0 = cam.x - stg.x / ppu, x1 = cam.x + (W - stg.x) / ppu, y0 = cam.y - stg.y / ppu, y1 = cam.y + (H - stg.y) / ppu;
   const aTile = 1 - smooth(4.5, 6.5, ppu), aDot = smooth(4.5, 6.5, ppu) * (1 - smooth(22, 32, ppu)), aSpr = smooth(22, 32, ppu);
   const aGlow = .5 * (1 - smooth(2.5, 8, ppu));
@@ -994,7 +1318,19 @@ function frame(ms) {
   if (aDot > 0) drawDots(x0, y0, x1, y1, aDot);
   missing.length = 0;
   if (aSpr > 0) drawSprites(x0, y0, x1, y1, aSpr, now);
-  drawUser(now);
+  // 멀리서 볼 때 바람이 지나간 자리: 은은한 빛 물결
+  const aWake = 1 - aSpr;
+  if (aWake > 0 && winds.length) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const w of winds) {
+      const a = (now - w.t) / WLIFE, s = 90 + 260 * a, [px, py] = screenOf(w.x, w.y);
+      ctx.globalAlpha = .22 * (1 - a) * w.s * aWake;
+      ctx.drawImage(mote, px - s / 2, py - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+  drawFocusVeil();
+  for (const sp of specials.values()) drawSpecial(sp, now);
 
   // 빛 티끌
   ctx.globalCompositeOperation = 'lighter';
@@ -1004,8 +1340,8 @@ function frame(ms) {
     ctx.drawImage(mote, m.x * W - m.s / 2, m.y * H - m.s / 2, m.s, m.s);
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  if (pair) drawPair(now);
 
-  // 아직 없는 꽃 그림 만들기(가운데부터, 한 프레임에 조금씩)
   if (missing.length) {
     missing.sort((a, b) => a[2] - b[2]);
     const t0 = performance.now(), budget = firstFrame ? 350 : 7;
@@ -1014,42 +1350,69 @@ function frame(ms) {
   }
   if (now - hudT > .25) {
     hudT = now;
-    $('hud').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
-    if (user && focus && focus.mine) $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
+    $('hud').innerHTML = `신화 속 꽃 ${mythFound.size}/${MYTHS.length}<br>지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
+    if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
   firstFrame = false;
   requestAnimationFrame(frame);
 }
 
 /* ---------- 이미지 저장 ---------- */
-async function savePNG() {
-  const mine = focus && focus.mine, P = focusP(), D = describe(P);
-  try { await document.fonts.load('700 60px "Gowun Batang"'); } catch (e) { }
-  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d');
-  const bg = g.createRadialGradient(540, 560, 0, 540, 600, 980); bg.addColorStop(0, '#161c3e'); bg.addColorStop(.6, '#0a0d22'); bg.addColorStop(1, '#030409');
-  g.fillStyle = bg; g.fillRect(0, 0, 1080, 1350);
-  const r = mulberry32(P.seed);
+function pngBase(g, w, h, seed, hue) {
+  const bg = g.createRadialGradient(w / 2, h * .42, 0, w / 2, h * .45, h * .75);
+  bg.addColorStop(0, '#161c3e'); bg.addColorStop(.6, '#0a0d22'); bg.addColorStop(1, '#030409');
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  const r = mulberry32(seed);
   for (let k = 0; k < 420; k++) {
-    const s = mix(P.seed, k), x = r() * 1080, y = r() * 1350;
-    g.globalAlpha = .25 + .5 * r(); g.fillStyle = DOT_CSS[bucketOf(s, (P.hue + (r() - .5) * 90 + 360) % 360)]; g.beginPath(); g.arc(x, y, 1 + r() * 2.4, 0, TAU); g.fill();
+    const s = mix(seed, k), x = r() * w, y = r() * h;
+    g.globalAlpha = .25 + .5 * r(); g.fillStyle = DOT_CSS[bucketOf(s, (hue + (r() - .5) * 90 + 360) % 360)];
+    g.beginPath(); g.arc(x, y, 1 + r() * 2.4, 0, TAU); g.fill();
   }
   g.globalAlpha = 1;
-  const th = P.L[0].th, halo = g.createRadialGradient(540, 560, 60, 540, 560, 640);
+}
+function pngFlower(g, P, x, y, R, th) {
+  const halo = g.createRadialGradient(x, y, R * .2, x, y, R * 1.9);
   halo.addColorStop(0, hsla(th[0], th[1], th[2], .26)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
-  g.fillStyle = halo; g.fillRect(0, 0, 1080, 1350);
-  g.save(); g.translate(540, 560); g.rotate(P.rot0); drawFlower(g, P, 330, { g: 1, px: 330 }); g.restore();
-  g.textAlign = 'center'; g.fillStyle = '#a4abc6'; g.font = '400 38px "Gowun Batang", serif';
-  g.fillText(mine ? `${user.name}의 꽃` : '이름 모를 이의 꽃', 540, 1060);
-  g.fillStyle = '#f1d6a0'; g.font = '700 64px "Gowun Batang", serif'; g.fillText(D.name, 540, 1145);
-  g.fillStyle = '#e6e8f2'; g.font = '400 32px "Gowun Batang", serif'; g.fillText(D.traits, 540, 1205);
-  g.fillStyle = '#6f7796'; g.font = '400 26px "Gowun Batang", serif';
-  g.fillText(`서천꽃밭 ${focus.i + 1000}번째 이랑 · ${focus.j + 1000}번째 자리`, 540, 1270);
+  g.fillStyle = halo; g.beginPath(); g.arc(x, y, R * 1.9, 0, TAU); g.fill();
+  g.save(); g.translate(x, y); g.rotate(P.rot0); drawFlower(g, P, R, { g: 1, px: R, dew: true }); g.restore();
+}
+function downloadCanvas(c, name) {
   c.toBlob(b => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-    a.download = `서천꽃밭_${mine ? user.name : '꽃'}.png`; document.body.appendChild(a); a.click();
+    a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     toast('이미지를 저장했어요');
   }, 'image/png');
+}
+async function savePNG() {
+  try { await document.fonts.load('700 60px "Gowun Batang"'); } catch (e) { }
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d');
+  g.textAlign = 'center';
+  if (pair) {
+    pngBase(g, 1080, 1350, user.seed ^ friend.seed, user.P.hue);
+    g.fillStyle = '#a4abc6'; g.font = '400 34px "Gowun Batang", serif'; g.fillText('서천꽃밭에 나란히 핀 두 송이', 540, 150);
+    [friend, user].forEach((sp, k) => {
+      const x = k ? 790 : 290, D = describe(sp.P);
+      pngFlower(g, sp.P, x, 560, 205, sp.P.L[0].th);
+      g.fillStyle = '#a4abc6'; g.font = '400 32px "Gowun Batang", serif'; g.fillText(`${sp.name}의 꽃`, x, 870);
+      g.fillStyle = '#f1d6a0'; g.font = '700 32px "Gowun Batang", serif'; g.fillText(D.name, x, 925);
+      g.fillStyle = '#eadcbe'; g.font = '400 25px "Gowun Batang", serif';
+      D.motto.forEach((l, n) => g.fillText(l, x, 985 + n * 38));
+    });
+    g.fillStyle = '#6f7796'; g.font = '400 24px "Gowun Batang", serif'; g.fillText('서천꽃밭 · jihye84.github.io/seocheon', 540, 1270);
+    return downloadCanvas(c, `서천꽃밭_${friend.name}_${user.name}.png`);
+  }
+  const k = focus.kind, sp = focus.sp, P = focusP(), D = describe(P);
+  pngBase(g, 1080, 1350, P.seed, P.hue);
+  pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : P.L[0].th);
+  g.fillStyle = '#a4abc6'; g.font = '400 36px "Gowun Batang", serif';
+  g.fillText(k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
+  g.fillStyle = '#f1d6a0'; g.font = '700 62px "Gowun Batang", serif'; g.fillText(k === 'myth' ? sp.name : D.name, 540, 1075);
+  g.fillStyle = '#eadcbe'; g.font = '400 34px "Gowun Batang", serif';
+  D.motto.forEach((l, n) => g.fillText(l, 540, 1145 + n * 48));
+  g.fillStyle = '#6f7796'; g.font = '400 24px "Gowun Batang", serif';
+  g.fillText(`서천꽃밭 ${focus.i + 1000}번째 이랑 · ${focus.j + 1000}번째 자리`, 540, 1280);
+  downloadCanvas(c, `서천꽃밭_${k === 'myth' ? sp.name : sp ? sp.name : '꽃'}.png`);
 }
 
 /* ---------- 시작 ---------- */
@@ -1061,22 +1424,22 @@ function whenSized(fn) {
   else requestAnimationFrame(() => whenSized(fn));
 }
 whenSized(function start() {
-if (!wide) panel.classList.add('collapsed');
-measureStage();
-(function () {
+  if (!wide) panel.classList.add('collapsed');
+  measureStage();
   const q = new URLSearchParams(location.search), s = q.get('s'), n = q.get('n');
   const ri = ((Math.random() * 600) | 0) - 300, rj = ((Math.random() * 600) | 0) - 300;
   if (s && n && /^[0-9a-z]{1,8}$/.test(s)) {
+    // 받은 링크: 보낸 사람의 꽃으로 날아간다
     const c = parseInt(q.get('c') || '0', 10);
-    if (c > 0 && c < COLORS.length) { pickedColor = c; markPicker($('pickIntro'), c); }
-    setUser(n.slice(0, 12), parseInt(s, 36) >>> 0);
-    cam.x = user.i + 40; cam.y = user.j - 25; cam.ppu = 2;
+    friend = makePerson('friend', n.slice(0, 12), parseInt(s, 36) >>> 0, c > 0 && c < COLORS.length ? c : 0);
+    refreshSpecials();
+    cam.x = friend.i + 40; cam.y = friend.j - 25; cam.ppu = 2;
     hideHint();
-    setTimeout(goMine, 700);
+    setTimeout(() => focusCell(friend.i, friend.j), 700);
   } else {
     // 첫 장면: 꽃 몇 송이에서 시작해 끝없는 꽃밭으로 물러난다
     const [x, y] = cellCenter(ri, rj);
-    cam.x = x; cam.y = y; measureStage();
+    cam.x = x; cam.y = y;
     if (RM) { cam.ppu = 3; }
     else {
       cam.ppu = Math.min(stg.w, stg.h) / 2.4;
@@ -1087,7 +1450,6 @@ measureStage();
     }
   }
   requestAnimationFrame(ms => { if (anim && anim.startLate) anim.t0 = ms / 1000 + 1.2; frame(ms); });
-})();
 });
 </script>
 </body>
