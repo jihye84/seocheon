@@ -427,7 +427,9 @@ function gen(seed, hue, palO, force) {
   }
   // 윤기(동백·미나리아재비처럼 두꺼운 꽃잎에 비치는 반사광): 따로 뽑는다
   const r8 = mulberry32(seed ^ 0x510e527f);
-  P.gloss = r8() < .15 && !force.flat ? { k: .55 + r8() * .45, sharp: r8() < .5 } : null;
+  // 윤기가 자연스러운 꽃에만: 꽃잎이 넓고 둥글며(둥근·부채·오목), 8장 이하, 갈래꽃
+  const glossOk = (P.shape === 'round' || P.shape === 'spoon' || P.shape === 'notch') && count <= 8 && !P.fused;
+  P.gloss = r8() < .35 && glossOk && !force.flat ? { k: .55 + r8() * .45, sharp: r8() < .5 } : null;
   if (!custom) genCache.set(seed, P);
   return P;
 }
