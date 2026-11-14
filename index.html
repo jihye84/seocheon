@@ -823,6 +823,7 @@ function makePerson(kind, name, seed, color) {
 function setUser(name, seed) {
   const keepBloom = user && user.seed === seed ? user.bloomT : null;
   user = makePerson('user', name, seed, pickedColor); user.bloomT = keepBloom;
+  store.set('me', { n: name, s: seed.toString(36), c: pickedColor });   // 다시 열어도 내 꽃을 기억한다
   refreshSpecials();
   try { const u = new URL(location.href); u.search = ''; u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); history.replaceState(null, '', u); } catch (e) { }
 }
@@ -868,7 +869,7 @@ function showCard() {
   $('bShare').hidden = !mine;
   $('bSave').classList.toggle('wide', !mine);
   $('bMine').hidden = mine;
-  $('bMine').textContent = user ? '내 꽃으로 돌아가기' : k === 'friend' ? '내 꽃도 찾아 옆에 두기' : '내 꽃 찾기';
+  $('bMine').textContent = user ? '내 꽃으로 돌아가기' : k === 'friend' ? '나도 내 꽃 찾아보기' : '내 꽃 찾기';
   $('bNew').hidden = !mine;
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
@@ -1441,8 +1442,21 @@ whenSized(function start() {
   if (!wide) panel.classList.add('collapsed');
   measureStage();
   const q = new URLSearchParams(location.search), s = q.get('s'), n = q.get('n');
+  const me = store.get('me', null);
+  if (me && me.n && /^[0-9a-z]{1,8}$/.test(me.s || '')) {
+    pickedColor = me.c > 0 && me.c < COLORS.length ? me.c : 0;
+    markPicker($('pickIntro'), pickedColor);
+    user = makePerson('user', String(me.n).slice(0, 12), parseInt(me.s, 36) >>> 0, pickedColor);
+    $('inName').value = user.name;
+    refreshSpecials();
+  }
   const ri = ((Math.random() * 600) | 0) - 300, rj = ((Math.random() * 600) | 0) - 300;
-  if (s && n && /^[0-9a-z]{1,8}$/.test(s)) {
+  if (s && n && /^[0-9a-z]{1,8}$/.test(s) && user && (parseInt(s, 36) >>> 0) === user.seed) {
+    // 내 꽃 링크(새로고침 포함): 친구 꽃이 아니라 내 꽃으로 간다
+    cam.x = user.i + 40; cam.y = user.j - 25; cam.ppu = 2;
+    hideHint();
+    setTimeout(goMine, 700);
+  } else if (s && n && /^[0-9a-z]{1,8}$/.test(s)) {
     // 받은 링크: 보낸 사람의 꽃으로 날아간다
     const c = parseInt(q.get('c') || '0', 10);
     friend = makePerson('friend', n.slice(0, 12), parseInt(s, 36) >>> 0, c > 0 && c < COLORS.length ? c : 0);
