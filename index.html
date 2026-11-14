@@ -404,15 +404,15 @@ function gen(seed, hue, palO, force) {
       P.tuft = { kind, F, c: pure ? [hsla(0, 0, 84), hsla(0, 0, 100)] : [hsla(th, 50, 42), hsla(th, 85, 70)] };
     }
   }
-  // 단심(무궁화처럼 꽃잎 밑동의 짙은 무늬가 가운데서 별처럼 퍼짐): 따로 뽑는다
+  // 단심(무궁화처럼 꽃 가운데를 둥글게 감싼 짙은 붉은 무늬, 가장자리는 가는 결로 번짐): 따로 뽑는다
+  // 무궁화처럼 밝은 꽃잎에 꽃잎 수가 적당한 꽃에만 생긴다
   const r6 = mulberry32(seed ^ 0x1f83d9ab);
   P.eye = null;
-  if (r6() < .12 && P.pal !== 6 && !force.flat && count <= 13) {
-    const se = Math.max(.4 + r6() * .14, P.cR * 1.9 / P.L[P.layers - 1].len), nz = 7 + ((r6() * 5) | 0), Z = [], rays = [];
-    for (let q = 0; q <= nz; q++) Z.push([-1 + 2 * q / nz, se * (q & 1 ? .8 + r6() * .1 : .98 + r6() * .12)]);
-    for (let q = 0; q < 5 + ((r6() * 5) | 0); q++) rays.push([(r6() - .5) * 1.5, Math.min(.92, se * (1.2 + r6() * .45))]);
-    const light = tip[2] >= 70, eh = light ? 322 + r6() * 26 : base[0] - 10;
-    P.eye = { Z, rays, se, c0: hsla(eh, light ? 75 : Math.min(90, base[1] + 15), light ? 26 : Math.max(10, base[2] - 32)), c1: hsla(eh, light ? 70 : 80, light ? 40 : Math.max(18, base[2] - 18)) };
+  if (r6() < .4 && tip[2] >= 70 && P.pal !== 6 && !force.flat && count >= 5 && count <= 8) {
+    const se = Math.max(.27 + r6() * .1, P.cR * 1.7 / P.L[P.layers - 1].len), F = [], nf = 34 + ((r6() * 18) | 0);
+    for (let q = 0; q < nf; q++) F.push([(q + r6()) / nf * 2 - 1, .78 + r6() * .12, 1.08 + r6() * .3]);
+    const eh = 340 + r6() * 16;
+    P.eye = { se, F, c0: hsla(eh, 82, 34), c1: hsla(eh, 85, 42, .85) };
   }
   if (!custom) genCache.set(seed, P);
   return P;
@@ -664,21 +664,18 @@ function drawFlower(g, P, R, o) {
       g.fill(path);
       if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
       if (P.eye && k === P.layers - 1 && px > 20 && es > .4) {   // 단심
-        const E = P.eye, W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
+        const E = P.eye, re = E.se * len;
         g.save(); g.clip(path); g.globalAlpha = Math.min(1, (es - .4) / .4);
-        const eg = g.createRadialGradient(0, 0, 0, 0, 0, E.se * len * 1.2); eg.addColorStop(0, E.c0); eg.addColorStop(.7, E.c0); eg.addColorStop(1, E.c1);
-        g.fillStyle = eg; g.beginPath(); g.moveTo(0, 0);
-        const zp = E.Z.map(([t, ss]) => [ss * len, t * W(ss) * 1.15 + P.curl * len * ss * ss]);   // 부드럽게 물결진 가장자리
-        g.lineTo(zp[0][0], zp[0][1]);
-        for (let q = 1; q < zp.length; q++) g.quadraticCurveTo(zp[q - 1][0], zp[q - 1][1], (zp[q - 1][0] + zp[q][0]) / 2, (zp[q - 1][1] + zp[q][1]) / 2);
-        g.lineTo(zp[zp.length - 1][0], zp[zp.length - 1][1]);
-        g.closePath(); g.fill();
-        if (px > 50) {
+        const eg = g.createRadialGradient(0, 0, 0, 0, 0, re);
+        eg.addColorStop(0, E.c0); eg.addColorStop(.82, E.c0); eg.addColorStop(1, E.c1);
+        g.fillStyle = eg; g.beginPath(); g.ellipse(0, 0, re * 1.06, re * .96, 0, 0, TAU); g.fill();   // 꽃잎 가운데 쪽이 살짝 더 둥글게 부푼 무늬
+        if (px > 44) {       // 가장자리: 가는 결이 꽃잎 쪽으로 번진다
           g.strokeStyle = E.c1; g.lineCap = 'round';
-          for (const [t, ss] of E.rays) {
-            g.lineWidth = lw * Math.max(1.4, px / 110); g.beginPath();
-            const x0 = E.se * len * .5, y0 = t * W(E.se * .5) * .9, x1 = ss * len, y1 = t * W(ss) * .9 + P.curl * len * ss * ss;
-            g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + t * W(ss) * .1, x1, y1); g.stroke();
+          const span = Math.PI / P.count * 1.05, fw = lw * Math.max(.9, px / 200);
+          for (const [t, r0, r1] of E.F) {
+            const an = t * span, ca = Math.cos(an), sa = Math.sin(an), rr0 = re * r0 * (1 + .06 * Math.cos(t * Math.PI)), rr1 = re * r1;
+            g.lineWidth = fw * 1.4; g.beginPath(); g.moveTo(ca * rr0, sa * rr0); g.lineTo(ca * (rr0 + rr1) / 2, sa * (rr0 + rr1) / 2); g.stroke();
+            g.lineWidth = fw * .7; g.beginPath(); g.moveTo(ca * (rr0 + rr1) / 2, sa * (rr0 + rr1) / 2); g.lineTo(ca * rr1, sa * rr1); g.stroke();
           }
         }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
