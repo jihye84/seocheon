@@ -128,7 +128,7 @@ body.narrow .note{display:none}
 @media (max-height:560px){
   .lead,.note{display:none}
   .pbody{margin-top:.5em} .view{gap:.45em} form{gap:.4em}
-  .colors{grid-template-columns:repeat(11,1fr);gap:4px} .colors button{width:min(26px,100%)}
+  .colors{grid-template-columns:repeat(12,1fr);gap:4px} .colors button{width:min(26px,100%)}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
   .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:.88em;line-height:1.45}
 }
@@ -318,6 +318,7 @@ function gen(seed, hue, palO, force) {
     case 2: tip = [h, 35 + r() * 20, 86 + r() * 8]; base = [h, 65 + r() * 25, 48 + r() * 12]; break;
     case 3: tip = [h, 45 + r() * 25, 78 + r() * 8]; base = [h + (r() - .5) * 30, 50 + r() * 20, 68 + r() * 8]; break;
     case 4: tip = [h, 65 + r() * 25, 38 + r() * 12]; base = [h + (r() - .5) * 20, 70, 22 + r() * 10]; break;
+    case 6: tip = [0, 0, 97 + r() * 3 + r() * 0]; base = [0, 0, 84 + r() * 5 + r() * 0]; break;
     default: tip = [h, 10 + r() * 15, 92 + r() * 5]; base = [h, 35 + r() * 30, 76 + r() * 8];
   }
   P.tipHSL = tip; P.baseHSL = base;
@@ -343,6 +344,7 @@ function gen(seed, hue, palO, force) {
   else if (ct === 'dark') { P.c1 = hsla(h + 160 + r() * 40, 35, 16); P.c1d = hsla(h, 30, 8); P.c2 = hsla(45 + r() * 15, 85, 64); }
   else if (ct === 'same') { P.c1 = hsla(h, 70, 30); P.c1d = hsla(h, 70, 18); P.c2 = hsla(h + 25, 85, 78); }
   else { P.c1 = hsla(60, 45, 84); P.c1d = hsla(55, 40, 66); P.c2 = hsla(42, 92, 58); }
+  if (P.pal === 6) { P.c1 = hsla(0, 0, 90); P.c1d = hsla(0, 0, 68); P.c2 = hsla(0, 0, 100); }   // 순백은 꽃술까지 희게
   P.cTone = ct;
   P.cN = P.cType === 'dots' ? 40 + ((r() * 90) | 0) : 10 + ((r() * 18) | 0);
   P.budCol = hsla(bh0(base), base[1], Math.min(92, base[2] + 10));
@@ -362,6 +364,7 @@ function bh0(b) { return b[0]; }
 /* ---------- 꽃 이름 짓기 ---------- */
 function colorWord(hsl) {
   const [h0, s, l] = hsl, h = ((h0 % 360) + 360) % 360;
+  if (s === 0) return '순백';
   if (s < 30 && l >= 86) return '눈빛';
   if (l >= 77) {
     if (h < 20 || h >= 330) return '연분홍빛'; if (h < 45) return '살구빛'; if (h < 70) return '연노랑빛';
@@ -789,10 +792,11 @@ function focusP() { return focus.sp ? focus.sp.P : cellP(focus.i, focus.j, focus
 /* 고를 수 있는 꽃 빛깔 — 모양은 그대로, 빛깔만 바뀐다 */
 const COLORS = [
   { n: '꽃밭에 맡기기' }, { n: '빨강', h: 355 }, { n: '주황', h: 24 }, { n: '노랑', h: 50 }, { n: '초록', h: 125 }, { n: '하늘', h: 198 },
-  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰색', white: true }];
+  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰빛', white: true }, { n: '순백', pure: true }];
 let pickedColor = 0;
 function swatchBg(c) {
-  if (c.white) return 'radial-gradient(circle at 35% 35%,#fff,#e9e6f2)';
+  if (c.pure) return 'radial-gradient(circle at 35% 35%,#fff,#d9d9d9)';
+  if (c.white) return 'radial-gradient(circle at 35% 35%,#fff,#f0dfe8)';
   if (c.h == null) return 'linear-gradient(135deg,#f06a8a,#f4b35c,#f2e27a,#6fd0e8,#8a7cf0,#d77ae0)';
   return `radial-gradient(circle at 35% 35%,${hsla(c.h, 85, 74)},${hsla(c.h, 75, 52)})`;
 }
@@ -807,6 +811,7 @@ function buildPicker(el, nameEl, onPick) {
 function markPicker(el, k) { [...el.children].forEach((b, i) => b.setAttribute('aria-pressed', i === k)); el._name.textContent = COLORS[k].n; }
 function userP(seed, ck) {
   const c = COLORS[ck] || COLORS[0];
+  if (c.pure) return gen(seed, 0, 6);   // 순백: 다른 빛이 하나도 섞이지 않은 흰 꽃
   if (!c.white && c.h == null) {
     const h = hueOf(seed);   // 맡기기: 풀빛 꽃잎은 피한다
     return h > 75 && h < 160 ? gen(seed, (h + 120) % 360, palOf(seed)) : gen(seed);
