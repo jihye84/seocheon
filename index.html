@@ -396,6 +396,7 @@ function gen(seed, hue, palO, force) {
     }
     const vl = P.pal === 5 ? 40 : Math.max(16, base[2] - 30);
     P.net = N; P.netCol = hsla(P.pal === 5 ? h : base[0] - 14, Math.min(92, (P.pal === 5 ? 55 : base[1]) + 15), vl, .75);
+    P.netEmboss = r4() < .45;   // 일부는 색 대신 입체로 돋은 핏줄
   }
   // 자잘한 술: 시계꽃처럼 둥글게 퍼지는 술 고리, 엉겅퀴처럼 솔처럼 모인 술 다발 (따로 뽑는다)
   const r5 = mulberry32(seed ^ 0x3c6ef372);
@@ -485,7 +486,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: P.fused ? `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? ' · 핏줄무늬' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
+    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -725,27 +726,43 @@ function drawFlower(g, P, R, o) {
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
         const W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
         const at = (v, ss) => [ss * len, (v.t + v.wob * Math.sin(ss * 7 + v.ph) * ss) * W(ss) * .9 + P.curl * len * ss * ss];
-        const w0 = lw * Math.max(2.2, px / 70);   // 밑동은 굵고 끝으로 갈수록 가늘게
-        for (const v of P.net) {
-          let [px0, py0] = at(v, .03);
-          for (let ss = .06; ss <= v.end + 1e-6; ss += .03) {
-            const [x, y] = at(v, ss), u = ss / v.end;
-            g.lineWidth = w0 * (1 - .82 * u); g.beginPath(); g.moveTo(px0, py0); g.lineTo(x, y); g.stroke();
-            px0 = x; py0 = y;
+        const w0 = lw * Math.max(2.2, px / 70) * (P.netEmboss ? 1.35 : 1);   // 밑동은 굵고 끝으로 갈수록 가늘게
+        const ribbon = (pts, ws, ox, oy) => {   // 굵기가 변하는 줄을 한 덩어리로 칠한다 (겹친 이음매가 생기지 않게)
+          const L = [], R = [];
+          for (let i = 0; i < pts.length; i++) {
+            const a0 = pts[Math.max(0, i - 1)], a1 = pts[Math.min(pts.length - 1, i + 1)];
+            let nx = -(a1[1] - a0[1]), ny = a1[0] - a0[0]; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+            L.push([pts[i][0] + nx * ws[i] + ox, pts[i][1] + ny * ws[i] + oy]); R.push([pts[i][0] - nx * ws[i] + ox, pts[i][1] - ny * ws[i] + oy]);
           }
-          for (const [s0, d, bl] of v.br) {
-            if (s0 > v.end) continue;
-            const [x, y] = at(v, s0), bw = w0 * (1 - .82 * s0 / v.end) * .7;
-            const cx = x + bl * len * .5, cy = y + d * bl * len * .25, ex = x + bl * len, ey = y + d * bl * len * .55;
-            let qx = x, qy = y;
-            for (let z = 1; z <= 6; z++) {
-              const tt = z / 6, a1 = (1 - tt) * (1 - tt), a2 = 2 * (1 - tt) * tt, a3 = tt * tt;
-              const nx = a1 * x + a2 * cx + a3 * ex, ny = a1 * y + a2 * cy + a3 * ey;
-              g.lineWidth = bw * (1 - .85 * tt); g.beginPath(); g.moveTo(qx, qy); g.lineTo(nx, ny); g.stroke();
-              qx = nx; qy = ny;
+          g.moveTo(L[0][0], L[0][1]); for (const q of L) g.lineTo(q[0], q[1]);
+          for (let i = R.length - 1; i >= 0; i--) g.lineTo(R[i][0], R[i][1]);
+          g.closePath();
+        };
+        const veins = (ox, oy, wm) => {
+          g.beginPath();
+          for (const v of P.net) {
+            const pts = [], ws = [];
+            for (let ss = .03; ss <= v.end + 1e-6; ss += .03) { pts.push(at(v, ss)); ws.push(wm * w0 * (1 - .82 * ss / v.end) / 2); }
+            ribbon(pts, ws, ox, oy);
+            for (const [s0, d, bl] of v.br) {
+              if (s0 > v.end) continue;
+              const [x, y] = at(v, s0), bw = w0 * (1 - .82 * s0 / v.end) * .7;
+              const cx = x + bl * len * .5, cy = y + d * bl * len * .25, ex = x + bl * len, ey = y + d * bl * len * .55, bp = [], bws = [];
+              for (let z = 0; z <= 8; z++) {
+                const tt = z / 8, a1 = (1 - tt) * (1 - tt), a2 = 2 * (1 - tt) * tt, a3 = tt * tt;
+                bp.push([a1 * x + a2 * cx + a3 * ex, a1 * y + a2 * cy + a3 * ey]); bws.push(wm * bw * (1 - .85 * tt) / 2);
+              }
+              ribbon(bp, bws, ox, oy);
             }
           }
-        }
+          g.fill('nonzero');
+        };
+        if (P.netEmboss) {   // 돋을 핏줄: 색 대신 빛과 그늘로 도드라져 보인다 (빛은 화면 왼쪽 위에서)
+          const m = g.getTransform(), an = -Math.atan2(m.b, m.a), lx = -.6 * Math.cos(an) + .8 * Math.sin(an), ly = -.6 * Math.sin(an) - .8 * Math.cos(an), d = w0 * .42;
+          g.fillStyle = 'rgba(12,6,24,.32)'; veins(-lx * d, -ly * d, 1.05);
+          g.fillStyle = 'rgba(255,255,255,.34)'; veins(lx * d * .7, ly * d * .7, .75);
+          g.fillStyle = 'rgba(255,255,255,.08)'; veins(0, 0, .95);
+        } else { g.fillStyle = P.netCol; veins(0, 0, 1); }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
       if (P.spots && k === P.layers - 1 && px > 34 && es > .5) {   // 점박이
