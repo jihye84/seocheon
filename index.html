@@ -1227,28 +1227,35 @@ function drawFocusVeil() {
 
 /* 서쪽 하늘: 지금 시각에 따라 화면 서쪽(왼쪽) 가장자리에 하늘빛이 번진다 */
 let skyCache = null, skyKey = '';
-function skyColors() {
+function skyNow() {
   const d = new Date(), h = d.getHours() + d.getMinutes() / 60;
-  if (h >= 5 && h < 7.5) return ['새벽', [12, 70, 74], [215, 60, 70], .26];
-  if (h >= 7.5 && h < 16) return ['낮', [215, 60, 68], [235, 50, 60], .14];
-  if (h >= 16 && h < 19.5) return ['노을', [22, 90, 62], [342, 70, 58], .3];
-  if (h >= 19.5 && h < 21.5) return ['저녁', [275, 55, 55], [325, 50, 50], .22];
-  return ['밤', [232, 60, 50], [255, 50, 45], .16];
+  // [이름, 가장자리 빛깔, 번지는 빛깔, 세기, 해·달]
+  if (h >= 5 && h < 7.5) return { name: '새벽', c1: [14, 80, 72], c2: [205, 60, 62], a: .55, orb: 'sun', p: (h - 5) / 2.5 * .15 };
+  if (h >= 7.5 && h < 16) return { name: '낮', c1: [200, 75, 72], c2: [220, 65, 58], a: .5, orb: 'sun', p: .15 + (h - 7.5) / 8.5 * .45 };
+  if (h >= 16 && h < 19.5) return { name: '노을', c1: [24, 95, 62], c2: [338, 75, 55], a: .54, orb: 'sun', p: .6 + (h - 16) / 3.5 * .35 };
+  if (h >= 19.5 && h < 21.5) return { name: '저녁', c1: [280, 60, 56], c2: [320, 55, 46], a: .45, orb: 'moon', p: .7 };
+  return { name: '밤', c1: [228, 60, 52], c2: [250, 50, 40], a: .32, orb: 'moon', p: .3 };
 }
 function drawSky() {
-  const [name, c1, c2, a] = skyColors(), k = name + W + 'x' + H;
+  const S = skyNow(), left = wide ? Math.max(0, stg.tx - stg.w / 2 - 8) : 0;
+  const k = S.name + Math.round(S.p * 40) + W + 'x' + H + '@' + Math.round(left / 8);
   if (k !== skyKey) {
     skyKey = k; skyCache = document.createElement('canvas');
     skyCache.width = Math.max(1, W >> 2); skyCache.height = Math.max(1, H >> 2);
-    const g = skyCache.getContext('2d'), w = skyCache.width, h = skyCache.height;
-    const lg = g.createLinearGradient(0, 0, w * .5, 0);
-    lg.addColorStop(0, hsla(c1[0], c1[1], c1[2], a)); lg.addColorStop(.45, hsla(c2[0], c2[1], c2[2], a * .35)); lg.addColorStop(1, hsla(c2[0], c2[1], c2[2], 0));
+    const g = skyCache.getContext('2d'), w = skyCache.width, h = skyCache.height, x0 = left / 4, span = (w - x0) * .7;
+    const lg = g.createLinearGradient(x0, 0, x0 + span, 0);
+    lg.addColorStop(0, hsla(S.c1[0], S.c1[1], S.c1[2], S.a)); lg.addColorStop(.4, hsla(S.c2[0], S.c2[1], S.c2[2], S.a * .4)); lg.addColorStop(1, hsla(S.c2[0], S.c2[1], S.c2[2], 0));
     g.fillStyle = lg; g.fillRect(0, 0, w, h);
-    const rg = g.createRadialGradient(0, h * .62, 0, 0, h * .62, w * .42);
-    rg.addColorStop(0, hsla(c1[0], c1[1], c1[2] + 8, a * .9)); rg.addColorStop(1, hsla(c1[0], c1[1], c1[2], 0));
+    // 해(또는 달): 서쪽 가장자리에 걸린 부드러운 빛 덩이 — 시각에 따라 높이가 바뀐다
+    const oy = h * (.12 + .7 * S.p), sun = S.orb === 'sun', R = (sun ? .55 : .28) * h;
+    const rg = g.createRadialGradient(x0, oy, 0, x0, oy, R);
+    if (sun) { rg.addColorStop(0, hsla(S.c1[0], 95, 92, Math.min(1, S.a * 1.5))); rg.addColorStop(.12, hsla(S.c1[0], 90, 80, S.a)); rg.addColorStop(1, hsla(S.c1[0], 80, 60, 0)); }
+    else { rg.addColorStop(0, 'rgba(235,235,255,.55)'); rg.addColorStop(.08, 'rgba(210,215,255,.25)'); rg.addColorStop(1, 'rgba(160,170,255,0)'); }
     g.fillStyle = rg; g.fillRect(0, 0, w, h);
   }
+  ctx.globalCompositeOperation = 'screen';
   ctx.drawImage(skyCache, 0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* 두 꽃 나란히 */
@@ -1301,7 +1308,6 @@ function frame(ms) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(bgCanvas, 0, 0, W, H);
-  drawSky();
   const x0 = cam.x - stg.x / ppu, x1 = cam.x + (W - stg.x) / ppu, y0 = cam.y - stg.y / ppu, y1 = cam.y + (H - stg.y) / ppu;
   const aTile = 1 - smooth(4.5, 6.5, ppu), aDot = smooth(4.5, 6.5, ppu) * (1 - smooth(22, 32, ppu)), aSpr = smooth(22, 32, ppu);
   const aGlow = .5 * (1 - smooth(2.5, 8, ppu));
@@ -1332,6 +1338,7 @@ function frame(ms) {
   drawFocusVeil();
   for (const sp of specials.values()) drawSpecial(sp, now);
 
+  if (!pair) drawSky();
   // 빛 티끌
   ctx.globalCompositeOperation = 'lighter';
   for (const m of motes) {
