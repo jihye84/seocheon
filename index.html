@@ -365,6 +365,14 @@ function gen(seed, hue, palO, force) {
     const sl = P.pal === 5 ? 34 : Math.max(14, base[2] - 34);
     P.spots = S; P.spotCol = hsla(P.pal === 5 ? h : base[0] - 8, Math.min(92, (P.pal === 5 ? 55 : base[1]) + 12), sl, .82);
   }
+  // 솜털(할미꽃·솜다리처럼 꽃잎 가장자리에 보송한 털): 이것도 따로 뽑는다
+  const r3 = mulberry32(seed ^ 0x51ed27a3);
+  P.fuzz = null;
+  if (r3() < .15 && !force.flat) {
+    const H = [], n = 70 + ((r3() * 40) | 0), hl = .012 + r3() * .014;
+    for (let q = 0; q < n; q++) { const ss = .1 + .88 * (q + r3() * .8) / n; H.push([ss, q & 1 ? 1 : -1, hl * (.6 + r3() * .7), (r3() - .5) * .9]); }
+    P.fuzz = H;
+  }
   if (!custom) genCache.set(seed, P);
   return P;
 }
@@ -426,7 +434,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}`,
+    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}${P.fuzz ? ' · 솜털' : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -623,6 +631,18 @@ function drawFlower(g, P, R, o) {
         g.fill(); g.restore(); g.fillStyle = fill;
       }
       if (px > 40) g.stroke(path);
+      if (P.fuzz && px > 64 && es > .6) {   // 솜털: 은빛 윤기 + 가장자리 잔털
+        g.save(); g.globalAlpha = (es - .6) / .4;
+        g.fillStyle = 'rgba(255,255,255,.07)'; g.fill(path);
+        g.clip(path); g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = lw * 7; g.stroke(path);   // 가장자리가 보송하게 번짐
+        g.restore(); g.fillStyle = fill;
+        g.save(); g.globalAlpha = (es - .6) / .4; g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = lw * .6; g.lineCap = 'round'; g.beginPath();
+        for (const [ss, sd, hl, tw] of P.fuzz) {
+          const w = wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b), x = ss * len, y = sd * w * .97 + P.curl * len * ss * ss, h = hl * len;
+          g.moveTo(x, y - sd * h * .4); g.quadraticCurveTo(x + h * .2, y + sd * h * .5, x + h * (.7 + tw), y + sd * h * .9);
+        }
+        g.stroke(); g.restore(); g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
+      }
       if (fine) {   // 잔결
         g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = lw * .7; g.beginPath();
         for (const side of [-1, 1]) for (const f of [.3, .55]) {
