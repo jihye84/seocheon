@@ -310,12 +310,20 @@ function gen(seed, hue, palO, force) {
     P.count = count; P.layers = 3 + ((r10() * 3) | 0);
     P.many = { grad: r10() < .55, gh: (r10() - .5) * 60 };
   }
+  // 주름꽃(카네이션처럼 부채꼴 꽃잎 가장자리가 톱니로 우글우글, 여러 겹): 따로 뽑는다
+  const r11 = mulberry32(seed ^ 0x6c62272e);
+  P.frill = null;
+  if (!P.many && r11() < .07 && !force.flat && !force.shape) {
+    P.shape = 'frill'; count = [5, 5, 6, 8][(r11() * 4) | 0]; P.count = count; P.layers = 3 + ((r11() * 2) | 0);
+    P.frill = Array.from({ length: 48 }, () => r11());
+  }
   const step = (.14 + r() * .12) * (P.many ? .55 : 1);
-  const pw = { round: .55, point: .42, notch: .6, fringe: .58, spoon: .74, lance: .5, ruffle: .55 }[P.shape] + (r() - .5) * .12;
+  const pw = { round: .55, point: .42, notch: .6, fringe: .58, spoon: .74, lance: .5, ruffle: .55, frill: .7 }[P.shape] + (r() - .5) * .12;
   P.a = shapeA(pw);
-  P.b = { round: .65, point: 1.05, notch: .7, fringe: .8, spoon: .6, lance: 1.15, ruffle: .75 }[P.shape];
+  P.b = { round: .65, point: 1.05, notch: .7, fringe: .8, spoon: .6, lance: 1.15, ruffle: .75, frill: .5 }[P.shape];
   let wf = .8 + r() * .6; if (P.shape === 'lance') wf *= .5;
-  if (P.many) wf *= 1.15;   // 가는 꽃잎이 촘촘히 맞닿되 많이 겹치지는 않게
+  if (P.many) wf *= 1.15;
+  if (P.frill) wf *= 1.45;   // 부채꼴로 넓게 겹쳐야 우글우글해 보인다   // 가는 꽃잎이 촘촘히 맞닿되 많이 겹치지는 않게
   P.curl = r() < .3 ? (r() < .5 ? -1 : 1) * (.12 + r() * .22) : 0;
   P.ruffK = 3 + ((r() * 4) | 0); P.ruffPh = r() * TAU; P.ruffA = .05 + r() * .06;
   P.teeth = 5 + ((r() * 5) | 0); P.notchD = .1 + r() * .1;
@@ -354,7 +362,7 @@ function gen(seed, hue, palO, force) {
   // 통꽃(개나리·도라지·나팔꽃처럼 꽃잎이 밑에서 하나로 붙음): 따로 뽑는다. 붙은 깊이가 꽃마다 다르다
   const r7 = mulberry32(seed ^ 0x9b05688c);
   P.fused = null;
-  if (r7() < .25 && !force.flat && count >= 4 && count <= 8) {
+  if (r7() < .25 && !force.flat && !P.frill && count >= 4 && count <= 8) {
     const f = .22 + Math.pow(r7(), .9) * .7;
     P.fused = { f, pointy: P.shape === 'point' || P.shape === 'lance' || (f > .35 && f < .7 && r7() < .5), star: r7() < .7 };
     P.layers = 1; P.L = [P.L[0]]; P.L[0].len = 1; P.L[0].rot = 0;
@@ -481,8 +489,8 @@ function colorWord(hsl) {
   return l <= 44 ? '짙은 ' + w : w;
 }
 const COUNT_KO = { 3: '세', 4: '네', 5: '다섯', 6: '여섯', 7: '일곱', 8: '여덟', 9: '아홉', 10: '열', 12: '열두', 13: '열세', 16: '열여섯', 21: '스물한', 34: '서른네', 40: '마흔', 48: '마흔여덟', 55: '쉰다섯', 64: '예순네' };
-const SHAPE_NAME = { round: '둥근꽃', point: '별꽃', notch: '오목꽃', fringe: '술꽃', spoon: '부채꽃', lance: '실꽃', ruffle: '물결꽃' };
-const SHAPE_KO = { round: '둥근 꽃잎', point: '뾰족한 꽃잎', notch: '끝이 오목한 꽃잎', fringe: '술 달린 꽃잎', spoon: '끝이 넓은 꽃잎', lance: '가는 꽃잎', ruffle: '물결 꽃잎' };
+const SHAPE_NAME = { round: '둥근꽃', point: '별꽃', notch: '오목꽃', fringe: '술꽃', spoon: '부채꽃', lance: '실꽃', ruffle: '물결꽃', frill: '주름꽃' };
+const SHAPE_KO = { round: '둥근 꽃잎', point: '뾰족한 꽃잎', notch: '끝이 오목한 꽃잎', fringe: '술 달린 꽃잎', spoon: '끝이 넓은 꽃잎', lance: '가는 꽃잎', ruffle: '물결 꽃잎', frill: '톱니진 주름 꽃잎' };
 const CENTER_KO = { dots: '씨앗 꽃술', stamen: '실 꽃술', bud: '봉오리 속', ring: '고리 꽃술' };
 /* 꽃말: 빛깔에서 앞 구절, 꽃잎 모양에서 뒤 구절 */
 const MOTTO_A = {
@@ -505,7 +513,8 @@ const MOTTO_B = {
   fringe: ['작은 것까지 살피는 꽃', '섬세하게 귀 기울이는 꽃'],
   spoon: ['활짝 편 손으로 건네는 꽃', '가진 것을 기꺼이 펼치는 꽃'],
   lance: ['가늘어도 꺾이지 않는 꽃', '끝까지 견디어 내는 꽃'],
-  ruffle: ['기쁨에 춤추는 꽃', '바람과 함께 노래하는 꽃']
+  ruffle: ['기쁨에 춤추는 꽃', '바람과 함께 노래하는 꽃'],
+  frill: ['고마운 마음을 겹겹이 접어 둔 꽃', '주름마다 정을 품은 꽃']
 };
 function hueFamily(hsl) {
   const [h0, s, l] = hsl, h = ((h0 % 360) + 360) % 360;
@@ -540,7 +549,27 @@ function corollaPath(len, P) {
   p.closePath();
   return p;
 }
+/* 주름꽃잎: 밑동은 좁고 끝은 넓은 부채꼴, 바깥 가장자리 전체가 들쭉날쭉한 톱니 */
+function frillPath(len, wmax, P) {
+  const F = P.frill, p = new Path2D(), N = 16, M = 34, up = [];
+  for (let n = 0; n <= N; n++) {
+    const s = n / N, sm = s * .86, w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
+    up.push([s * len * .86, w * (s > .6 ? 1 + .1 * (F[n] - .5) * ((s - .6) / .4) : 1)]);
+  }
+  const e = up[N];
+  p.moveTo(0, 0);
+  for (const q of up) p.lineTo(q[0], q[1]);
+  for (let j = 1; j < M; j++) {      // 끝 가장자리: 둥근 부채 끝을 따라 톱니
+    const u = 1 - 2 * j / M, ang = u * Math.PI / 2 * .92, depth = (j & 1 ? .022 + .04 * F[16 + (j % 30)] : .006 * F[(j * 7) % 48]);   // 짧고 뭉툭하게, 깊이는 제각각
+    const rx = len * .14 * (1 - depth * 6), x = e[0] + Math.cos(ang) * rx - len * depth, y = Math.sin(ang) * e[1] * (1 - depth * 1.5);
+    p.lineTo(x, y);
+  }
+  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], -up[n][1] * (n > N * .6 ? 1 + .08 * (F[32 + n % 16] - .5) : 1));
+  p.closePath();
+  return p;
+}
 function petalPath(len, wmax, P) {
+  if (P.shape === 'frill') return frillPath(len, wmax, P);
   const N = 22, p = new Path2D(), up = [];
   const notch = P.shape === 'notch';
   for (let n = 0; n <= N; n++) {
@@ -877,6 +906,15 @@ function drawFlower(g, P, R, o) {
           g.restore();
           g.restore(); g.fillStyle = fill;
         }
+      }
+      if (P.frill && px > 40 && es > .5) {   // 주름: 꽃잎이 접혀 생긴 밝고 어두운 결
+        g.save(); g.clip(path); g.lineCap = 'round';
+        for (let z = 0; z < 6; z++) {
+          const t = -.8 + 1.6 * z / 5 + (P.frill[40 + z] - .5) * .2, dark = z & 1;
+          g.strokeStyle = dark ? 'rgba(25,8,30,.16)' : 'rgba(255,255,255,.14)'; g.lineWidth = lw * Math.max(1.4, px / 90);
+          g.beginPath(); g.moveTo(len * .2, 0); g.quadraticCurveTo(len * .6, t * wid * .5, len * 1.02, t * wid * 1.05); g.stroke();
+        }
+        g.restore();
       }
       if (PETAL_EDGE && px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
       if (P.fuzz && px > 64 && es > .6 && (!FU || n === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
