@@ -485,18 +485,22 @@ function petalPath(len, wmax, P) {
   const N = 22, p = new Path2D(), up = [];
   const notch = P.shape === 'notch';
   for (let n = 0; n <= N; n++) {
-    const s = n / N, sm = notch ? s * .8 : s;
+    const s = n / N, sm = notch ? s * .84 : s;
     let w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
     if (P.shape === 'fringe' && s > .5) { const x = s * P.teeth * 2; w *= 1 + .24 * Math.abs((x % 2) - 1) * ((s - .5) / .5); }
     if (P.shape === 'ruffle') w *= 1 + P.ruffA * Math.sin(s * Math.PI * P.ruffK + P.ruffPh);
-    up.push([s * len, w, P.curl * len * s * s]);
+    up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s]);
   }
   p.moveTo(0, 0);
   for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + up[n][1]);
   const e = up[N];
   if (notch) {
-    p.quadraticCurveTo(len * 1.03, e[2] + e[1] * .15, len * (1 - P.notchD), e[2]);
-    p.quadraticCurveTo(len * 1.03, e[2] - e[1] * .15, len, e[2] - e[1]);
+    // 벚꽃잎처럼: 둥근 어깨를 지나 꼭대기 가운데만 얕게 V자로 패인다
+    const nd = len * (.065 + (P.notchD - .1) * .45), cx = e[0], w = e[1], y0 = e[2];
+    p.quadraticCurveTo(len * 1.0, y0 + w * .98, len * 1.0, y0 + w * .22);
+    p.quadraticCurveTo(len * .99, y0 + w * .05, len - nd, y0);
+    p.quadraticCurveTo(len * .99, y0 - w * .05, len * 1.0, y0 - w * .22);
+    p.quadraticCurveTo(len * 1.0, y0 - w * .98, cx, y0 - w);
   }
   for (let n = N; n >= 0; n--) p.lineTo(up[n][0], up[n][2] - up[n][1]);
   p.closePath();
