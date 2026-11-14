@@ -387,6 +387,23 @@ function gen(seed, hue, palO, force) {
     const vl = P.pal === 5 ? 40 : Math.max(16, base[2] - 30);
     P.net = N; P.netCol = hsla(P.pal === 5 ? h : base[0] - 14, Math.min(92, (P.pal === 5 ? 55 : base[1]) + 15), vl, .75);
   }
+  // 자잘한 술: 시계꽃처럼 둥글게 퍼지는 술 고리, 엉겅퀴처럼 솔처럼 모인 술 다발 (따로 뽑는다)
+  const r5 = mulberry32(seed ^ 0x3c6ef372);
+  P.tuft = null;
+  if (r5() < .13 && !force.flat) {
+    const pure = P.pal === 6, kind = r5() < .55 ? 'ring' : 'brush', F = [];
+    if (kind === 'ring') {
+      const n = 110 + ((r5() * 70) | 0), L = Math.min(.88, Math.max(.4, P.L[P.layers - 1].len * (.72 + r5() * .25))), wv = .015 + r5() * .03;
+      for (let q = 0; q < n; q++) F.push([q / n * TAU + (r5() - .5) * .03, L * (.85 + r5() * .25), wv * (r5() - .5) * 2, r5() * TAU]);
+      const th = h + 150 + r5() * 80;
+      P.tuft = { kind, F, c: pure ? [hsla(0, 0, 45), hsla(0, 0, 100), hsla(0, 0, 86)] : [hsla(th, 55, 24), hsla(th, 15, 95), hsla(th + (r5() - .5) * 50, 70, 58)] };
+    } else {
+      const n = 280 + ((r5() * 120) | 0), L = .13 + r5() * .1;
+      for (let q = 0; q < n; q++) { const a = r5() * TAU, o = Math.sqrt(r5()) * .85; F.push([a, L * (.7 + r5() * .5), o, (r5() - .5) * .5]); }
+      const th = h + (r5() - .5) * 30;
+      P.tuft = { kind, F, c: pure ? [hsla(0, 0, 84), hsla(0, 0, 100)] : [hsla(th, 50, 42), hsla(th, 85, 70)] };
+    }
+  }
   if (!custom) genCache.set(seed, P);
   return P;
 }
@@ -448,7 +465,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}${P.net ? ' · 핏줄무늬' : ''}${P.fuzz ? ' · 솜털' : ''}`,
+    traits: `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹 · ${CENTER_KO[P.cType]}${P.spots ? ' · 점박이' : ''}${P.net ? ' · 핏줄무늬' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -704,7 +721,50 @@ function drawFlower(g, P, R, o) {
   g.globalAlpha = 1;
   if (o.dew && px > 130 && gr > .9) drawDew(g, P, clamp01((gr - .9) / .1));
   const cs = full ? 1 : ease3(clamp01((gr - .6) / .3));
+  if (P.tuft && px > 40 && cs > 0 && P.tuft.kind === 'ring') drawTuft(g, P, cs, lw, px);
   if (cs > 0) drawCenter(g, P, cs, lw, px);
+  if (P.tuft && px > 40 && cs > 0 && P.tuft.kind === 'brush') drawTuft(g, P, cs, lw, px);
+  g.restore();
+}
+
+/* 자잘한 술 */
+function drawTuft(g, P, cs, lw, px) {
+  const T = P.tuft, w = lw * Math.max(1, px / 200);
+  g.save(); g.lineCap = 'round';
+  if (T.kind === 'ring') {      // 시계꽃: 꽃술 둘레에서 둥글게 퍼지는 가는 술, 안쪽·가운데·끝 세 띠 빛깔
+    const r0 = P.cR * .9, bands = [[0, .28], [.28, .5], [.5, 1]];
+    for (let b = 0; b < 3; b++) {
+      g.strokeStyle = T.c[b]; g.lineWidth = w * (b === 2 ? .85 : 1.1); g.beginPath();
+      for (const [a, L, wv, ph] of T.F) {
+        const ca = Math.cos(a), sa = Math.sin(a), ll = L * cs;
+        for (let z = 0; z <= 4; z++) {
+          const u = bands[b][0] + (bands[b][1] - bands[b][0]) * z / 4, d = r0 + (ll - r0) * u, off = wv * Math.sin(u * 9 + ph) * u;
+          const x = ca * d - sa * off, y = sa * d + ca * off;
+          z ? g.lineTo(x, y) : g.moveTo(x, y);
+        }
+      }
+      g.stroke();
+    }
+  } else {                       // 엉겅퀴: 가운데에 솔처럼 촘촘히 모여 솟은 술, 끝으로 갈수록 빛깔이 짙어짐
+    const R0 = P.cR * 1.15;
+    g.fillStyle = T.c[0]; g.globalAlpha = .9; g.beginPath(); g.arc(0, 0, R0 * cs, 0, TAU); g.fill(); g.globalAlpha = 1;   // 술이 모인 바탕
+    for (let b = 0; b < 2; b++) {
+      g.strokeStyle = T.c[b]; g.lineWidth = w * (b ? .9 : 1.1); g.beginPath();
+      for (const [a, L, o, tw] of T.F) {
+        const ca = Math.cos(a), sa = Math.sin(a), x0 = ca * o * R0, y0 = sa * o * R0, ll = L * cs * (.4 + .6 * o);
+        const a2 = a + tw * .3, ex = x0 + Math.cos(a2) * ll, ey = y0 + Math.sin(a2) * ll;
+        const u0 = b ? .55 : 0, u1 = b ? 1 : .55;
+        g.moveTo(x0 + (ex - x0) * u0, y0 + (ey - y0) * u0); g.lineTo(x0 + (ex - x0) * u1, y0 + (ey - y0) * u1);
+      }
+      g.stroke();
+    }
+    g.fillStyle = T.c[1];
+    for (const [a, L, o, tw] of T.F) {
+      if (o < .2) continue;
+      const ll = L * cs * (.4 + .6 * o), a2 = a + tw * .3, x = Math.cos(a) * o * R0 + Math.cos(a2) * ll, y = Math.sin(a) * o * R0 + Math.sin(a2) * ll;
+      g.beginPath(); g.arc(x, y, w * 1.6, 0, TAU); g.fill();
+    }
+  }
   g.restore();
 }
 
