@@ -425,6 +425,20 @@ function gen(seed, hue, palO, force) {
     const eh = 340 + r6() * 16;
     P.eye = { se, F, c0: hsla(eh, 82, 34), c1: hsla(eh, 85, 42, .85) };
   }
+  // 브레이커 튤립 무늬: 꽃잎 가운데로 타오르는 불꽃(flamed) 또는 가장자리에서 안으로 번지는 깃털(feathered)
+  const r9 = mulberry32(seed ^ 0x9b05688d);
+  P.breaker = null;
+  if (r9() < .1 && P.pal !== 6 && !force.flat && count <= 13) {
+    const kind = r9() < .5 ? 'flame' : r9() < .6 ? 'feather' : 'both', light = tip[2] >= 62;
+    const fh = [350, 335, 290, 15][(r9() * 4) | 0];
+    const col = light ? hsla(fh, 72 + r9() * 15, 30 + r9() * 8, .88) : hsla(40 + r9() * 15, 70, 88, .85);
+    const col2 = light ? hsla(fh, 80, 22, .9) : hsla(45, 80, 96, .9);
+    const T = [], nt = 4 + ((r9() * 4) | 0);   // 불꽃 혀: 굽이마다 다른 높이
+    for (let q = 0; q < nt; q++) T.push([r9(), r9()]);
+    const Fe = [], nf = 34 + ((r9() * 24) | 0);
+    for (let q = 0; q < nf; q++) Fe.push([.25 + .73 * (q + r9()) / nf, r9() < .5 ? 1 : -1, .12 + Math.pow(r9(), 1.6) * .6, r9() * .5, (r9() - .5) * .5]);
+    P.breaker = { kind, col, col2, T, Fe, wid: .22 + r9() * .2, ph: r9() * TAU, st: 2 + ((r9() * 3) | 0) };
+  }
   // 윤기(동백·미나리아재비처럼 두꺼운 꽃잎에 비치는 반사광): 따로 뽑는다
   const r8 = mulberry32(seed ^ 0x510e527f);
   // 윤기가 자연스러운 꽃에만: 꽃잎이 넓고 둥글며(둥근·부채·오목), 8장 이하, 갈래꽃
@@ -491,7 +505,7 @@ function describe(P) {
   return {
     motto: mottoOf(P),
     name: P.fused ? `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
-    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
+    traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.breaker ? (P.breaker.kind === 'flame' ? ' · 불꽃무늬' : P.breaker.kind === 'feather' ? ' · 깃털무늬' : ' · 불꽃깃털') : ''}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
 }
@@ -769,6 +783,44 @@ function drawFlower(g, P, R, o) {
           g.fillStyle = 'rgba(255,255,255,.08)'; veins(0, 0, .95);
         } else { g.fillStyle = P.netCol; veins(0, 0, 1); }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
+      }
+      if (P.breaker && px > 30 && es > .5) {   // 브레이커 튤립 무늬
+        const Bk = P.breaker, W = ss => FU ? Math.sin(Math.PI / P.count) * len * (ss < FU.f ? ss / FU.f * .5 + .2 : .7) : wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
+        const cy = ss => P.curl * len * ss * ss;
+        g.save(); g.clip(path); g.globalAlpha = Math.min(1, (es - .5) * 2);
+        if (Bk.kind !== 'feather') {     // 가운데로 타오르는 불꽃
+          const N = 40, up = [], dn = [], nt = Bk.T.length;
+          for (let i = 0; i <= N; i++) {
+            const ss = .04 + .93 * i / N, q = ss * nt, j = Math.min(nt - 1, q | 0), fr = q - j, tng = Math.pow(Math.abs(Math.sin(fr * Math.PI)), .55);
+            const hw = W(ss) * (Bk.wid + .55 * tng * (.4 + .6 * Bk.T[j][0])) * (1 - Math.pow(ss, 4) * .7), hw2 = W(ss) * (Bk.wid + .55 * Math.pow(Math.abs(Math.sin(fr * Math.PI + .9)), .55) * (.4 + .6 * Bk.T[j][1])) * (1 - Math.pow(ss, 4) * .7);
+            const sw = Math.sin(ss * 6 + Bk.ph) * W(ss) * .08;
+            up.push([ss * len, cy(ss) + sw + hw]); dn.push([ss * len, cy(ss) + sw - hw2]);
+          }
+          const fg = g.createLinearGradient(0, 0, len, 0); fg.addColorStop(0, Bk.col2); fg.addColorStop(.6, Bk.col); fg.addColorStop(1, Bk.col);
+          g.fillStyle = fg; g.beginPath(); g.moveTo(0, cy(0));
+          for (const q of up) g.lineTo(q[0], q[1]);
+          for (let i = dn.length - 1; i >= 0; i--) g.lineTo(dn[i][0], dn[i][1]);
+          g.closePath(); g.fill();
+          if (px > 60) {                 // 불꽃 속 짙은 결
+            g.strokeStyle = Bk.col2; g.lineCap = 'round';
+            for (let z = 0; z < Bk.st; z++) {
+              const t0 = (z / Math.max(1, Bk.st - 1) - .5) * .5;
+              g.lineWidth = lw * Math.max(1, px / 150); g.beginPath();
+              for (let ss = .05; ss <= .85; ss += .05) { const y = cy(ss) + Math.sin(ss * 6 + Bk.ph) * W(ss) * .08 + t0 * W(ss) * Bk.wid * 2 * (1 - ss * .5); ss < .06 ? g.moveTo(ss * len, y) : g.lineTo(ss * len, y); }
+              g.stroke();
+            }
+          }
+        }
+        if (Bk.kind !== 'flame') {       // 가장자리에서 안으로 번지는 깃털
+          g.fillStyle = Bk.col; g.beginPath();
+          for (const [ss, sd, ln, ang, bend] of Bk.Fe) {   // 붓으로 쓸어 넣은 듯 굵기·길이·휨이 제각각인 깃털
+            const w = W(ss), x0 = ss * len, y0 = cy(ss) + sd * w * 1.02, l = ln * w, x1 = x0 - l * (.6 + ang), y1 = y0 - sd * l, bw = len * (.008 + ln * .02);
+            const mx = (x0 + x1) / 2 + bend * l, my = (y0 + y1) / 2;
+            g.moveTo(x0 - bw, y0); g.quadraticCurveTo(mx - bw * .5, my, x1, y1); g.quadraticCurveTo(mx + bw * .5, my, x0 + bw, y0); g.closePath();
+          }
+          g.fill();
+        }
+        g.restore(); g.fillStyle = fill;
       }
       if (P.spots && k === P.layers - 1 && px > 34 && es > .5) {   // 점박이
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.fillStyle = P.spotCol; g.beginPath();
