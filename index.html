@@ -785,15 +785,21 @@ function drawFlower(g, P, R, o) {
           const sd = ly > 0 ? 1 : -1;
           g.save(); g.clip(path);
           const dk = g.createLinearGradient(0, sd * wv, 0, -sd * wv);   // 빛 반대쪽은 살짝 어둡게 — 두께감
-          dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(.55, 'rgba(0,0,0,0)'); dk.addColorStop(1, `rgba(10,0,20,${(.22 * ins).toFixed(3)})`);
+          dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(.55, 'rgba(0,0,0,0)'); dk.addColorStop(1, `rgba(10,0,20,${(.16 * ins).toFixed(3)})`);
           g.fillStyle = dk; g.fill(path);
-          g.translate(hx, hy); g.rotate(-sd * .12); g.scale(len * .42, Math.max(wv * .42, len * .06));
-          const hg = g.createRadialGradient(0, 0, 0, 0, 0, 1);   // 넓게 번진 윤
-          hg.addColorStop(0, `rgba(255,255,255,${(.35 * ins).toFixed(3)})`); hg.addColorStop(1, 'rgba(255,255,255,0)');
-          g.fillStyle = hg; g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill();
-          const sg = g.createRadialGradient(0, 0, 0, 0, 0, 1);   // 또렷한 반사광: 가장자리가 갑자기 끊긴다
-          sg.addColorStop(0, `rgba(255,255,255,${(.92 * ins).toFixed(3)})`); sg.addColorStop(.75, `rgba(255,255,255,${(.75 * ins).toFixed(3)})`); sg.addColorStop(1, 'rgba(255,255,255,0)');
-          g.fillStyle = sg; g.beginPath(); g.ellipse(-.05, sd * .18, P.gloss.sharp ? .62 : .5, P.gloss.sharp ? .2 : .26, 0, 0, TAU); g.fill();
+          // 반사광: 꽃잎 모양을 따라 휘어진 초승달 띠 — 꽃잎이 둥글게 휘어 빛을 받는 자리처럼
+          const A = petalPath(len * .86, wv * .78, P), o0 = P.gloss.sharp ? .16 : .24;
+          g.save(); g.translate(len * .05, sd * wv * .06); g.clip(A);
+          const lg = g.createLinearGradient(len * .15, 0, len * .9, 0);
+          lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.45, `rgba(255,255,255,${(.3 * ins).toFixed(3)})`);
+          lg.addColorStop(.7, `rgba(255,255,255,${(.22 * ins).toFixed(3)})`); lg.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = lg;
+          for (const o of [o0 * .6, o0, o0 * 1.5]) {   // 띠를 세 번 겹쳐 칠해 안쪽 가장자리가 부드럽게 스러지게
+            const B = new Path2D(); B.rect(-len, -len * 2, len * 3, len * 4);
+            B.addPath(petalPath(len * .9, wv * .78, P), new DOMMatrix([1, 0, 0, 1, len * .03, -sd * wv * o]));
+            g.fill(B, 'evenodd');
+          }
+          g.restore();
           g.restore(); g.fillStyle = fill;
         }
       }
