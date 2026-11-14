@@ -547,29 +547,36 @@ function drawDew(g, P, a) {
 }
 /* g: 꽃 중심으로 옮긴 캔버스, R: 꽃잎 반지름(px), o.g: 피어난 정도 0~1 */
 function drawFlower(g, P, R, o) {
-  const gr = o.g == null ? 1 : o.g, px = o.px || R;
+  // 피어나는 차례(gr 0→1): 빈자리 → 꽃받침이 돋음 → 잎이 펼쳐짐 → 꽃봉오리가 부풂 → 바깥 꽃잎부터 벌어짐 → 꽃술
+  const gr = o.g == null ? 1 : o.g, px = o.px || R, full = gr >= 1;
+  if (gr <= 0) return;
   g.save(); g.scale(R, R);
   const lw = 1 / R;
-  const leafS = gr >= 1 ? 1 : ease3(clamp01(gr / .22));
+  const leafS = full ? 1 : ease3(clamp01((gr - .06) / .25));
   if (leafS > 0) for (const L of P.leaves) { g.save(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw); g.restore(); }
-  if (gr < .45) {   // 꽃봉오리
-    const bs = ease3(clamp01(gr / .14)), ba = 1 - clamp01((gr - .22) / .2);
-    if (bs > 0 && ba > 0) {
-      g.globalAlpha = ba;
-      g.fillStyle = P.L[0].base; g.beginPath(); g.arc(0, 0, .17 * bs, 0, TAU); g.fill();
-      const sp = petalPath(.3 * bs, .1 * bs, SEPAL);
-      g.fillStyle = P.sepal;
-      for (let n = 0; n < 5; n++) { g.save(); g.rotate(P.rot0 + n * TAU / 5); g.fill(sp); g.restore(); }
-      g.globalAlpha = 1;
-    }
+  const sepS = full ? 0 : ease3(clamp01(gr / .14)), sepA = 1 - clamp01((gr - .72) / .22);
+  if (sepS > 0 && sepA > 0) {     // 꽃받침
+    g.globalAlpha = sepA;
+    const sp = petalPath(.34 * sepS, .11 * sepS, SEPAL);
+    g.fillStyle = P.sepal;
+    for (let n = 0; n < 5; n++) { g.save(); g.rotate(P.rot0 + n * TAU / 5); g.fill(sp); g.restore(); }
+    g.globalAlpha = 1;
+  }
+  const budS = full ? 1 : ease3(clamp01((gr - .1) / .22)), cb = .26 * budS;
+  if (!full && budS > 0) {          // 꽃봉오리 속(꽃잎 사이 틈을 메움)
+    const e0 = clamp01((gr - .34) / .5);
+    g.globalAlpha = 1 - clamp01((e0 - .4) / .4);
+    if (g.globalAlpha > 0) { g.fillStyle = P.L[0].base; g.beginPath(); g.arc(0, 0, cb * .72, 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
   }
   const step = TAU / P.count;
   for (let k = 0; k < P.layers; k++) {
     const Ly = P.L[k];
-    const e = gr >= 1 ? 1 : clamp01((gr - .16 - k * .1) / .55);
-    if (e <= 0) continue;
-    const es = ease3(e), len = Ly.len * (.16 + .84 * es), wid = Ly.wmax * (.3 + .7 * es), twist = (1 - es) * .7;
-    g.globalAlpha = Math.min(1, e * 4);
+    if (budS <= 0) break;
+    const e = full ? 1 : clamp01((gr - .34 - k * .07) / .5), es = e * e * (3 - 2 * e);
+    const cLen = cb * (1 - k * .14), cWid = cLen * .62;    // 오므린 꽃봉오리일 때 꽃잎 크기
+    const len = cLen + (Ly.len - cLen) * es, wid = cWid + (Ly.wmax - cWid) * es, twist = (1 - es) * 1.2;
+    if (len < .004) continue;
     if (k > 0) {
       const sh = g.createRadialGradient(0, 0, 0, 0, 0, len * 1.14);
       sh.addColorStop(0, 'rgba(0,0,0,.34)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
@@ -610,8 +617,8 @@ function drawFlower(g, P, R, o) {
     }
   }
   g.globalAlpha = 1;
-  if (o.dew && px > 130 && gr > .85) drawDew(g, P, clamp01((gr - .85) / .15));
-  const cs = gr >= 1 ? 1 : ease3(clamp01((gr - .4) / .4));
+  if (o.dew && px > 130 && gr > .9) drawDew(g, P, clamp01((gr - .9) / .1));
+  const cs = full ? 1 : ease3(clamp01((gr - .6) / .3));
   if (cs > 0) drawCenter(g, P, cs, lw, px);
   g.restore();
 }
@@ -1169,7 +1176,7 @@ function drawSprites(x0, y0, x1, y1, alpha, t) {
 /* 특별한 꽃(내 꽃·받은 꽃·신화 속 꽃) */
 function bloomOf(sp, t) {
   if (sp.kind === 'myth' && mythFound.has(sp.id) && sp.bloomT == null) return 1;
-  return sp.bloomT == null ? .07 : RM ? 1 : clamp01((t - sp.bloomT) / 5.5);
+  return sp.bloomT == null ? 0 : RM ? 1 : clamp01((t - sp.bloomT) / 7.5);
 }
 function drawSpecial(sp, t) {
   const ppu = cam.ppu;
@@ -1179,13 +1186,13 @@ function drawSpecial(sp, t) {
   if (sx < -R * 3 || sy < -R * 3 || sx > W + R * 3 || sy > H + R * 3) return;
   const P = sp.P, th = sp.kind === 'myth' ? sp.glow : P.L[0].th;
   if (R > 2) {
-    const pulse = sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22;
+    const gNow = bloomOf(sp, t), pulse = (sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22) * (.3 + .7 * gNow);
     const halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * (sp.kind === 'myth' ? 2.4 : 1.9));
     halo.addColorStop(0, hsla(th[0], th[1], th[2] - 10, pulse)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, R * 2.4, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(sx, sy);
     ctx.rotate(P.rot0 + .035 * Math.sin(t * .55) + wr); const br = 1 + .012 * Math.sin(t * 1.3); ctx.scale(br, br);
-    drawFlower(ctx, P, R, { g: bloomOf(sp, t), px: R * DPR, dew: true });
+    drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
     ctx.restore();
     if (sp.kind === 'myth' && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛
       ctx.globalCompositeOperation = 'lighter';
@@ -1270,7 +1277,7 @@ function drawPair(t) {
     halo.addColorStop(0, hsla(th[0], th[1], th[2], .2)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.8, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(sp.P.rot0 + .035 * Math.sin(t * .55 + k));
-    drawFlower(ctx, sp.P, R, { g: RM ? 1 : clamp01((t - pair.t0 - .3 - k * 1.4) / 5), px: R * DPR, dew: true });
+    drawFlower(ctx, sp.P, R, { g: RM ? 1 : clamp01((t - pair.t0 - .3 - k * 1.4) / 7), px: R * DPR, dew: true });
     ctx.restore();
     ctx.textAlign = 'center'; ctx.fillStyle = '#a4abc6'; ctx.font = `400 ${fs * .8}px "Gowun Batang", serif`;
     ctx.fillText(`${sp.name}의 꽃`, cx, cy + R * 1.3);
