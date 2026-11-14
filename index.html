@@ -687,6 +687,7 @@ function drawDew(g, P, a) {
   g.restore();
 }
 /* g: 꽃 중심으로 옮긴 캔버스, R: 꽃잎 반지름(px), o.g: 피어난 정도 0~1 */
+let PETAL_EDGE = false;   // 꽃잎 윤곽선 (없는 쪽이 더 자연스러워 꺼 둠 — true로 바꾸면 다시 생김)
 function drawFlower(g, P, R, o) {
   // 피어나는 차례(gr 0→1): 빈자리 → 꽃받침이 돋음 → 잎이 펼쳐짐 → 꽃봉오리가 부풂 → 바깥 꽃잎부터 벌어짐 → 꽃술
   const gr = o.g == null ? 1 : o.g, px = o.px || R, full = gr >= 1;
@@ -875,7 +876,7 @@ function drawFlower(g, P, R, o) {
           g.restore(); g.fillStyle = fill;
         }
       }
-      if (px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
+      if (PETAL_EDGE && px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
       if (P.fuzz && px > 64 && es > .6 && (!FU || n === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
         g.save(); g.globalAlpha = (es - .6) / .4;
         g.fillStyle = 'rgba(255,255,255,.07)'; g.fill(path);
@@ -915,7 +916,7 @@ function drawFlower(g, P, R, o) {
       g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip();
       g.fillStyle = fill; g.fill(path);
       if (curve) { g.fillStyle = curve; g.fill(path); }
-      if (px > 40) { g.strokeStyle = Ly.edge; g.lineWidth = lw * .8; g.stroke(path); }
+      if (PETAL_EDGE && px > 40) { g.strokeStyle = Ly.edge; g.lineWidth = lw * .8; g.stroke(path); }
       g.restore(); g.fillStyle = fill;
     }
   }
