@@ -136,6 +136,13 @@ body.narrow .note{display:none}
 }
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:.8em;text-align:right;pointer-events:none;line-height:1.5}
+#mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:8px 0 8px 14px;margin:-8px 0;display:block;margin-left:auto}
+#mythBtn:hover{color:var(--gold)} #mythBtn.done{color:var(--gold)}
+#guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
+  font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
+#guide.on{opacity:1}
+#guide i{display:block;width:0;height:0;margin:0 auto 8px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:30px solid var(--gold);
+  filter:drop-shadow(0 0 8px rgba(241,214,160,.7))}
 body.narrow #hud{top:max(12px,env(safe-area-inset-top));bottom:auto}
 #hint{position:fixed;z-index:4;left:50%;top:clamp(14px,3vh,30px);transform:translateX(-50%);
   color:var(--dim);font-size:.85em;pointer-events:none;transition:opacity 1.2s;text-align:center;white-space:nowrap}
@@ -203,7 +210,8 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
-<div id="hud"></div>
+<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span></div>
+<div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
 
@@ -1359,6 +1367,30 @@ function pullTags() {
 }
 setInterval(pullTags, 1500);
 
+/* ---------- 신화 속 꽃 길잡이 ----------
+   오른쪽 위 '신화 속 꽃 n/5'를 누르면, 아직 못 찾은 꽃 가운데 가장 가까운 꽃이 있는 쪽을 화살표와 걸음 수로 알려 준다 */
+let guideUntil = 0, guideM = null;
+$('mythBtn').onclick = () => {
+  const left = MYTHS.filter(m => !mythFound.has(m.id));
+  if (!left.length) { toast('다섯 송이를 모두 찾은 꽃감관이에요', 3200); return; }
+  guideM = left.reduce((a, b) => Math.hypot(a.i + .5 - cam.x, a.j + .5 - cam.y) < Math.hypot(b.i + .5 - cam.x, b.j + .5 - cam.y) ? a : b);
+  guideUntil = now + 20; hideHint();
+  if (mythFound.size === 0 && !store.get('guideTip', false)) { store.set('guideTip', true); toast('화살표를 따라가 반짝이는 빛을 눌러 보세요', 4200); }
+};
+function drawGuide() {
+  const el = $('guide'), on = guideM && now < guideUntil && !mythFound.has(guideM.id) && !pair;
+  el.classList.toggle('on', !!on);
+  if (!on) return;
+  const [cx, cy] = screenOf(cam.x, cam.y), [mx, my] = screenOf(guideM.i + .5, guideM.j + .5);
+  const dx = mx - cx, dy = my - cy, dpx = Math.hypot(dx, dy), steps = Math.round(Math.hypot(guideM.i + .5 - cam.x, guideM.j + .5 - cam.y));
+  const rad = Math.min(stg.w, stg.h) * .34, near = dpx < rad * 1.15, a = Math.atan2(dy, dx);
+  // 꽃이 화면 안에 들어오면 그 꽃 바로 위에서 아래를 가리킨다
+  const x = near ? mx : cx + Math.cos(a) * rad, y = near ? my - Math.max(46, cam.ppu * .7) : cy + Math.sin(a) * rad;
+  el.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%)`;
+  el.firstElementChild.style.transform = `rotate(${near ? 180 : a * 180 / Math.PI + 90}deg)`;
+  el.lastElementChild.textContent = near ? '여기예요' : `${steps}걸음`;
+}
+
 /* ---------- 초점 맞추기 ---------- */
 function focusCell(i, j, opts = {}) {
   const [x, y, size, seed, sp] = cellCenter(i, j);
@@ -1375,7 +1407,12 @@ function focusCell(i, j, opts = {}) {
       playMelody(sp.P, 1, .8);
       if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
         mythFound.add(sp.id); store.set('myth', [...mythFound]);
-        setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
+        guideUntil = 0;
+        if (mythFound.size === MYTHS.length) {   // 다섯 송이를 모두 찾으면 꽃감관이 된다
+          setTimeout(() => toast('신화 속 꽃 다섯 송이를 모두 찾았어요', 3600), 900);
+          setTimeout(() => toast(user ? `${user.name}님은 이제 서천꽃밭의 꽃감관이에요` : '당신은 이제 서천꽃밭의 꽃감관이에요', 4600), 4800);
+          setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 그 둘레에 신화 속 꽃의 빛이 돌아요', 4200), 9800);
+        } else setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
       }
     } else playMelody(focusP(), .6);
   }, opts.minDur || (sp ? 2.2 : 1.2));
@@ -1384,7 +1421,7 @@ const goMine = () => user && focusCell(user.i, user.j);
 
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
-  $('cOwner').textContent = k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
+  $('cOwner').textContent = k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${k === 'user' && mythFound.size === MYTHS.length ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
   $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
@@ -1746,7 +1783,7 @@ function drawSpecial(sp, t) {
     if (gNow >= 1 && P.count > 21 && R * DPR < 900) drawBigCached(ctx, P, R);   // 꽃잎이 아주 많은 꽃은 다 핀 뒤 한 번 그려 두고 다시 쓴다
     else drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
     ctx.restore();
-    if (sp.kind === 'myth' && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛
+    if ((sp.kind === 'myth' || (sp.kind === 'user' && mythFound.size === MYTHS.length)) && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛 (꽃감관의 꽃에도)
       ctx.globalCompositeOperation = 'lighter';
       for (let k = 0; k < 7; k++) {
         const a = t * (.25 + k * .03) + k * TAU / 7, rr = R * (1.25 + .12 * Math.sin(t + k)), s = Math.max(6, Math.min(40, R * .12));
@@ -1916,9 +1953,12 @@ function frame(ms) {
   }
   if (now - hudT > .25) {
     hudT = now;
-    $('hud').innerHTML = `신화 속 꽃 ${mythFound.size}/${MYTHS.length}<br>지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
+    const allM = mythFound.size === MYTHS.length;
+    $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${mythFound.size}/${MYTHS.length}${allM ? '' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
+    $('hudCount').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
+  drawGuide();
   firstFrame = false;
   requestAnimationFrame(frame);
 }
@@ -1979,7 +2019,7 @@ async function savePNG() {
   pngBase(g, 1080, 1350, P.seed, P.hue);
   pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : P.L[0].th);
   g.fillStyle = '#a4abc6'; g.font = '400 36px "Gowun Batang", serif';
-  g.fillText(k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
+  g.fillText(k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${k === 'user' && mythFound.size === MYTHS.length ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
   g.fillStyle = '#f1d6a0'; g.font = '700 62px "Gowun Batang", serif'; g.fillText(k === 'myth' ? sp.name : D.name, 540, 1075);
   g.fillStyle = '#eadcbe'; g.font = '400 34px "Gowun Batang", serif';
   D.motto.forEach((l, n) => g.fillText(l, 540, 1145 + n * 48));
