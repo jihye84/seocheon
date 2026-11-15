@@ -832,7 +832,9 @@ function drawFlower(g, P, R, o) {
     g.globalAlpha = sepA;
     const sp = petalPath(.34 * sepS, .11 * sepS, SEPAL);
     g.fillStyle = P.sepal;
-    for (let n = 0; n < 5; n++) { g.save(); g.rotate(P.rot0 + n * TAU / 5); g.fill(sp); g.restore(); }
+    // 꽃받침은 꽃잎 수에 맞춰, 바깥 꽃잎 사이사이에 고르게 (예전엔 늘 다섯 장이라 여섯·여덟 잎 꽃이 피는 동안 한쪽만 달라 보였다)
+    const ns = P.count <= 8 ? P.count : [6, 5, 4, 7].find(d => P.count % d === 0) || 5, r0 = (P.L[0] ? P.L[0].rot : 0) + TAU / P.count / 2;
+    for (let n = 0; n < ns; n++) { g.save(); g.rotate(r0 + n * TAU / ns); g.fill(sp); g.restore(); }
     g.globalAlpha = 1;
   }
   const budS = full ? 1 : ease3(clamp01((gr - .1) / .22)), cb = .26 * budS;
@@ -879,11 +881,17 @@ function drawFlower(g, P, R, o) {
       curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
       curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
     }
-    // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 무늬(점·단심·핏줄…)까지 한 번 더 위에 그린다
-    const seam = !FU && !SP && P.count >= 5;
-    for (let n = 0; n < (SP ? 1 : P.count + (seam ? 1 : 0)); n++) {
+    // 이음매: 꽃잎은 차례로 앞 꽃잎을 덮는데, 고리의 끝에서는 마지막 꽃잎들이 첫 꽃잎들을 덮어 한 장만 달라 보인다.
+    // 그래서 첫 꽃잎 몇 장(SK)을, 마지막 꽃잎들과 겹치는 자리에서만 무늬까지 한 번 더 위에 그린다.
+    // (꽃잎이 덜 벌어져 넓게 겹칠 때는 두세 장 건너까지 겹치므로, 반쪽 부채꼴이 아니라 실제로 덮은 꽃잎 모양대로 오린다)
+    const seam = !FU && !SP && P.count >= 5, SK = seam ? Math.min(Math.floor((P.count - 1) / 2), 3) : 0;
+    for (let n = 0; n < (SP ? 1 : P.count + SK); n++) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
-      if (n === P.count) { g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip(); }
+      if (n >= P.count) {
+        const j = n - P.count, cp = new Path2D();
+        for (let m = P.count - SK + j; m < P.count; m++) cp.addPath(path, new DOMMatrix().rotateSelf((m - n) * step * 180 / Math.PI));
+        g.clip(cp);
+      }
       if (!FU) {
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
