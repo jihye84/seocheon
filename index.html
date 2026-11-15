@@ -145,6 +145,8 @@ body.narrow .note{display:none}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:.8em;text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
+#replayBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--faint);cursor:pointer;padding:11px 0 11px 14px;margin:-6px 0 -11px auto;display:block;text-decoration:underline;text-underline-offset:3px}
+#replayBtn:hover{color:var(--gold)}
 #mythBtn:hover{color:var(--gold)} #mythBtn.done{color:var(--gold)}
 #guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
   font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
@@ -193,7 +195,7 @@ body.tour #panel,body.tour #hud,body.tour #snd,body.tour #guide,body.tour #hint{
 body.narrow #hud{top:max(12px,env(safe-area-inset-top));bottom:auto}
 #hint{position:fixed;z-index:4;left:50%;top:clamp(14px,3vh,30px);transform:translateX(-50%);
   color:var(--dim);font-size:.85em;pointer-events:none;transition:opacity 1.2s;text-align:center;white-space:nowrap}
-body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 2.2em)}
+body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 4.6em)}
 #toast{position:fixed;z-index:9;left:50%;top:clamp(56px,11vh,110px);transform:translateX(-50%);white-space:nowrap;padding:12px 20px;
   border-radius:999px;background:rgba(10,12,28,.9);border:1px solid var(--line);opacity:0;
   transition:opacity .3s;pointer-events:none}
@@ -257,7 +259,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
-<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span></div>
+<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div>
 <div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
@@ -2413,6 +2415,15 @@ async function savePfp() {
 
 /* ---------- 인트로: 서천꽃밭이 무엇인지 천천히 받아들이게 ---------- */
 // 처음 온 이: 다섯 문장과 꽃이 피어나는 장면 / 다시 온 이: 짧게, 내 꽃이 피어남 / 받은 링크: 보낸 이의 꽃이 기다림
+const INTRO_HTML = $('intro').innerHTML;
+// 여는 이야기 다시 보기: 처음의 긴 이야기를 언제든 다시 튼다
+$('replayBtn').onclick = () => {
+  if ($('intro')) return;
+  hideInvite(); if (pair) exitPair();
+  const box = document.createElement('div'); box.id = 'intro'; box.setAttribute('aria-live', 'polite'); box.innerHTML = INTRO_HTML;
+  document.body.append(box);
+  runIntro('first', null);
+};
 function runIntro(mode, onEnd) {
   const box = $('intro'), cv = $('introCv'), tx = $('introText'), g = cv.getContext('2d');
   let w = 0, h = 0, dpr = 1, done = false, t0 = performance.now();
