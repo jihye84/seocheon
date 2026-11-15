@@ -1298,6 +1298,12 @@ for (const m of MYTHS) {
   m.kind = 'myth'; m.seed = strHash('서천꽃밭|' + m.id); m.i = m.at[0]; m.j = m.at[1]; m.size = .95;
   m.P = gen(m.seed, m.hue, m.pal, m.force); m.P.motto = m.motto; m.bloomT = null;
 }
+/* 수레멸망악심꽃: 꽃감관만 아는 금단의 꽃. 여섯 송이에 들지 않고, 꽃감관이 된 사람의 꽃밭에만 보인다 */
+const RUIN = { id: 'ruin', kind: 'myth', secret: true, name: '수레멸망악심꽃', at: [356, -342], hue: 0, pal: 7, force: { flat: true, shape: 'lance', count: 16, layers: 2, cType: 'stamen' },
+  motto: ['보는 이마다 서로 다투다', '끝내 무너지게 하는 꽃'], glow: [355, 80, 45],
+  story: ['「이공본풀이」에서 할락궁이는', '이 꽃으로 원수의 집안을 멸망시켰다.', '서천꽃밭에서 가장 무서운 꽃이라,', '꽃감관만이 그 자리를 안다.'] };
+RUIN.seed = strHash('서천꽃밭|' + RUIN.id); RUIN.i = RUIN.at[0]; RUIN.j = RUIN.at[1]; RUIN.size = .95;
+RUIN.P = gen(RUIN.seed, RUIN.hue, RUIN.pal, RUIN.force); RUIN.P.motto = RUIN.motto; RUIN.bloomT = null;
 
 /* 특별한 칸: 신화 속 꽃, 받은 링크의 꽃, 내 꽃 */
 const specials = new Map(), tagSp = new Map();
@@ -1306,6 +1312,7 @@ const friendDiffers = () => !!(user && friend && (friend.seed !== user.seed || f
 function refreshSpecials() {
   specials.clear();
   for (const m of MYTHS) specials.set(keyOf(m.i, m.j), m);
+  if (isWarden(user)) specials.set(keyOf(RUIN.i, RUIN.j), RUIN);
   for (const [k, t] of tagSp) if (!specials.has(k)) specials.set(k, t);   // 이름표가 달린 꽃
   for (const t of [tourPrev, tourSp]) if (t && !specials.has(keyOf(t.i, t.j))) specials.set(keyOf(t.i, t.j), t);   // 꽃 감상에서 방금 본 꽃과 지금 피어나는 꽃
   if (user) specials.set(keyOf(user.i, user.j), user);
@@ -1657,6 +1664,17 @@ function showInvite(lines, goLabel = '찾으러 가기', act = goGuide) {
   el.classList.add('on'); $('mythBtn').classList.add('tip');
   clearTimeout(inviteOffT); inviteOffT = setTimeout(hideInvite, 30000);
 }
+function inviteRuin(delay) {   // 꽃감관에게, 아직 못 본 금단의 꽃을 하루 한 번 알려 준다
+  if (!user || !isWarden(user) || store.get('ruinSeen', false)) return;
+  const key = 'ruin|' + user.seed.toString(36), day = new Date().toDateString();
+  if (store.get('invitedOn', {})[key] === day) return;
+  setTimeout(() => {
+    if (!user || !isWarden(user) || store.get('ruinSeen', false) || storyOn || albumOn || pair || tourOn || $('intro') || (guideM === RUIN && now < guideUntil)) return;
+    if (anim || now - lastInput < 2.5) { inviteRuin(3000); return; }
+    const m = store.get('invitedOn', {}); m[key] = day; store.set('invitedOn', m);
+    showInvite(['꽃밭 깊은 곳에', ['꽃감관', '만 볼 수 있는'], '금단의 꽃이 피어 있어요.'], '찾으러 가기', () => { if (!wide) setSheet(false); refreshSpecials(); guideM = RUIN; guideUntil = Infinity; hideHint(); });
+  }, delay);
+}
 $('inviteNo').onclick = hideInvite;
 $('inviteGo').onclick = () => { hideInvite(); (inviteAct || goGuide)(); };
 addEventListener('resize', hideInvite);
@@ -1893,6 +1911,7 @@ function playStory() {
     if (done) return; done = true; storyOn = false; storyAudio = null;
     if (out && AC) { out.gain.cancelScheduledValues(AC.currentTime); out.gain.setValueAtTime(out.gain.value, AC.currentTime); out.gain.linearRampToValueAtTime(0, AC.currentTime + .8); setTimeout(() => out.disconnect(), 1200); }
     box.classList.add('out'); removeEventListener('resize', size); removeEventListener('keydown', key);
+    inviteRuin(2500);
     setTimeout(() => { cancelAnimationFrame(raf); box.remove(); }, 1100);
   };
   const key = e => { if (e.key === 'Escape') end(); };
@@ -2042,7 +2061,11 @@ function focusCell(i, j, opts = {}) {
     if (sp) {
       if (sp.bloomT == null) sp.bloomT = now;
       playMelody(sp.P, 1, .8);
-      if (sp.kind === 'myth' && !user) setTimeout(() => toast('내 꽃을 먼저 찾으면 이 꽃을 모을 수 있어요', 4200), 900);
+      if (sp.secret) {   // 금단의 꽃
+        if (guideM === RUIN) guideUntil = 0;
+        if (!store.get('ruinSeen', false)) { store.set('ruinSeen', true); setTimeout(() => toast('금단의 꽃을 찾았어요 · 꽃감관만 아는 꽃이에요', 4600), 900); }
+      }
+      else if (sp.kind === 'myth' && !user) setTimeout(() => toast('내 꽃을 먼저 찾으면 이 꽃을 모을 수 있어요', 4200), 900);
       else if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
         mythFound.add(sp.id); saveMyth();
         guideUntil = 0;
@@ -2064,7 +2087,7 @@ const goMine = () => { if (!user) return; if (friendFirst) { friendFirst = false
 
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
-  $('cOwner').textContent = k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
+  $('cOwner').textContent = k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃';
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
   $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
@@ -2079,7 +2102,7 @@ function showCard() {
   $('bShare').hidden = !mine;
   $('bSave').classList.toggle('wide', !mine);
   $('bMine').hidden = mine;
-  $('bStory').hidden = !(k === 'myth' && storyOK()); $('bStory').classList.toggle('glow', !store.get('storySeen', false));
+  $('bStory').hidden = !(k === 'myth' && !sp.secret && storyOK()); $('bStory').classList.toggle('glow', !store.get('storySeen', false));
   $('bMine').textContent = user ? '내 꽃으로 돌아가기' : k === 'friend' ? '나도 내 꽃 찾아보기' : '내 꽃 찾기';
   $('bNew').hidden = !mine; $('bNew').classList.toggle('wide', mine && canPair);
   $('bPfp').hidden = !mine;
@@ -2726,7 +2749,7 @@ async function savePNG() {
   pngBase(g, 1080, 1350, P.seed, P.hue);
   pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : glowOf(P));
   g.fillStyle = '#a4abc6'; g.font = '400 36px "Gowun Batang", serif';
-  g.fillText(k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
+  g.fillText(k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃', 540, 990);
   g.fillStyle = '#f1d6a0'; g.font = '700 62px "Gowun Batang", serif'; g.fillText(k === 'myth' ? sp.name : D.name, 540, 1075);
   g.fillStyle = '#eadcbe'; g.font = '400 34px "Gowun Batang", serif';
   D.motto.forEach((l, n) => g.fillText(l, 540, 1145 + n * 48));
@@ -2914,7 +2937,7 @@ whenSized(function start() {
   if (anim && anim.startLate) anim.t0 = 1e9;   // 인트로가 끝날 때까지 첫 장면을 멈춰 둔다
   const seen = store.get('introSeen', false), today = new Date().toDateString();
   const mode = friend ? 'friend' : !seen ? 'first' : user && store.get('introDay', '') !== today ? 'back' : null;
-  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (user && !linkedIn) inviteMyth(14000); /* 다시 온 이에게도 하루에 한 번 */ if (linkedIn && user) setTimeout(() => { goMine(); toast('이 기기에서도 내 꽃을 이어 가요', 4600); }, 700); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
+  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (user && !linkedIn) { inviteMyth(14000); inviteRuin(14000); } /* 다시 온 이에게도 하루에 한 번 */ if (linkedIn && user) setTimeout(() => { goMine(); toast('이 기기에서도 내 꽃을 이어 가요', 4600); }, 700); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
   store.set('introDay', today);
   if (mode) runIntro(mode, started); else { $('intro').remove(); started(); }
   requestAnimationFrame(ms => frame(ms));
