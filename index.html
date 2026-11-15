@@ -1688,7 +1688,7 @@ function playStory() {
   if (storyOn || !storyOK()) return;
   if (tourOn) stopTour(); if (albumOn) closeAlbum(); if (pair) exitPair(); hideInvite(); guideUntil = 0;
   storyOn = true; store.set('storySeen', true); $('bStory').classList.remove('glow');
-  const VW = 1080, VH = 1350, TEND = 51.5;
+  const VW = 1080, VH = 1350, TEND = 82;
   const box = document.createElement('div'); box.id = 'story'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', '신화 이야기');
   const cv = document.createElement('canvas'), skip = document.createElement('button');
   skip.id = 'storySkip'; skip.type = 'button'; skip.textContent = '건너뛰기 ›';
@@ -1722,20 +1722,48 @@ function playStory() {
   const flower = (P, x, y, R, b, a = 1, dew = false, t = 0) => { if (b <= 0 || a <= 0) return; g.save(); g.translate(x, y); g.rotate(P.rot0 + .035 * Math.sin(t * .6)); g.globalAlpha = a; drawFlower(g, P, R, { g: b, px: R * sc * D, dew }); g.restore(); g.globalAlpha = 1; };
   const glow = (x, y, r, col, a) => { if (a <= 0) return; const gg = g.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, `rgba(${col},${a})`); gg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gg; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); };
   const moteAt = (x, y, s, a) => { if (a <= 0) return; g.globalCompositeOperation = 'lighter'; g.globalAlpha = a; g.drawImage(mote, x - s / 2, y - s / 2, s, s); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; };
-  function comb(x, y, s, side, a, reveal = 1, rot = 0) {   // 얼레빗 반쪽
+  // 얼레빗: 반달 모양 나무 등에 촘촘한 빗살. part: 'full' 온전한 빗, 'L'·'R' 부러진 두 반쪽(부러진 자리가 꼭 맞물린다)
+  const JAG = [[.035, -.62], [-.025, -.44], [.045, -.31], [-.03, -.18], [.025, -.06], [-.02, .1], [.03, .3], [-.01, .5], [.02, .66]];
+  function comb(x, y, s, part, a, reveal = 1, rot = 0) {
     if (a <= 0) return;
-    g.save(); g.translate(x, y); g.rotate(rot); g.scale(s * side, s); g.globalAlpha = a;
-    if (reveal < 1) { g.beginPath(); g.rect(-1.1, -1, 1.1 * reveal + .02, 2); g.clip(); }
-    g.beginPath(); g.moveTo(-1, 0); g.ellipse(0, 0, 1, .52, 0, Math.PI, Math.PI * 1.5);
-    for (const [px, py] of [[.02, -.52], [-.04, -.4], [.03, -.3], [-.03, -.18], [.02, -.06], [0, 0]]) g.lineTo(px, py);
-    g.closePath();
-    const wd = g.createLinearGradient(0, -.52, 0, .5); wd.addColorStop(0, '#d9a764'); wd.addColorStop(1, '#8c5a2a');
-    g.fillStyle = wd; g.shadowColor = 'rgba(241,214,160,.9)'; g.shadowBlur = 26 * sc * D; g.fill(); g.shadowBlur = 0;
-    for (let k = 0; k < 15; k++) { const tx = -.93 + k * .062; g.beginPath(); g.moveTo(tx - .019, -.005); g.lineTo(tx + .019, -.005); g.lineTo(tx + .012, .44); g.quadraticCurveTo(tx, .47, tx - .012, .44); g.closePath(); g.fill(); }
-    g.lineWidth = .012; g.strokeStyle = 'rgba(255,236,190,.55)'; g.beginPath(); g.ellipse(0, 0, .84, .38, 0, Math.PI * 1.04, Math.PI * 1.5); g.stroke();
+    g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s); g.globalAlpha = a;
+    if (reveal < 1) { g.beginPath(); g.rect(-1.2, -1, 2.4 * reveal, 2); g.clip(); }
+    if (part !== 'full') {
+      const sx = part === 'L' ? -1.3 : 1.3; g.beginPath(); g.moveTo(sx, -.7);
+      for (const [px, py] of JAG) g.lineTo(px, py); g.lineTo(sx, .7); g.closePath(); g.clip();
+    }
+    const wood = g.createLinearGradient(0, -.5, 0, .62); wood.addColorStop(0, '#e2b57a'); wood.addColorStop(.42, '#b98446'); wood.addColorStop(1, '#7a4a20');
+    g.shadowColor = 'rgba(241,214,160,.75)'; g.shadowBlur = 22 * sc * D;
+    // 등(반달)과 빗살(끝이 둥글고 조금씩 가늘어지는 살 서른넷)을 한 모양으로
+    const cp = new Path2D(); cp.moveTo(-1, .02); cp.ellipse(0, .02, 1, .5, 0, Math.PI, TAU); cp.lineTo(1, .08); cp.lineTo(-1, .08); cp.closePath();
+    const N = 34;
+    for (let k = 0; k < N; k++) {
+      const cx = -.93 + k * 1.86 / (N - 1), w0 = .021, w1 = .013, top = .07, bot = .6 - .05 * Math.pow(Math.abs(cx), 6);
+      cp.moveTo(cx - w0, top); cp.lineTo(cx + w0, top); cp.lineTo(cx + w1, bot - w1); cp.quadraticCurveTo(cx, bot + w1 * .6, cx - w1, bot - w1); cp.closePath();
+    }
+    const back = new Path2D(); back.moveTo(-1, .02); back.ellipse(0, .02, 1, .5, 0, Math.PI, TAU); back.closePath();
+    g.fillStyle = wood; g.fill(back); g.shadowBlur = 0; g.fill(cp);   // 은은한 빛은 등에만 (빗살 틈이 메워지지 않게)
+    g.clip(cp);   // 나뭇결·반짝임·부러진 자국은 빗 안에만
+    // 결과 테두리: 등의 나뭇결, 위쪽 반짝임, 빗살이 시작하는 띠
+    g.lineWidth = .01; g.strokeStyle = 'rgba(90,50,18,.45)';
+    for (const r of [.86, .72, .58]) { g.beginPath(); g.ellipse(0, .04, r, r * .46, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); }
+    g.strokeStyle = 'rgba(255,240,205,.55)'; g.lineWidth = .016; g.beginPath(); g.ellipse(0, .02, .985, .485, 0, Math.PI * 1.08, Math.PI * 1.62); g.stroke();
+    g.fillStyle = 'rgba(70,38,12,.5)'; g.fillRect(-1, .055, 2, .022);
+    if (part !== 'full') {   // 부러진 자리: 밝은 속살
+      g.strokeStyle = 'rgba(255,226,180,.7)'; g.lineWidth = .014; g.beginPath(); JAG.forEach(([px, py], k) => k ? g.lineTo(px, py) : g.moveTo(px, py)); g.stroke();
+    }
     g.restore(); g.globalAlpha = 1;
   }
-  function house(cx, base, w, a, t, mad) {   // 원수의 기와집: 창이 웃음에 흔들린다
+  function lights(cx, base, w, a, t, mad, out) {   // 집의 창: out(0~4)만큼 하나씩 꺼진다
+    const hw = w / 2, roofY = base - w * .36, rh = w * .2;
+    for (let k = 0; k < 4; k++) {
+      const off = c01(out - k); if (off >= 1) continue;
+      const wx = cx - hw * .6 + k * hw * .4, wy = roofY + rh * .9, ww = hw * .22, wh = (base - roofY) * .42, f = .55 + .45 * Math.sin(t * (6 + mad * 14) + k * 1.9) * (mad > 0 ? 1 : .2);
+      g.fillStyle = `rgba(255,${190 + 30 * f},${110 + 40 * f},${(.35 + .5 * f) * (.6 + .4 * mad) * (1 - off) * a})`; g.fillRect(wx, wy, ww, wh);
+      g.fillStyle = `rgba(4,5,14,${a})`; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh / 2 - 2, ww, 4);
+    }
+  }
+  function house(cx, base, w, a, t, mad = 0, out = 0) {   // 천년장자의 기와집
     if (a <= 0) return;
     g.save(); g.globalAlpha = a; g.fillStyle = '#04050e';
     const hw = w / 2, rh = w * .2, roofY = base - w * .36;
@@ -1744,12 +1772,7 @@ function playStory() {
     g.quadraticCurveTo(cx + hw * .55, roofY + rh * .1, cx + hw * 1.18, roofY + rh * .25); g.quadraticCurveTo(cx + hw * .9, roofY + rh * .5, cx + hw * .82, roofY + rh * .55);
     g.lineTo(cx - hw * .82, roofY + rh * .55); g.quadraticCurveTo(cx - hw * .9, roofY + rh * .5, cx - hw * 1.18, roofY + rh * .25); g.fill();
     g.fillRect(cx - hw * .78, roofY + rh * .5, hw * 1.56, base - roofY - rh * .5); g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);
-    for (let k = 0; k < 4; k++) {
-      const wx = cx - hw * .6 + k * hw * .4, wy = roofY + rh * .9, ww = hw * .22, wh = (base - roofY) * .42, f = .55 + .45 * Math.sin(t * (6 + mad * 14) + k * 1.9) * (mad > 0 ? 1 : .2);
-      g.fillStyle = `rgba(255,${190 + 30 * f},${110 + 40 * f},${(.35 + .5 * f) * (.6 + .4 * mad)})`; g.fillRect(wx, wy, ww, wh);
-      g.fillStyle = '#04050e'; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh / 2 - 2, ww, 4);
-    }
-    g.restore(); g.globalAlpha = 1;
+    g.restore(); g.globalAlpha = 1; lights(cx, base, w, a, t, mad, out);
   }
   function tree(x, base, h, kind, a) {   // 동백(둥근 숲)·오동(키 크고 넓은 잎)
     if (a <= 0) return;
@@ -1763,18 +1786,28 @@ function playStory() {
     if (cam) for (let k = 0; k < 16; k++) { const ang = r() * 6.28, d = r() * .3 * h; g.fillStyle = 'rgba(200,40,60,.75)'; g.beginPath(); g.arc(x + Math.cos(ang) * d * 1.1, base - h * .72 + Math.sin(ang) * d * .7, h * .018, 0, 6.28); g.fill(); }
     g.restore(); g.globalAlpha = 1;
   }
-  const waterY = t => { let y = VH; for (const [a, b, y0, y1] of [[10.6, 11.6, VH, 1060], [12.15, 13.0, 1060, 900], [13.25, 14.1, 900, 720]]) if (t > a) y = y0 + (y1 - y0) * sm((t - a) / (b - a)); return y + 8 * Math.sin(t * 1.1); };
-  const texts = [
+  const waterY = t => { let y = VH + 40; for (const [a, b, y0, y1] of [[30.4, 32.6, VH + 40, 1190], [33.6, 34.4, 1190, 1060], [34.5, 35.3, 1060, 900], [35.4, 36.2, 900, 720]]) if (t > a) y = y0 + (y1 - y0) * sm((t - a) / (b - a)); return y + 8 * Math.sin(t * 1.1); };
+  const texts = [   // [나타남, 사라짐, 줄들, 줄마다 늦춤]
     [.5, 4.6, ['서쪽 하늘 끝 서천꽃밭에는', '죽은 이를 살리는 꽃이 핀다.']],
-    [5.6, 10.1, ['꽃감관이 되어 떠난 아버지는', '얼레빗 반쪽을 남겼다.']],
-    [11.0, 14.3, ['흰 물은 무릎까지,', '누런 물은 허리까지,', '붉은 물은 목까지.'], 1.1],
-    [14.8, 17.4, ['어머니의 눈물로', '생긴 강이었다.']],
-    [18.2, 22.0, ['두 반쪽이 꼭 맞자,', '아버지는 꽃을 내주었다.']],
-    [22.8, 27.2, ['웃음꽃 한 송이에', '원수의 집안은', '웃음을 멈추지 못했다.']],
-    [28.0, 31.4, ['동백과 오동이 자라난', '청대밭에', '어머니가 잠들어 있었다.']],
-    [31.9, 39.65, ['뼈가 이어지고,', '살이 돋고,', '피가 돌고,', '숨이 트이고,', '넋이 돌아왔다.'], 1.45],
-    [40.45, 44.05, ['회초리로 세 번 내리치자,', '어머니가 일어났다.']]];
-  const BLOOM = [31.9, 33.35, 34.8, 36.25, 37.7], FX = [130, 335, 540, 745, 950], FY = [1125, 1082, 1110, 1082, 1125], STRIKE = [40.95, 41.7, 42.45];
+    [5.4, 10.0, ['꽃 피우는 재주가 남달라', '아버지는 서천꽃밭의', '꽃감관으로 불려 갔다.']],
+    [10.9, 15.2, ['떠나기 전 아버지는', '얼레빗을 반으로 갈라', '한쪽을 남겼다.']],
+    [16.0, 19.6, ['홀로 남은 어머니는', '부자 천년장자의 집에서', '종살이를 하게 되었다.']],
+    [20.0, 22.8, ['아들은 그 집에서 태어나', '모진 일을 하며 자랐다.']],
+    [23.2, 26.6, ['아버지 이야기를 들은 아들은', '얼레빗 반쪽을 품고', '아버지를 찾아 나섰다.']],
+    [27.2, 30.0, ['아들이 떠난 뒤,', '장자는 어머니를 모질게 괴롭혔다.']],
+    [30.4, 33.2, ['어머니가 흘린 눈물은', '강이 되어 아들의 길을 막았다.']],
+    [33.6, 37.0, ['무릎까지, 허리까지,', '끝내 목까지 차오르는', '세 갈래 눈물의 강.'], .9],
+    [37.8, 41.0, ['아버지는 두 반쪽을 맞춰 보고', '아들을 알아보았다.']],
+    [41.3, 44.4, ['어머니가 숨진 것을 안 아버지는', '되살리는 꽃들을 내주었다.']],
+    [45.0, 48.0, ['아들은 먼저 장자의 집에', '웃음꽃을 피웠다.']],
+    [48.4, 51.2, ['그리고 또 한 송이,', '이름을 부를 수 없는 꽃을…']],
+    [51.5, 54.2, ['그 집에 무슨 일이 일어났는지는', '꽃감관만이 안다.']],
+    [54.8, 58.2, ['동백과 오동이 자라난', '청대밭에', '어머니가 잠들어 있었다.']],
+    [58.7, 66.45, ['뼈가 이어지고,', '살이 돋고,', '피가 돌고,', '숨이 트이고,', '넋이 돌아왔다.'], 1.45],
+    [67.25, 70.85, ['회초리로 세 번 내리치자,', '어머니가 일어났다.']],
+    [71.6, 74.6, ['아들은 아버지를 이어', '서천꽃밭의 꽃감관이 되었다.']]];
+  const BLOOM = [58.7, 60.15, 61.6, 63.05, 64.5], FX = [130, 335, 540, 745, 950], FY = [1125, 1082, 1110, 1082, 1125], STRIKE = [67.75, 68.5, 69.25];
+  const FATHER = gen(strHash('서천꽃밭|아버지의 꽃'), 42, 0), POPS = [0, 1, 2, 3, 4].map(k => ({ P: gen(strHash('서천꽃밭|꽃밭' + k)), a: -2.6 + k * 1.3, d: 250 + (k % 2) * 60 }));
   const endLines = warden ? ['이제 서천꽃밭은', `꽃감관 ${nm}${josa(nm, '이', '가')} 돌봅니다`] : [`남은 ${rest}송이를 마저 찾으면,`, `${nm}님도 꽃감관이 됩니다`];
   function draw(t) {
     g.setTransform(D, 0, 0, D, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
@@ -1789,15 +1822,36 @@ function playStory() {
     if (mA > 0) { g.globalAlpha = mA; g.drawImage(meadow, X0, meadow.mt, meadow.width / (sc * D), meadow.height / (sc * D)); g.globalAlpha = 1; }
     const sA = env(t, 1.0, 5.0, 1.2, .8);
     SIX.forEach((m, k) => { const a = -Math.PI / 2 + k * 6.2832 / 6 + t * .15, x = VW / 2 + Math.cos(a) * 150, y = 760 + Math.sin(a) * 150; glow(x, y, 70, rgb(m.glow), .45 * sA); moteAt(x, y, 38 + 6 * Math.sin(t * 2 + k), sA); });
-    if (t > 5.2 && t < 18) {   // 얼레빗 반쪽 → 세 강을 건너는 길손
-      const mv = sm((t - 10.0) / 1.1), rev = sm((t - 5.5) / 1.8);
-      let x = 560 - 340 * mv, y = 770 - 40 * Math.sin(t * .8) * (1 - mv) + 240 * mv, s = 300 - 215 * mv, a = sm((t - 5.3) / .8);
-      if (t > 10.6) { x = 150 + (t - 10.6) / 7 * 760; y = waterY(t) - 30 + 6 * Math.sin(t * 2.2); s = 85; a *= 1 - sm((t - 17.0) / .8); }
-      glow(x, y + s * .05, s * 1.5, '241,214,160', .16 * a); comb(x, y, s, -1, a, rev, .05 * Math.sin(t * .9));
+    if (t > 5.0 && t < 10.8) {   // 꽃 피우는 재주: 한 송이가 피고 둘레에 꽃이 번지더니, 빛 하나가 서쪽으로 떠난다
+      const a = sm((t - 5.1) / .6) * (1 - sm((t - 10.0) / .8));
+      glow(540, 800, 330, '255,226,170', .22 * a * sm((t - 5.6) / 2));
+      flower(FATHER, 540, 800, 190, c01((t - 5.5) / 2.8), a, true, t);
+      POPS.forEach((q, k) => flower(q.P, 540 + Math.cos(q.a) * q.d, 800 + Math.sin(q.a) * q.d * .8, 78, c01((t - 6.6 - k * .35) / 1.8), a * .9, false, t + k));
+      const rise = sm((t - 8.6) / 1.6); if (rise > 0) { const x = 540 - 420 * rise, y = 760 - 520 * rise; glow(x, y, 120, '255,236,200', .5 * (1 - rise * .6) * a); moteAt(x, y, 46, a * (1 - rise * .4)); }
     }
-    if (t > 10.6 && t < 18.3) {   // 흰 물·누런 물·붉은 물
-      const a = sm((t - 10.6) / .6) * (1 - sm((t - 17.6) / .7)), lv = waterY(t), k = t < 12.15 ? 0 : t < 13.25 ? 1 : 2;
-      const COLS = [[226, 232, 244], [205, 168, 78], [176, 36, 58]], mk = c01((t - [11, 12.15, 13.25][k]) / .6), pv = COLS[Math.max(0, k - 1)], col = pv.map((v, n) => Math.round(v + (COLS[k][n] - v) * (k ? mk : 1)));
+    if (t > 10.4 && t < 27.2) {   // 얼레빗: 온전한 빗 → 반으로 → 한쪽은 아버지와 서쪽으로, 한쪽은 집에 → 아들과 길을 나선다
+      const a = sm((t - 10.5) / .8), sp = sm((t - 12.6) / 1.2);
+      if (t < 16.4) {
+        const fade = 1 - sm((t - 15.2) / 1);
+        glow(540, 790, 420, '241,214,160', .14 * a * fade);
+        comb(540 - 26 * sp, 790 + 30 * sp, 300, 'L', a * fade, 1, -.06 * sp);
+        const rx = 540 + 26 * sp - 420 * sm((t - 13.6) / 1.8), ry = 790 - 20 * sp - 560 * sm((t - 13.6) / 1.8), ra = a * (1 - sm((t - 14.2) / 1.2));
+        comb(rx, ry, 300 * (1 - .5 * sm((t - 13.6) / 1.8)), 'R', ra, 1, .08 * sp);
+      } else {   // 장자의 집 창가에 남은 반쪽 → 길을 나섬
+        const go = sm((t - 24.0) / 2.6), wa = sm((t - 16.4) / .8) * (1 - sm((t - 26.6) / .6));
+        const x = 418 + (900 - 418) * go, y = 1012 - 180 * go - 40 * Math.sin(go * Math.PI), s = 46 + 50 * go;
+        glow(x, y, s * 1.8, '241,214,160', .3 * wa); comb(x, y, s, 'L', wa, 1, .05 * Math.sin(t));
+      }
+    }
+    if (t > 15.4 && t < 27.6) {   // 천년장자의 집
+      const a = sm((t - 15.6) / 1) * (1 - sm((t - 26.6) / .9));
+      house(540, 1230, 620, a, t);
+      if (t > 19.8 && t < 23.4) { const la = env(t, 20.0, 22.8, .8, .6) * a; glow(600, 1040, 60, '255,214,150', .6 * la); glow(640, 1052, 38, '255,214,150', .6 * la); }   // 창가의 두 불빛
+    }
+    if (t > 26.6 && t < 38.0) {   // 아들이 떠난 뒤: 어머니의 눈물이 강이 되어 길을 막는다
+      const a = sm((t - 27.0) / .8) * (1 - sm((t - 37.2) / .7)), lv = waterY(t), k = t < 34.45 ? 0 : t < 35.35 ? 1 : 2;
+      house(540, 1230, 620, .35 * a * (1 - sm((t - 30.4) / 2)), t);   // 멀어지는 장자의 집
+      const COLS = [[226, 232, 244], [205, 168, 78], [176, 36, 58]], mk = c01((t - [33.6, 34.5, 35.4][k]) / .6), pv = COLS[Math.max(0, k - 1)], col = pv.map((v, n) => Math.round(v + (COLS[k][n] - v) * (k ? mk : 1)));
       g.save(); g.globalAlpha = a;
       for (let layer = 0; layer < 3; layer++) {
         const yy = lv + layer * 34; g.beginPath(); g.moveTo(X0, Y1 + 10);
@@ -1806,42 +1860,50 @@ function playStory() {
         const wg = g.createLinearGradient(0, yy, 0, Math.max(VH, Y1)); wg.addColorStop(0, `rgba(${col},${.42 - layer * .08})`); wg.addColorStop(1, `rgba(${col.map(v => v * .35 | 0)},.6)`); g.fillStyle = wg; g.fill();
       }
       for (const [dx, ph, sp] of drops) {   // 눈물방울과 물무늬
-        const tt = (t - 14.6) * sp - ph; if (tt < 0 || t < 14.6) continue; const cyc = tt % 1.6;
+        const tt = (t - 30.2) * sp - ph; if (tt < 0) continue; const cyc = tt % 1.6;
         if (cyc < 1.0) { g.fillStyle = 'rgba(230,236,255,.75)'; g.beginPath(); g.ellipse(dx, lv * Math.min(1, cyc), 4, 9, 0, 0, 6.28); g.fill(); }
         else { const rr = (cyc - 1) * 90; g.strokeStyle = `rgba(255,240,240,${.5 * (1 - (cyc - 1) / .6)})`; g.lineWidth = 2; g.beginPath(); g.ellipse(dx, lv + 4, rr, rr * .22, 0, 0, 6.28); g.stroke(); }
       }
       g.restore(); g.globalAlpha = 1;
+      const cx = 140 + c01((t - 30.8) / 6.6) * 800, cy = Math.min(lv, 1190) - 34 + 6 * Math.sin(t * 2.2), ca = sm((t - 27.4) / .8) * (1 - sm((t - 36.8) / .7));   // 물을 건너는 반쪽 빗
+      glow(cx, cy, 110, '241,214,160', .25 * ca); comb(cx, cy, 62, 'L', ca, 1, .1 * Math.sin(t * 1.7));
     }
-    if (t > 17.8 && t < 23.2) {   // 두 반쪽이 맞는다
-      const a = sm((t - 17.9) / .7) * (1 - sm((t - 22.4) / .7)), j = sm((t - 18.3) / 1.4), y = 760;
-      comb(540 - 300 * (1 - j) - 2, y, 230, -1, a); comb(540 + 300 * (1 - j) + 2, y, 230, 1, a);
-      const fl = env(t, 19.6, 20.5, .25, 1.2); glow(540, y - 20, 520, '255,232,180', .55 * fl * a); glow(540, y - 20, 200, '255,250,235', .7 * fl * a);
-      SIX.forEach((m, k) => { const p = sm((t - 20.0) / 1.8), ang = -Math.PI / 2 + k * 6.2832 / 6; moteAt(540 + Math.cos(ang) * 260 * p, y - 20 + Math.sin(ang) * 260 * p, 40, a * p); });
+    if (t > 37.4 && t < 45.0) {   // 아버지와 아들: 두 반쪽이 맞는다
+      const a = sm((t - 37.5) / .7) * (1 - sm((t - 44.2) / .7)), j = sm((t - 37.9) / 1.4), y = 780;
+      comb(540 - 300 * (1 - j), y, 260, 'L', a); comb(540 + 300 * (1 - j), y, 260, 'R', a);
+      const fl = env(t, 39.1, 40.0, .25, 1.2); glow(540, y - 30, 520, '255,232,180', .55 * fl * a); glow(540, y - 30, 200, '255,250,235', .7 * fl * a);
+      SIX.forEach((m, k) => { const p = sm((t - 41.5) / 1.8), ang = -Math.PI / 2 + k * 6.2832 / 6; glow(540 + Math.cos(ang) * 270 * p, y - 30 + Math.sin(ang) * 270 * p, 60, rgb(m.glow), .4 * a * p); moteAt(540 + Math.cos(ang) * 270 * p, y - 30 + Math.sin(ang) * 270 * p, 40, a * p); });
     }
-    if (t > 22.0 && t < 28.2) {   // 웃음꽃과 원수의 집
-      const a = sm((t - 22.2) / .8) * (1 - sm((t - 27.3) / .8)), mad = sm((t - 24.4) / 1.5);
-      house(540, 1230, 560, a, t, mad);
-      glow(540, 640, 420, rgb(M.laugh.glow), .3 * a * sm((t - 22.6) / 2)); flower(M.laugh.P, 540, 640, 215, c01((t - 22.6) / 2.6), a, true, t);
+    if (t > 44.4 && t < 55.0) {   // 원수의 집: 웃음꽃, 그리고 이름을 부를 수 없는 꽃 — 창이 하나씩 꺼진다
+      const a = sm((t - 44.6) / .8) * (1 - sm((t - 54.2) / .8)), mad = sm((t - 46.2) / 1.5) * (1 - sm((t - 48.8) / 1.2)), out = 4 * sm((t - 49.4) / 2.4);
+      house(540, 1230, 560, a, t, mad, out);
+      const la = a * (1 - sm((t - 48.4) / 1.2));
+      glow(540, 640, 420, rgb(M.laugh.glow), .3 * la * sm((t - 44.9) / 2)); flower(M.laugh.P, 540, 640, 215, c01((t - 44.9) / 2.6), la, true, t);
+      const ra = a * sm((t - 48.6) / 1.6);   // 금단의 꽃: 어둠 속 실루엣만
+      if (ra > 0) {
+        glow(540, 640, 380, '150,20,30', .35 * ra);
+        g.save(); g.filter = `blur(${Math.round(3 * sc * D)}px) brightness(.28)`; flower(RUIN.P, 540, 640, 230, 1, ra * .95, false, t * .4); g.restore(); g.filter = 'none';
+      }
     }
-    if (t > 27.4 && t < 45.05) {   // 청대밭: 다섯 송이가 차례로 피고, 회초리 세 번
-      const a = sm((t - 27.5) / 1.2) * (1 - sm((t - 44.25) / .8)), hz = 990;
+    if (t > 54.2 && t < 71.85) {   // 청대밭: 다섯 송이가 차례로 피고, 회초리 세 번
+      const a = sm((t - 54.3) / 1.2) * (1 - sm((t - 71.05) / .8)), hz = 990;
       g.save(); g.globalAlpha = a; const gg = g.createLinearGradient(0, hz - 60, 0, Math.max(VH, Y1)); gg.addColorStop(0, 'rgba(5,6,15,0)'); gg.addColorStop(.15, '#05060f'); gg.addColorStop(1, '#020309'); g.fillStyle = gg; g.fillRect(X0, hz - 60, X1 - X0, Y1 - hz + 70); g.restore();
       tree(150, 1010, 560, 'c', a); tree(940, 1010, 700, 'o', a);
-      const lifted = sm((t - 42.75) / 1.4), n = BLOOM.reduce((s, b0) => s + c01((t - b0) / 2.2), 0);
+      const lifted = sm((t - 69.55) / 1.4), n = BLOOM.reduce((s, b0) => s + c01((t - b0) / 2.2), 0);
       glow(540, 1000, 330 + 120 * lifted, '255,228,180', a * (.08 + .056 * n + .35 * lifted));
       g.save(); g.translate(540, 1004); g.scale(1, .14); glow(0, 0, 230 + 30 * n, '255,236,200', a * (.18 + .1 * n)); g.restore();
       if (lifted > 0) {
         g.save(); g.globalCompositeOperation = 'lighter';
         for (let k = 0; k < 12; k++) { g.save(); g.translate(540, 1000 - k * 52 * lifted); g.scale(.55, 1); glow(0, 0, 150, '255,232,190', .16 * lifted * a * (1 - k / 12)); g.restore(); }
         g.restore();
-        for (let k = 0; k < 14; k++) { const p = ((t - 42.75) * .35 + k / 14) % 1; moteAt(540 + 110 * Math.sin(k * 2.3 + t), 1000 - p * 620, 26, a * lifted * (1 - p)); }
+        for (let k = 0; k < 14; k++) { const p = ((t - 69.55) * .35 + k / 14) % 1; moteAt(540 + 110 * Math.sin(k * 2.3 + t), 1000 - p * 620, 26, a * lifted * (1 - p)); }
       }
       REV.forEach((m, k) => {
         const b = c01((t - BLOOM[k]) / 2.2); glow(FX[k], FY[k], 170, rgb(m.glow), .32 * a * b + .25 * lifted * a); flower(m.P, FX[k], FY[k], 98, b, a, true, t + k);
         const la = a * sm((t - BLOOM[k] - .6) / .8); if (la > 0) { g.font = '400 34px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(241,214,160,${la})`; g.shadowColor = 'rgba(4,5,16,.95)'; g.shadowBlur = 16 * sc * D; g.fillText(m.name, FX[k], FY[k] + 146); g.shadowBlur = 0; }
       });
-      if (t > 40.05) {
-        const ca = sm((t - 40.15) / .6) * (1 - sm((t - 43.45) / .6)); let sw = 0;
+      if (t > 66.85) {
+        const ca = sm((t - 66.95) / .6) * (1 - sm((t - 70.25) / .6)); let sw = 0;
         for (const st of STRIKE) { const d = t - st; if (d > -.18 && d < .5) sw = Math.max(sw, d < 0 ? 1 + d / .18 : 1 - d / .5); }
         g.save(); g.globalAlpha = ca; g.translate(820, 560); g.rotate(-.95 + .75 * sm(sw)); g.strokeStyle = '#6b4a28'; g.lineCap = 'round'; g.shadowColor = 'rgba(241,214,160,.8)'; g.shadowBlur = 14 * sc * D;
         g.lineWidth = 9; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-160, 150, -330, 330); g.stroke();
@@ -1858,14 +1920,14 @@ function playStory() {
       L.forEach((l, n) => { const la = al * (step ? sm((t - a - n * step) / .8) : 1); if (la <= 0) return; g.fillStyle = `rgba(234,220,190,${la})`; g.fillText(l, VW / 2, 190 + n * 94); });
       g.shadowBlur = 0;
     }
-    if (t > 44.45) {   // 맺음: 보는 사람의 이름으로
-      const a1 = sm((t - 44.85) / 1), a2 = sm((t - 45.85) / 1), a3 = sm((t - 46.75) / 1);
+    if (t > 74.6) {   // 맺음: 보는 사람의 이름으로
+      const a1 = sm((t - 75.0) / 1), a2 = sm((t - 76.0) / 1), a3 = sm((t - 76.9) / 1);
       const vg = g.createRadialGradient(VW / 2, VH * .45, 0, VW / 2, VH * .45, 700); vg.addColorStop(0, `rgba(4,5,16,${.7 * a1})`); vg.addColorStop(1, `rgba(4,5,16,${.2 * a1})`); g.fillStyle = vg; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
       g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 30 * sc * D;
       g.font = '700 150px "Gowun Batang", serif'; g.fillStyle = `rgba(241,214,160,${a1})`; g.fillText('서 천 꽃 밭', VW / 2, VH * .25);
       g.font = '400 56px "Gowun Batang", serif'; g.fillStyle = `rgba(234,220,190,${a2})`; endLines.forEach((l, n) => g.fillText(l, VW / 2, VH * .37 + n * 84));
       g.shadowBlur = 0;
-      SIX.forEach((m, k) => { const x = VW / 2 + (k - 2.5) * 166, y = VH * .62 + (k % 2 ? -26 : 14), b = c01((t - 45.45 - k * .3) / 1.8), got = warden || mythFound.has(m.id); glow(x, y, 120, rgb(m.glow), .3 * b * (got ? 1 : .35)); flower(m.P, x, y, 72, b, got ? 1 : .28, true, t + k); });
+      SIX.forEach((m, k) => { const x = VW / 2 + (k - 2.5) * 166, y = VH * .62 + (k % 2 ? -26 : 14), b = c01((t - 75.6 - k * .3) / 1.8), got = warden || mythFound.has(m.id); glow(x, y, 120, rgb(m.glow), .3 * b * (got ? 1 : .35)); flower(m.P, x, y, 72, b, got ? 1 : .28, true, t + k); });
       g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
       g.font = '400 30px "Gowun Batang", serif'; g.fillStyle = `rgba(164,171,198,${a3 * .85})`; g.fillText('제주 무가 「이공본풀이」 이야기', VW / 2, VH * .80);
       g.shadowBlur = 0;
@@ -1890,15 +1952,19 @@ function playStory() {
       e.gain.setValueAtTime(0, T0); e.gain.linearRampToValueAtTime(amp, T0 + 3); e.gain.setValueAtTime(amp, T0 + TEND - 3); e.gain.linearRampToValueAtTime(0, T0 + TEND);
       o.start(T0); o.stop(T0 + TEND + .1);
     }
-    for (const [at, k] of [[.6, 2], [4.2, 4], [5.6, 1], [6.2, 3], [11.0, 0], [12.1, 1], [13.2, 2], [14.8, 4], [18.3, 3], [22.6, 6], [24.6, 7], [25.4, 6], [28.0, 1]]) bell(at, P5[k], .35);
-    bell(19.6, P5[2], .5, 3.5); bell(19.62, P5[4], .4, 3.5); bell(19.64, P5[6], .3, 3.5);
+    for (const [at, k] of [[.6, 2], [4.2, 4], [5.6, 1], [6.6, 3], [7.0, 4], [7.4, 5], [7.8, 6], [8.6, 7], [10.9, 2], [16.0, 1], [20.0, 0], [23.2, 3], [24.2, 4], [27.2, 1], [30.4, 0], [33.6, 0], [34.5, 1], [35.4, 2], [37.8, 3], [41.5, 4], [41.8, 5], [45.0, 6], [46.2, 7], [47.0, 6], [51.5, 1], [54.8, 1]]) bell(at, P5[k], .35);
+    bell(12.6, 1200, .25, .25); bell(12.62, 900, .2, .3);   // 빗이 갈라지는 소리
+    bell(39.1, P5[2], .5, 3.5); bell(39.12, P5[4], .4, 3.5); bell(39.14, P5[6], .3, 3.5);   // 두 반쪽이 맞을 때
+    { const o = AC0.createOscillator(), e = AC0.createGain(); o.type = 'triangle'; o.frequency.value = 55; o.connect(e); e.connect(out);   // 이름을 부를 수 없는 꽃: 낮게 깔리는 울림
+      e.gain.setValueAtTime(0, T0 + 48.4); e.gain.linearRampToValueAtTime(.35, T0 + 49.6); e.gain.setValueAtTime(.35, T0 + 52.4); e.gain.linearRampToValueAtTime(0, T0 + 54.4); o.start(T0 + 48.4); o.stop(T0 + 54.5); }
     BLOOM.forEach((at, k) => bell(at, P5[[0, 2, 3, 4, 6][k]], .45, 3));
-    bell(43.05, P5[0], .45, 4); bell(43.1, P5[2], .38, 4); bell(43.15, P5[4], .38, 4); bell(43.55, P5[7], .25, 4);
-    [44.85, 45.85, 46.45, 47.05, 47.65, 48.25].forEach((at, k) => bell(at, P5[[4, 2, 3, 5, 6, 7][k]], .3, 3.5));
+    bell(69.85, P5[0], .45, 4); bell(69.9, P5[2], .38, 4); bell(69.95, P5[4], .38, 4); bell(70.35, P5[7], .25, 4);
+    bell(71.6, P5[3], .3, 3);
+    [75.0, 76.0, 76.6, 77.2, 77.8, 78.4].forEach((at, k) => bell(at, P5[[4, 2, 3, 5, 6, 7][k]], .3, 3.5));
     const nb = AC0.createBuffer(1, AC0.sampleRate * 2, AC0.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     const water = AC0.createBufferSource(), bp = AC0.createBiquadFilter(), wg = AC0.createGain(); water.buffer = nb; water.loop = true; bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = .8;
-    water.connect(bp); bp.connect(wg); wg.connect(out); wg.gain.setValueAtTime(0, T0 + 10.6); wg.gain.linearRampToValueAtTime(.12, T0 + 11.4); wg.gain.setValueAtTime(.12, T0 + 17.1); wg.gain.linearRampToValueAtTime(0, T0 + 17.9);
-    water.start(T0 + 10.6); water.stop(T0 + 18);
+    water.connect(bp); bp.connect(wg); wg.connect(out); wg.gain.setValueAtTime(0, T0 + 30.4); wg.gain.linearRampToValueAtTime(.12, T0 + 31.6); wg.gain.setValueAtTime(.12, T0 + 36.5); wg.gain.linearRampToValueAtTime(0, T0 + 37.6);
+    water.start(T0 + 30.4); water.stop(T0 + 37.7);
     for (const at of STRIKE) {   // 회초리
       const s = AC0.createBufferSource(), f = AC0.createBiquadFilter(), e = AC0.createGain(); s.buffer = nb; f.type = 'lowpass'; f.frequency.value = 1400; s.connect(f); f.connect(e); e.connect(out);
       e.gain.setValueAtTime(.5, T0 + at); e.gain.exponentialRampToValueAtTime(.001, T0 + at + .25); s.start(T0 + at); s.stop(T0 + at + .3);
