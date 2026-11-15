@@ -82,7 +82,7 @@ input[type=date]{color-scheme:dark}
 .primary{min-height:50px;border-radius:999px;border:0;cursor:pointer;margin-top:.25em;
   background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700;font-size:1.05em}
 .owner{color:var(--dim);font-size:.95em}
-#bReport{background:none;border:0;color:var(--faint);font-size:.82em;text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
+#bReport,#bLink{background:none;border:0;color:var(--faint);font-size:.82em;text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .traits{line-height:1.6}
@@ -201,7 +201,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.</p>
     </section>
     <section class="view off" id="vCard" aria-live="polite">
-      <div class="owner"><span id="cOwner"></span><button id="bReport" type="button" hidden>신고</button></div>
+      <div class="owner"><span id="cOwner"></span><button id="bReport" type="button" hidden>신고</button><button id="bLink" type="button" hidden aria-label="다른 기기에서 내 꽃 이어 가기">기기 잇기</button></div>
       <div class="fname" id="cName"></div>
       <div class="motto" id="cMotto"></div>
       <div class="swatch" id="cSw"></div>
@@ -1173,6 +1173,23 @@ let now = 0, user = null, friend = null, focus = null, lastInput = -99, opening 
 const $ = id => document.getElementById(id);
 const store = { get(k, d) { try { const v = localStorage.getItem('seocheon.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('seocheon.' + k, JSON.stringify(v)); } catch (e) { } } };
+/* 다른 기기에서 이어 가기: '기기 잇기'로 만든 주소(#k=…)를 열면 내 꽃·이름표 열쇠·찾은 신화 속 꽃을 이 기기로 가져온다.
+   열쇠는 주소의 # 뒤에만 실려 서버로 가지 않는다 */
+let linkedIn = false;
+(() => {
+  const m = /[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash); if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+  try {
+    const d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    if (!d || typeof d.n !== 'string' || !d.n.trim() || !/^[0-9a-z]{1,8}$/.test(d.s) || !/^[0-9a-f]{32,128}$/.test(d.t)) return;
+    const nm = d.n.trim().slice(0, 12), old = store.get('me', null);
+    if (old && old.n && old.s !== d.s && !confirm(`이 기기에 있던 '${old.n}'의 꽃 대신\n'${nm}'의 꽃을 이어 올까요?`)) return;
+    store.set('me', { n: nm, s: d.s, c: d.c > 0 && d.c < 14 ? d.c | 0 : 0, b: d.b ? 1 : 0, v: 2 }); store.set('tok', d.t); store.set('tag', null);
+    const mb = store.get('mythBy', {}), got = Array.isArray(d.m) ? d.m.filter(x => typeof x === 'string').slice(0, 5) : [];
+    mb[d.s] = [...new Set([...(mb[d.s] || []), ...got])]; store.set('mythBy', mb);
+    linkedIn = true;
+  } catch (e) { }
+})();
 const glowOf = P => P.glow || P.L[0].th;   // 꽃 둘레에 번지는 빛의 빛깔
 const cellOfSeed = s => [(mix(s, 0xA1B2) % 801) - 400, (mix(s, 0xC3D4) % 801) - 400];
 const keyOf = (i, j) => (i + 32768) * 65536 + (j + 32768);
@@ -1325,6 +1342,10 @@ async function syncMyTag() {
   try {
     const r = await rpc('my_tag', { p_token: tagToken() });
     myTag = r && r.seed != null ? { s: Number(r.seed) >>> 0, c: r.color | 0, slot: r.slot | 0 } : null; store.set('tag', myTag); placeUser();
+    if (myTag && user && myTag.s === user.seed && myTag.c !== user.color) {   // 다른 기기에서 빛깔을 바꿨으면 여기서도 따라간다
+      pickedColor = myTag.c; markPicker($('pickIntro'), pickedColor); setUser(user.name, user.seed);
+      if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
+    }
     if (focus && focus.kind === 'user') refreshTagUI();
   } catch (e) { }
 }
@@ -1603,6 +1624,7 @@ function showCard() {
   $('bPfp').hidden = !mine;
   $('bFar').classList.toggle('wide', !mine);
   $('bReport').hidden = k !== 'tag'; reportArmed = 0; $('bReport').textContent = '신고';
+  $('bLink').hidden = !mine;
   $('bTag').hidden = !mine; if (mine) { tagArmed = 0; refreshTagUI(); }
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
@@ -1693,6 +1715,17 @@ $('bFar').onclick = () => {
 $('bPair').onclick = () => pair ? exitPair() : enterPair();
 $('bSave').onclick = () => savePNG();
 $('bPfp').onclick = () => savePfp();
+// 기기 잇기: 내 꽃의 열쇠가 든 주소를 만들어 내 다른 기기로 보낸다
+$('bLink').onclick = async () => {
+  if (!user) return;
+  const d = { n: user.name, s: user.seed.toString(36), c: user.color, b: user.hasBirth ? 1 : 0, t: tagToken(), m: [...mythFound] };
+  const u = new URL(location.href); u.search = ''; u.hash = 'k=' + btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const url = u.toString(), note = '이 주소를 내 다른 기기에서 열면 내 꽃이 이어져요. 남에게는 보내지 마세요';
+  if (navigator.share && matchMedia('(pointer:coarse)').matches) {
+    try { await navigator.share({ title: '서천꽃밭 · 내 꽃 잇기', text: '내 다른 기기에서만 여는 주소', url }); toast(note, 6000); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast('주소를 복사했어요. ' + note, 7000); } catch (e) { prompt('이 주소를 내 다른 기기에서 여세요 (남에게는 보내지 마세요)', url); }
+};
 $('bShare').onclick = async () => {
   if (!user) return;
   const url = shareURL(), D = describe(user.P);
@@ -2387,7 +2420,7 @@ whenSized(function start() {
   if (anim && anim.startLate) anim.t0 = 1e9;   // 인트로가 끝날 때까지 첫 장면을 멈춰 둔다
   const seen = store.get('introSeen', false), today = new Date().toDateString();
   const mode = friend ? 'friend' : !seen ? 'first' : user && store.get('introDay', '') !== today ? 'back' : null;
-  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
+  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (linkedIn && user) setTimeout(() => { goMine(); toast('이 기기에서도 내 꽃을 이어 가요', 4600); }, 700); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
   store.set('introDay', today);
   if (mode) runIntro(mode, started); else { $('intro').remove(); started(); }
   requestAnimationFrame(ms => frame(ms));
