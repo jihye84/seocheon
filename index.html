@@ -145,8 +145,10 @@ body.narrow .note{display:none}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:.8em;text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
-#replayBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--faint);cursor:pointer;padding:11px 0 11px 14px;margin:-6px 0 -11px auto;display:block;text-decoration:underline;text-underline-offset:3px}
-#replayBtn:hover{color:var(--gold)}
+#hudLinks{display:flex;justify-content:flex-end;margin:-6px 0 -11px}
+#hudLinks button{pointer-events:auto;background:none;border:0;font:inherit;color:var(--faint);cursor:pointer;padding:11px 0 11px 14px;text-decoration:underline;text-underline-offset:3px}
+#hudLinks #tourBtn{color:var(--dim)}
+#hudLinks button:hover{color:var(--gold)}
 #mythBtn:hover{color:var(--gold)} #mythBtn.done{color:var(--gold)}
 #guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
   font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
@@ -259,7 +261,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
-<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div>
+<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
 <div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
@@ -1600,24 +1602,33 @@ function inviteMyth(delay) {
   inviteT = setTimeout(() => {
     if (!user || user.seed.toString(36) !== key || mythFound.size === MYTHS.length || (guideM && now < guideUntil) || albumOn || pair || tourOn || $('stats').classList.contains('on')) return;
     store.set('invited', [...store.get('invited', []), key].slice(-30));
-    const left = MYTHS.length - mythFound.size, T = $('inviteText'), el = $('invite'); T.replaceChildren();
-    const lines = left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 다섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']];
-    lines.forEach((l, k) => { if (k) T.append(document.createElement('br')); if (Array.isArray(l)) { const b = document.createElement('b'); b.textContent = l[0]; T.append(b, l[1]); } else T.append(l); });
-    const r = $('mythBtn').getBoundingClientRect(), below = r.top < innerHeight / 2;   // 길잡이 단추 바로 곁에
-    el.style.top = below ? Math.round(r.bottom + 10) + 'px' : ''; el.style.bottom = below ? '' : Math.round(innerHeight - r.top + 10) + 'px'; el.style.right = Math.max(10, Math.round(innerWidth - r.right)) + 'px';
-    el.classList.add('on'); $('mythBtn').classList.add('tip');
-    clearTimeout(inviteOffT); inviteOffT = setTimeout(hideInvite, 30000);
+    const left = MYTHS.length - mythFound.size;
+    showInvite(left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 다섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']]);
   }, delay);
 }
+let inviteAct = null;
+const goGuide = () => { if (!wide) setSheet(false); $('mythBtn').click(); };
+// 길잡이 단추 곁 말풍선: lines의 [굵은 말, 이어지는 말]은 금빛으로
+function showInvite(lines, goLabel = '찾으러 가기', act = goGuide) {
+  const T = $('inviteText'), el = $('invite'); T.replaceChildren();
+  lines.forEach((l, k) => { if (k) T.append(document.createElement('br')); if (Array.isArray(l)) { const b = document.createElement('b'); b.textContent = l[0]; T.append(b, l[1]); } else T.append(l); });
+  $('inviteGo').textContent = goLabel; inviteAct = act;
+  const r = $('mythBtn').getBoundingClientRect(), below = r.top < innerHeight / 2;
+  el.style.top = below ? Math.round(r.bottom + 10) + 'px' : ''; el.style.bottom = below ? '' : Math.round(innerHeight - r.top + 10) + 'px'; el.style.right = Math.max(10, Math.round(innerWidth - r.right)) + 'px';
+  el.classList.add('on'); $('mythBtn').classList.add('tip');
+  clearTimeout(inviteOffT); inviteOffT = setTimeout(hideInvite, 30000);
+}
 $('inviteNo').onclick = hideInvite;
-$('inviteGo').onclick = () => { hideInvite(); if (!wide) setSheet(false); $('mythBtn').click(); };
+$('inviteGo').onclick = () => { hideInvite(); (inviteAct || goGuide)(); };
 addEventListener('resize', hideInvite);
 
 /* ---------- 꽃감관의 권한 ①: 꽃 감상 ----------
    화면보호기처럼 꽃밭을 저절로 옮겨 다니며, 닿는 꽃마다 봉오리에서 피어나는 모습을 보여 준다. 화면을 누르면 멈춘다 */
-let tourNext = 0, tourLock = null;
+let tourNext = 0, tourLock = null, tourLeft = Infinity;   // 꽃감관이 아니면 맛보기로 다섯 송이
 function tourGo() {
   if (!tourOn) return;
+  if (tourLeft <= 0) { endTaste(); return; }
+  tourLeft--;
   const prev = tourSp; tourPrev = tourSp; tourSp = null;   // 떠나는 꽃은 화면 밖으로 나갈 때까지 핀 모습 그대로 둔다
   const tags = [...tagSp.values()], useTag = tags.length && Math.random() < .3;
   let sp;
@@ -1654,12 +1665,22 @@ function tourTick() {
   if (!tourCapOn && sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > 3.2) { tourCapOn = true; tourCaption(sp); }   // 자막은 꽃이 반쯤 벌어졌을 때
   if (now > tourNext || (sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > (RM ? 7 : 12.5))) tourGo();
 }
+function endTaste() {
+  stopTour();
+  const found = mythFound.size, rest = MYTHS.length - found;
+  setTimeout(() => {
+    if (!user) showInvite(['맛보기 감상이 끝났어요.', '내 꽃을 찾고', ['신화 속 꽃 다섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.'], '내 꽃 찾기', () => showIntro());
+    else showInvite(['맛보기 감상이 끝났어요.', found ? ['신화 속 꽃', ` ${rest}송이를 마저 찾아`] : ['신화 속 꽃 다섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.']);
+  }, 1400);
+}
 function startTour() {
   if (tourOn) return;
+  hideInvite();
+  tourLeft = isWarden(user) ? Infinity : 5;
   tourOn = true; document.body.classList.add('tour'); if (pair) exitPair(); guideUntil = 0;
   measureStage(); audio();
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; if (!tourOn) l.release(); }).catch(() => { }); } catch (e) { }
-  toast('꽃 감상을 시작해요 · 화면을 누르면 멈춰요', 3600);
+  toast(tourLeft < Infinity ? '맛보기로 꽃 다섯 송이를 보여 드려요 · 화면을 누르면 멈춰요' : '꽃 감상을 시작해요 · 화면을 누르면 멈춰요', 3800);
   tourGo();
 }
 function stopTour() {
@@ -1674,6 +1695,7 @@ addEventListener('pointerdown', e => { if (tourOn) { e.stopPropagation(); e.prev
 addEventListener('keydown', e => { if (tourOn) { e.stopPropagation(); stopTour(); } }, true);
 document.addEventListener('visibilitychange', () => { if (tourOn && !document.hidden && !tourLock) { try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; }).catch(() => { }); } catch (e) { } } else if (document.hidden) tourLock = null; });
 $('albumTour').onclick = () => { closeAlbum(); startTour(); };
+$('tourBtn').onclick = () => { if (albumOn) closeAlbum(); if (!wide && !panel.classList.contains('collapsed') && !$('intro')) setSheet(false); startTour(); };
 
 /* ---------- 꽃감관의 권한 ②: 꽃밭 통계 ---------- */
 $('albumStats').onclick = async () => {
