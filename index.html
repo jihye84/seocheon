@@ -1471,7 +1471,7 @@ $('bTag').onclick = async () => {
   refreshTagUI();
   if (ok && user.slot) toast('같은 꽃을 가진 분이 먼저 자리를 잡아, 바로 곁 여분 자리에 피었어요', 5200);
   else if (ok) { toast('이름표를 달았어요'); sameFlowerNote(); }
-  if (ok) inviteMyth(7200);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다
+  if (ok) inviteMyth(7200);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다 (오늘 아직 안 보였으면)
 };
 // 남의 이름표 신고: 두 번 눌러야 들어간다. 신고한 이름표는 이 기기에서 바로 가린다
 $('bReport').onclick = async () => {
@@ -1625,11 +1625,13 @@ function hideInvite() { clearTimeout(inviteOffT); $('invite').classList.remove('
 function inviteMyth(delay) {
   clearTimeout(inviteT);
   if (!user || mythFound.size === MYTHS.length) return;
-  const key = user.seed.toString(36);
-  if (store.get('invited', []).includes(key)) return;
+  const key = user.seed.toString(36), day = new Date().toDateString(), seen = () => store.get('invitedOn', {});
+  if (seen()[key] === day) return;   // 꽃마다 하루에 한 번
   inviteT = setTimeout(() => {
-    if (!user || user.seed.toString(36) !== key || mythFound.size === MYTHS.length || (guideM && now < guideUntil) || albumOn || pair || tourOn || $('stats').classList.contains('on')) return;
-    store.set('invited', [...store.get('invited', []), key].slice(-30));
+    if (!user || user.seed.toString(36) !== key || mythFound.size === MYTHS.length || albumOn || pair || tourOn || $('stats').classList.contains('on') || $('intro')) return;
+    if ((guideM && now < guideUntil) || (focus && focus.kind === 'myth')) { inviteMyth(20000); return; }   // 이미 찾아 나섰으면 조금 뒤에 다시 살핀다
+    if (anim || now - lastInput < 2.5) { inviteMyth(3000); return; }   // 꽃으로 날아가는 중이거나 막 만지는 중이면 잠깐 기다린다
+    const m = seen(); m[key] = day; for (const k of Object.keys(m)) if (m[k] !== day) delete m[k]; store.set('invitedOn', m);
     const left = MYTHS.length - mythFound.size;
     showInvite(left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 여섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']]);
   }, delay);
@@ -1871,7 +1873,7 @@ $('f').addEventListener('submit', async e => {
   const newWarden = !user && mythFound.size === MYTHS.length;
   friendFirst = false;
   setUser(name, seed, !!birth);
-  inviteMyth(70000);   // 이름표를 달지 않고 한참 머물러도 한 번 알려 준다
+  inviteMyth(11000);   // 내 꽃이 다 피어난 뒤, 신화 속 꽃으로 이끈다 (하루에 한 번)
   loadTaken();
   if (newWarden) setTimeout(() => toast(`꽃감관 ${name}님, 화첩과 합동 사진에 이름을 새겼어요`, 4600), 8200);
   $('inName').blur(); $('inBirth').blur();
@@ -2653,7 +2655,7 @@ whenSized(function start() {
   if (anim && anim.startLate) anim.t0 = 1e9;   // 인트로가 끝날 때까지 첫 장면을 멈춰 둔다
   const seen = store.get('introSeen', false), today = new Date().toDateString();
   const mode = friend ? 'friend' : !seen ? 'first' : user && store.get('introDay', '') !== today ? 'back' : null;
-  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (linkedIn && user) setTimeout(() => { goMine(); toast('이 기기에서도 내 꽃을 이어 가요', 4600); }, 700); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
+  const started = () => { if (anim && anim.startLate) anim.t0 = now + .4; afterIntro && afterIntro(); if (user && !linkedIn) inviteMyth(14000); /* 다시 온 이에게도 하루에 한 번 */ if (linkedIn && user) setTimeout(() => { goMine(); toast('이 기기에서도 내 꽃을 이어 가요', 4600); }, 700); if (refind) setTimeout(() => { showIntro(); toast('꽃밭을 새로 가꾸었어요. 생일을 한 번 더 적어 주세요', 5200); }, 900); };
   store.set('introDay', today);
   if (mode) runIntro(mode, started); else { $('intro').remove(); started(); }
   requestAnimationFrame(ms => frame(ms));
