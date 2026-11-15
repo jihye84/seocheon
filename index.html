@@ -186,13 +186,7 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
 #tourCap i{display:block;font-style:normal;color:var(--dim);font-size:.92em}
 #tourCap small{display:block;margin-top:.7em;color:var(--faint);font-size:.76em}
 #stats{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-#stats.on,#homeTip.on{display:flex}
-#homeTip{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-#homeTip > div{width:min(90vw,23em);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 18px;line-height:1.7}
-#homeTip h2{margin:0 0 .6em;color:var(--gold);font-size:1.15em;letter-spacing:.08em}
-#homeTip ol{margin:0 0 .8em;padding-left:1.3em} #homeTip li{margin:.25em 0} #homeTip b{color:var(--gold)}
-#homeTip p{margin:0 0 1em;color:var(--faint);font-size:.86em;white-space:pre-line}
-#homeTip button{display:block;margin:0 auto;min-height:42px;padding:0 26px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);cursor:pointer}
+#stats.on{display:flex}
 #statsBox{width:min(92vw,25em);max-height:94vh;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:clamp(14px,2.6vh,24px) clamp(16px,4vw,26px);font-size:clamp(.78em,2.2vh,1em)}
 #statsBox h2{margin:0 0 .5em;color:var(--gold);font-size:1.3em;letter-spacing:.14em}
 #statsBox dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:.34em 1em;line-height:1.4}
@@ -287,11 +281,6 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="toast"></div>
 <div id="invite" role="status"><p id="inviteText"></p><div><button id="inviteGo" type="button">찾으러 가기</button><button id="inviteNo" type="button">나중에</button></div></div>
 <div id="tourCap" aria-live="off"></div>
-<div id="homeTip" role="dialog" aria-label="아이폰에서 전체 화면으로 보기"><div><h2>아이폰에서 전체 화면으로</h2><ol>
-<li>사파리 아래쪽 <b>공유 단추</b>를 누르고</li>
-<li><b>홈 화면에 추가</b>를 고른 뒤</li>
-<li>바탕화면의 <b>서천꽃밭</b> 아이콘으로 여세요.</li></ol>
-<p id="homeTipNote">주소창 없이 화면 가득 꽃밭이 열려요.</p><button id="homeTipClose" type="button">알겠어요</button></div></div>
 <div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
 
 <script>
@@ -1980,25 +1969,7 @@ addEventListener('keydown', audio, { once: true });
   const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen, b = $('fsBtn');
   const homeApp = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
   if (homeApp) return;   // 홈 화면 아이콘으로 열었으면 이미 화면 가득
-  if (!req) {
-    if (!/iPhone|iPod/.test(navigator.userAgent)) return;
-    // 아이폰: 웹 페이지 전체 화면이 없어, 홈 화면에 추가하는 법을 알려 준다
-    b.hidden = false;
-    let clean = 0;
-    b.onclick = e => {
-      e.stopPropagation();
-      if (user) {   // 홈 화면 아이콘은 사파리와 저장소가 따로라, 그 주소에 내 꽃을 실어 둔다 (잠깐만)
-        try { history.replaceState(null, '', location.pathname + location.search + '#k=' + linkKey()); } catch (err) { }
-        clearTimeout(clean); clean = setTimeout(dropKey, 180000);
-      }
-      $('homeTipNote').textContent = user ? '주소창 없이 화면 가득 꽃밭이 열리고,\n내 꽃도 함께 옮겨 가요.' : '주소창 없이\n화면 가득 꽃밭이 열려요.';
-      $('homeTip').classList.add('on');
-    };
-    const dropKey = () => { if (/#k=/.test(location.hash)) try { history.replaceState(null, '', location.pathname + location.search); } catch (err) { } };
-    $('homeTipClose').onclick = () => $('homeTip').classList.remove('on');
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(dropKey, 1500); });
-    return;
-  }
+  if (!req) return;   // 아이폰은 웹 페이지 전체 화면을 지원하지 않아 단추를 두지 않는다
   const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
   const upd = () => { b.querySelector('.ic').textContent = isFs() ? '✕' : '⛶'; b.querySelector('.lab').textContent = isFs() ? ' 전체 화면 끝내기' : ' 전체 화면'; b.setAttribute('aria-label', isFs() ? '전체 화면 끝내기' : '전체 화면'); };
   b.hidden = false; upd();
