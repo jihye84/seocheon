@@ -38,6 +38,8 @@
 <title>서천꽃밭</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="theme-color" content="#04050f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1980,6 +1982,8 @@ addEventListener('keydown', audio, { once: true });
   };
   document.addEventListener('fullscreenchange', upd); document.addEventListener('webkitfullscreenchange', upd);
 })();
+// 홈 화면에 추가해 앱처럼 열 수 있게 (안드로이드 크롬 등)
+if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 function updSnd() { $('snd').textContent = soundOn ? '♪ 소리 켜짐' : '♪ 소리 꺼짐'; $('snd').classList.toggle('off', !soundOn); }
 $('snd').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); updSnd(); if (soundOn) { audio(); if (focus) playMelody(focusP(), .8); } };
 updSnd();
