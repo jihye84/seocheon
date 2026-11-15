@@ -148,6 +148,8 @@ body.narrow .note{display:none}
 #albumBar{position:absolute;left:0;right:0;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:.6em;justify-content:center;padding:0 16px}
 #albumBar button{min-height:46px;padding:0 20px;border-radius:14px;border:1px solid var(--line);background:rgba(20,24,52,.82);color:var(--ink);font:inherit;cursor:pointer}
 #albumBar button:hover{background:rgba(40,46,90,.9)}
+#albumBar{flex-wrap:wrap} #albumBar #albumName{border-color:var(--gold);color:var(--gold)}
+@media (max-width:480px){#albumBar button{padding:0 13px;min-height:42px;font-size:.92em}}
 #guide i{display:block;width:0;height:0;margin:0 auto 8px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:30px solid var(--gold);
   filter:drop-shadow(0 0 8px rgba(241,214,160,.7))}
 body.narrow #hud{top:max(12px,env(safe-area-inset-top));bottom:auto}
@@ -218,7 +220,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
@@ -1418,6 +1420,7 @@ function drawAlbum(g, w, h, t, forPhoto) {
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   g.fillStyle = '#a4abc6'; g.font = `400 ${Math.max(13, 30 * u)}px "Gowun Batang", serif`; g.fillText('제주 무가 「이공본풀이」', w / 2, h * .075);
   g.fillStyle = '#f1d6a0'; g.font = `700 ${Math.max(20, 54 * u)}px "Gowun Batang", serif`; g.fillText('서천꽃밭의 신화 속 꽃', w / 2, h * .075 + Math.max(28, 70 * u));
+  if (!forPhoto) { g.fillStyle = '#c9c2b0'; g.font = `400 ${Math.max(12, 26 * u)}px "Gowun Batang", serif`; g.fillText(user ? `꽃감관 ${user.name}의 화첩` : '이름 없는 꽃감관의 화첩', w / 2, h * .075 + Math.max(28, 70 * u) + Math.max(20, 42 * u)); }
   ALBUM_ORDER.forEach((id, k) => {
     const m = MYTHS.find(q => q.id === id), [x, y, R] = L[k], sway = forPhoto ? 0 : .04 * Math.sin(t * .6 + k * 1.7);
     g.save(); g.translate(x, y); g.rotate(sway); g.translate(-x, -y); pngFlower(g, m.P, x, y, R, m.glow); g.restore();
@@ -1436,6 +1439,7 @@ let albumOn = false, albumBg = null;
 function openAlbum() {
   const box = $('album'), cv = $('albumCv');
   albumOn = true; box.classList.add('on'); box.setAttribute('aria-hidden', 'false'); albumBg = null;
+  $('albumName').hidden = !!user;   // 아직 이름이 없는 꽃감관: 내 꽃을 찾으면 화첩과 사진에 이름이 들어간다
   (function tick() {
     if (!albumOn) return;
     const dpr = Math.min(devicePixelRatio || 1, 2), w = innerWidth, h = innerHeight;
@@ -1451,6 +1455,7 @@ function openAlbum() {
 }
 function closeAlbum() { albumOn = false; $('album').classList.remove('on'); $('album').setAttribute('aria-hidden', 'true'); }
 $('albumClose').onclick = closeAlbum;
+$('albumName').onclick = () => { closeAlbum(); showIntro(); toast('내 꽃을 찾으면 꽃감관의 이름이 새겨져요', 3600); };
 addEventListener('keydown', e => { if (albumOn && e.key === 'Escape') closeAlbum(); });
 $('albumCv').onclick = e => {       // 꽃을 누르면 꽃밭의 그 꽃으로 간다
   const L = albumLayout(innerWidth, innerHeight);
@@ -1489,7 +1494,7 @@ function focusCell(i, j, opts = {}) {
         if (mythFound.size === MYTHS.length) {   // 다섯 송이를 모두 찾으면 꽃감관이 된다
           setTimeout(() => toast('신화 속 꽃 다섯 송이를 모두 찾았어요', 3600), 900);
           setTimeout(() => toast(user ? `${user.name}님은 이제 서천꽃밭의 꽃감관이에요` : '당신은 이제 서천꽃밭의 꽃감관이에요', 4600), 4800);
-          setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 그 둘레에 신화 속 꽃의 빛이 돌아요', 4200), 9800);
+          setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 꽃감관의 이름이 새겨지고, 꽃 둘레에 빛이 돌아요', 4600), 9800);
           setTimeout(() => toast("'꽃감관 · 신화 속 꽃 5/5'를 누르면 다섯 송이를 언제든 볼 수 있어요", 5200), 14600);
         } else setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
       }
@@ -1548,8 +1553,10 @@ $('f').addEventListener('submit', e => {
     if (!ok) { toast('생일을 숫자 8자리로 적어 주세요 (예: 19840315)'); $('inBirth').focus(); return; }
     birth = `${bd.slice(0, 4)}-${bd.slice(4, 6)}-${bd.slice(6, 8)}`;   // 예전 날짜 입력칸과 같은 꽃이 나오도록 같은 형식
   }
+  const newWarden = !user && mythFound.size === MYTHS.length;
   setUser(name, strHash(name.normalize('NFC') + '|' + birth), !!birth);
   loadTaken();
+  if (newWarden) setTimeout(() => toast(`꽃감관 ${name}님, 화첩과 합동 사진에 이름을 새겼어요`, 4600), 8200);
   $('inName').blur(); $('inBirth').blur();
   hideHint();
   goMine();
