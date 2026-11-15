@@ -130,7 +130,7 @@ body.narrow .note{display:none}
 @media (max-height:560px){
   .lead,.note{display:none}
   .pbody{margin-top:.5em} .view{gap:.45em} form{gap:.4em}
-  .colors{grid-template-columns:repeat(13,1fr);gap:3px} .colors button{width:min(26px,100%)}
+  .colors{grid-template-columns:repeat(14,1fr);gap:3px} .colors button{width:min(26px,100%)}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
   .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:.88em;line-height:1.45}
 }
@@ -373,6 +373,7 @@ function gen(seed, hue, palO, force) {
     case 3: tip = [h, 45 + r() * 25, 78 + r() * 8]; base = [h + (r() - .5) * 30, 50 + r() * 20, 68 + r() * 8]; break;
     case 4: tip = [h, 65 + r() * 25, 38 + r() * 12]; base = [h + (r() - .5) * 20, 70, 22 + r() * 10]; break;
     case 7: tip = [h, 62 + r() * 12, 27 + r() * 7]; base = [h - 6 + (r() - .5) * 8, 72, 14 + r() * 5]; break;   // 진한 빛깔(진자주)
+    case 8: tip = [h, 10 + r() * 6, 15 + r() * 4]; base = [h, 14, 5 + r() * 3]; P.glow = [228, 30, 66]; break;   // 검정: 밤하늘에 묻히지 않게 둘레 빛은 은빛
     case 6: tip = [0, 0, 97 + r() * 3 + r() * 0]; base = [0, 0, 84 + r() * 5 + r() * 0]; break;
     default: tip = [h, 10 + r() * 15, 92 + r() * 5]; base = [h, 35 + r() * 30, 76 + r() * 8];
   }
@@ -384,6 +385,7 @@ function gen(seed, hue, palO, force) {
   let lHue = (r() - .5) * 36, lL = (r() < .5 ? -1 : 1) * (4 + r() * 9);
   if (force.flat) { lHue *= .15; lL = Math.abs(lL) * .6; }
   if (P.many && !P.many.grad) { lHue *= .15; lL *= .3; }
+  if (P.pal === 8) { lHue = 0; lL = Math.min(2 + Math.abs(lL) * .45, 11 / Math.max(1, P.layers - 1)); }   // 검은 꽃: 안쪽 겹일수록 조금씩 밝아져 꽃잎이 구별되게
   P.L = [];
   for (let k = 0; k < P.layers; k++) {
     const len = Math.max(.32, 1 - k * step * (count >= 12 ? 1.2 : 1));
@@ -513,6 +515,7 @@ function bh0(b) { return b[0]; }
 function colorWord(hsl) {
   const [h0, s, l] = hsl, h = ((h0 % 360) + 360) % 360;
   if (s === 0) return '순백';
+  if (l < 24 && s < 30) return '검은빛';
   if (s < 30 && l >= 86) return '눈빛';
   if (l >= 77) {
     if (h < 20 || h >= 330) return '연분홍빛'; if (h < 45) return '살구빛'; if (h < 70) return '연노랑빛';
@@ -1163,6 +1166,7 @@ let now = 0, user = null, friend = null, focus = null, lastInput = -99, opening 
 const $ = id => document.getElementById(id);
 const store = { get(k, d) { try { const v = localStorage.getItem('seocheon.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('seocheon.' + k, JSON.stringify(v)); } catch (e) { } } };
+const glowOf = P => P.glow || P.L[0].th;   // 꽃 둘레에 번지는 빛의 빛깔
 const cellOfSeed = s => [(mix(s, 0xA1B2) % 801) - 400, (mix(s, 0xC3D4) % 801) - 400];
 const keyOf = (i, j) => (i + 32768) * 65536 + (j + 32768);
 const focusPPU = size => Math.min(stg.w, stg.h) * .74 / size;
@@ -1209,10 +1213,13 @@ function focusP() { return focus.sp ? focus.sp.P : cellP(focus.i, focus.j, focus
 /* 고를 수 있는 꽃 빛깔 — 모양은 그대로, 빛깔만 바뀐다 */
 const COLORS = [
   { n: '꽃밭에 맡기기' }, { n: '빨강', h: 355 }, { n: '주황', h: 24 }, { n: '노랑', h: 50 }, { n: '초록', h: 125 }, { n: '하늘', h: 198 },
-  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰빛', white: true }, { n: '순백', pure: true }, { n: '진자주', h: 302, deep: true }];
+  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰빛', white: true }, { n: '순백', pure: true }, { n: '진자주', h: 302, deep: true }, { n: '검정', black: true }];
+// 고르기 칸에 놓는 차례(번호는 저장된 꽃·링크와 맞물려 있어 그대로 둔다): 무지개 차례로 돌고, 자줏빛에서 분홍·흰빛을 지나 검정으로
+const COLOR_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 12, 8, 9, 10, 11, 13];
 let pickedColor = 0;
 function swatchBg(c) {
   if (c.pure) return 'radial-gradient(circle at 35% 35%,#fff,#d9d9d9)';
+  if (c.black) return 'radial-gradient(circle at 35% 35%,#5a5a68,#0b0b10 70%)';
   if (c.deep) return `radial-gradient(circle at 35% 35%,${hsla(c.h, 70, 46)},${hsla(c.h, 78, 24)})`;
   if (c.white) return 'radial-gradient(circle at 35% 35%,#fff,#f0dfe8)';
   if (c.h == null) return 'linear-gradient(135deg,#f06a8a,#f4b35c,#f2e27a,#6fd0e8,#8a7cf0,#d77ae0)';
@@ -1220,16 +1227,17 @@ function swatchBg(c) {
 }
 function buildPicker(el, nameEl, onPick) {
   el.innerHTML = '';
-  COLORS.forEach((c, k) => {
-    const b = document.createElement('button'); b.type = 'button'; b.title = c.n; b.setAttribute('aria-label', c.n);
+  COLOR_ORDER.forEach(k => {
+    const c = COLORS[k], b = document.createElement('button'); b.type = 'button'; b.title = c.n; b.setAttribute('aria-label', c.n); b.dataset.k = k;
     b.style.background = swatchBg(c); b.onclick = () => onPick(k); el.appendChild(b);
   });
   el._name = nameEl;
 }
-function markPicker(el, k) { [...el.children].forEach((b, i) => b.setAttribute('aria-pressed', i === k)); el._name.textContent = COLORS[k].n; }
+function markPicker(el, k) { [...el.children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.k === k)); el._name.textContent = COLORS[k].n; }
 function userP(seed, ck) {
   const c = COLORS[ck] || COLORS[0];
   if (c.pure) return gen(seed, 0, 6);   // 순백: 다른 빛이 하나도 섞이지 않은 흰 꽃
+  if (c.black) return gen(seed, 250, 8);   // 검정: 밤빛이 살짝 도는 검은 꽃
   if (!c.white && c.h == null) {
     const h = hueOf(seed);   // 맡기기: 풀빛 꽃잎은 피한다
     return h > 75 && h < 160 ? gen(seed, (h + 120) % 360, palOf(seed)) : gen(seed);
@@ -1280,7 +1288,7 @@ let takenSet = new Set(), takenFor = null, tagArmed = 0, tagBusy = false;
 function refreshTagUI() {
   const b = $('bTag'); if (!user) return;
   b.textContent = tagArmed ? '한 번 더 누르면 달아요' : myTag && myTag.s === user.seed ? '이름표 떼기' : myTag ? '이름표 옮겨 달기' : '이름표 달기';
-  [...$('pickCard').children].forEach((el, k) => el.classList.toggle('taken', takenSet.has(k)));
+  [...$('pickCard').children].forEach(el => el.classList.toggle('taken', takenSet.has(+el.dataset.k)));
 }
 // 생일까지 적은 사람끼리는 같은 꽃에 같은 빛깔을 겹쳐 고를 수 없다: 이미 고른 빛깔을 받아 온다
 async function loadTaken() {
@@ -1859,7 +1867,7 @@ function drawSpecial(sp, t) {
   if (winds.length) { const w = windAt(wx, wy); wr = w[0] * .6; wx += w[1] * .5; wy += w[2] * .5; }
   const [sx, sy] = screenOf(wx, wy), R = ppu * sp.size / 2;
   if (sx < -R * 3 || sy < -R * 3 || sx > W + R * 3 || sy > H + R * 3) return;
-  const P = sp.P, th = sp.kind === 'myth' ? sp.glow : P.L[0].th;
+  const P = sp.P, th = sp.kind === 'myth' ? sp.glow : glowOf(P);
   if (R > 2) {
     const gNow = bloomOf(sp, t), pulse = (sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22) * (.3 + .7 * gNow);
     const halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * (sp.kind === 'myth' ? 2.4 : 1.9));
@@ -1947,7 +1955,7 @@ function drawPair(t) {
   ctx.fillStyle = `rgba(3,4,12,${.84 * a})`; ctx.fillRect(0, 0, W, H);
   const R = Math.min(stg.w / 5.2, stg.h / 3.6), cy = stg.y - R * .2, fs = Math.max(13, Math.min(28, R * .17));
   [friend, user].forEach((sp, k) => {
-    const cx = stg.x + (k ? 1 : -1) * R * 1.28, th = sp.P.L[0].th;
+    const cx = stg.x + (k ? 1 : -1) * R * 1.28, th = glowOf(sp.P);
     ctx.globalAlpha = a;
     const halo = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.8);
     halo.addColorStop(0, hsla(th[0], th[1], th[2], .2)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
@@ -2094,7 +2102,7 @@ async function savePNG() {
     g.fillStyle = '#a4abc6'; g.font = '400 34px "Gowun Batang", serif'; g.fillText('서천꽃밭에 나란히 핀 두 송이', 540, 150);
     [friend, user].forEach((sp, k) => {
       const x = k ? 790 : 290, D = describe(sp.P);
-      pngFlower(g, sp.P, x, 560, 205, sp.P.L[0].th);
+      pngFlower(g, sp.P, x, 560, 205, glowOf(sp.P));
       g.fillStyle = '#a4abc6'; g.font = '400 32px "Gowun Batang", serif'; g.fillText(`${sp.name}의 꽃`, x, 870);
       g.fillStyle = '#f1d6a0'; g.font = '700 32px "Gowun Batang", serif'; g.fillText(D.name, x, 925);
       g.fillStyle = '#eadcbe'; g.font = '400 25px "Gowun Batang", serif';
@@ -2105,7 +2113,7 @@ async function savePNG() {
   }
   const k = focus.kind, sp = focus.sp, P = focusP(), D = describe(P);
   pngBase(g, 1080, 1350, P.seed, P.hue);
-  pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : P.L[0].th);
+  pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : glowOf(P));
   g.fillStyle = '#a4abc6'; g.font = '400 36px "Gowun Batang", serif';
   g.fillText(k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${k === 'user' && mythFound.size === MYTHS.length ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
   g.fillStyle = '#f1d6a0'; g.font = '700 62px "Gowun Batang", serif'; g.fillText(k === 'myth' ? sp.name : D.name, 540, 1075);
@@ -2123,7 +2131,7 @@ async function savePfp() {
   const S = 1080, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
   const P = user.P;
   pngBase(g, S, S, P.seed, P.hue);
-  pngFlower(g, P, S / 2, S / 2, S * .5 * .92 / 1.34, P.L[0].th);   // 잎 끝까지 원(지름 S) 안에 들어오게
+  pngFlower(g, P, S / 2, S / 2, S * .5 * .92 / 1.34, glowOf(P));   // 잎 끝까지 원(지름 S) 안에 들어오게
   g.textAlign = 'right'; g.textBaseline = 'alphabetic';
   g.fillStyle = 'rgba(164,171,198,.55)'; g.font = '400 26px "Gowun Batang", serif';
   g.fillText('서천꽃밭', S - 34, S - 34);
@@ -2212,7 +2220,7 @@ function runIntro(mode, onEnd) {
     }
     const b = bloom(center, t);
     if (b > 0) {
-      const th = center.P.L[0].th, hg = g.createRadialGradient(cx, cy, R0 * .2, cx, cy, R0 * 2);
+      const th = glowOf(center.P), hg = g.createRadialGradient(cx, cy, R0 * .2, cx, cy, R0 * 2);
       hg.addColorStop(0, hsla(th[0], th[1], th[2], .22 * b)); hg.addColorStop(1, hsla(th[0], th[1], th[2], 0));
       g.fillStyle = hg; g.beginPath(); g.arc(cx, cy, R0 * 2, 0, TAU); g.fill();
       g.save(); g.translate(cx, cy); g.rotate(center.P.rot0 + drift); drawFlower(g, center.P, R0, { g: b, px: R0 * dpr, dew: true }); g.restore();
