@@ -1776,11 +1776,11 @@ function playStory() {
     p.quadraticCurveTo(cx + r * .9, eY + 4 * k, cx + r * .62, eY + 8 * k); p.lineTo(cx - r * .62, eY + 8 * k); p.quadraticCurveTo(cx - r * .9, eY + 4 * k, cx - r - tip, eY - 40 * k);
     p.closePath(); return p;
   }
-  function house(cx, base, w, a, t, mad = 0, out = 0) {
+  function house(cx, base, w, a, t, mad = 0, out = 0, noYard = false) {
     if (a <= 0) return;
     const G = hgeo(cx, base, w), k = G.k, D0 = '#05060f';
     g.save(); g.globalAlpha = a; g.fillStyle = D0;
-    g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);                        // 마당
+    if (!noYard) g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);           // 마당
     // 담장: 기와를 얹은 낮은 담
     const wT = base - 92 * k;
     g.fillRect(X0 - 10, wT, cx - 330 * k - X0 + 10, 92 * k); g.fillRect(cx + 330 * k, wT, X1 - cx - 320 * k, 92 * k);
@@ -1972,8 +1972,10 @@ function playStory() {
     }
     if (t > 26.6 && t < 38.0) {   // 아들이 떠난 뒤: 어머니의 눈물이 강이 되어 길을 막는다
       const a = sm((t - 27.0) / .8) * (1 - sm((t - 37.2) / .7)), lv = waterY(t), k = t < 34.45 ? 0 : t < 35.35 ? 1 : 2;
-      house(540, 1230, 620, .35 * a * (1 - sm((t - 30.4) / 2)), t);
-      g.save(); g.globalAlpha = a; g.fillStyle = '#05060f'; g.fillRect(X0 - 10, 1236, X1 - X0 + 20, Y1 - 1236 + 10); g.restore();   // 강가 바닥   // 멀어지는 장자의 집
+      // 강가 바닥: 집 마당과 같은 높이·같은 빛깔로 먼저 깔고, 위쪽 가장자리는 어둠 속으로 부드럽게 (끊긴 경계가 보이지 않게)
+      g.save(); g.globalAlpha = a; const gb = g.createLinearGradient(0, 1190, 0, 1250); gb.addColorStop(0, 'rgba(5,6,15,0)'); gb.addColorStop(1, '#05060f');
+      g.fillStyle = gb; g.fillRect(X0 - 10, 1190, X1 - X0 + 20, 60); g.fillStyle = '#05060f'; g.fillRect(X0 - 10, 1249, X1 - X0 + 20, Y1 - 1249 + 10); g.restore();
+      house(540, 1230, 620, .35 * a * (1 - sm((t - 30.4) / 2)), t, 0, 0, true);   // 멀어지는 천년장자의 집 (마당은 바닥과 하나로)
       const COLS = [[226, 232, 244], [205, 168, 78], [176, 36, 58]], mk = c01((t - [33.6, 34.5, 35.4][k]) / .6), pv = COLS[Math.max(0, k - 1)], col = pv.map((v, n) => Math.round(v + (COLS[k][n] - v) * (k ? mk : 1)));
       g.save(); g.globalAlpha = a;
       for (let layer = 0; layer < 3; layer++) {
