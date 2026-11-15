@@ -149,6 +149,25 @@ body.narrow .note{display:none}
 #guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
   font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
 #guide.on{opacity:1}
+/* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
+body.tour #panel,body.tour #hud,body.tour #snd,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
+#tourCap{position:fixed;z-index:8;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);text-align:center;pointer-events:none;
+  opacity:0;transition:opacity 1.2s;color:var(--ink);text-shadow:0 0 12px rgba(6,8,24,.95),0 0 4px rgba(6,8,24,.95);width:min(92vw,34em);line-height:1.55}
+#tourCap.on{opacity:1}
+#tourCap b{display:block;color:var(--gold);font-size:1.5em;font-weight:700;letter-spacing:.04em}
+#tourCap i{display:block;font-style:normal;color:var(--dim);font-size:.92em}
+#tourCap small{display:block;margin-top:.7em;color:var(--faint);font-size:.76em}
+#stats{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#stats.on{display:flex}
+#statsBox{width:min(92vw,25em);max-height:94vh;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:clamp(14px,2.6vh,24px) clamp(16px,4vw,26px);font-size:clamp(.78em,2.2vh,1em)}
+#statsBox h2{margin:0 0 .5em;color:var(--gold);font-size:1.3em;letter-spacing:.14em}
+#statsBox dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:.34em 1em;line-height:1.4}
+#statsBox dt{color:var(--dim)} #statsBox dd{margin:0;text-align:right;color:var(--ink)}
+#statsBox dd small{color:var(--faint)}
+#statsCol{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;margin:.7em 0 .2em;align-items:end;height:4.4em}
+#statsCol span{display:block;border-radius:4px 4px 2px 2px;min-height:3px;border:1px solid rgba(255,255,255,.18)}
+#statsNote{color:var(--faint);font-size:.82em;margin:.2em 0 .7em}
+#statsClose{display:block;margin:0 auto;min-height:42px;padding:0 26px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);cursor:pointer}
 /* 꽃감관의 화첩: 신화 속 꽃 다섯 송이 */
 #album{position:fixed;inset:0;z-index:20;background:#05060f;opacity:0;pointer-events:none;transition:opacity .6s}
 #album.on{opacity:1;pointer-events:auto}
@@ -228,10 +247,12 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
+<div id="tourCap" aria-live="off"></div>
+<div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
 
 <script>
 'use strict';
@@ -1130,6 +1151,7 @@ function layout() {
 }
 function measureStage() {
   if (!(W > 0 && H > 0)) return;
+  if (tourOn) { stg.tx = W / 2; stg.ty = H * .46; stg.w = W; stg.h = H * .86; return; }   // 꽃 감상: 화면 가득
   const r = panel.getBoundingClientRect();
   if (wide) { const left = r.right + 8; stg.tx = (left + W) / 2; stg.ty = H / 2; stg.w = W - left; stg.h = H; }
   else { const top = r.top - 8; stg.tx = W / 2; stg.ty = Math.max(40, top / 2 + 6); stg.w = W; stg.h = Math.max(80, top); }
@@ -1229,12 +1251,13 @@ for (const m of MYTHS) {
 
 /* 특별한 칸: 신화 속 꽃, 받은 링크의 꽃, 내 꽃 */
 const specials = new Map(), tagSp = new Map();
-let friendFirst = true;
+let friendFirst = true, tourOn = false, tourSp = null;
 const friendDiffers = () => !!(user && friend && (friend.seed !== user.seed || friend.color !== user.color || friend.name !== user.name));
 function refreshSpecials() {
   specials.clear();
   for (const m of MYTHS) specials.set(keyOf(m.i, m.j), m);
   for (const [k, t] of tagSp) if (!specials.has(k)) specials.set(k, t);   // 이름표가 달린 꽃
+  if (tourSp && !specials.has(keyOf(tourSp.i, tourSp.j))) specials.set(keyOf(tourSp.i, tourSp.j), tourSp);   // 꽃 감상에서 지금 피어나는 꽃
   if (user) specials.set(keyOf(user.i, user.j), user);
   if (friend && !(user && user.seed === friend.seed && !friendFirst)) specials.set(keyOf(friend.i, friend.j), friend);   // 나와 같은 꽃을 가진 친구: 링크로 왔을 때는 친구 꽃부터
 }
@@ -1548,8 +1571,94 @@ function openAlbum() {
 }
 function closeAlbum() { albumOn = false; $('album').classList.remove('on'); $('album').setAttribute('aria-hidden', 'true'); }
 $('albumClose').onclick = closeAlbum;
+
+/* ---------- 꽃감관의 권한 ①: 꽃 감상 ----------
+   화면보호기처럼 꽃밭을 저절로 옮겨 다니며, 닿는 꽃마다 봉오리에서 피어나는 모습을 보여 준다. 화면을 누르면 멈춘다 */
+let tourNext = 0, tourLock = null, tourCapT = 0;
+function tourGo() {
+  if (!tourOn) return;
+  const prev = tourSp; tourSp = null;
+  const tags = [...tagSp.values()], useTag = tags.length && Math.random() < .3;
+  let sp;
+  if (useTag) { sp = tags[(Math.random() * tags.length) | 0]; sp.bloomT = null; sp.spr = null; refreshSpecials(); }
+  else {
+    // 지금 자리에서 너무 멀지 않은 이름 모를 꽃 한 송이
+    let i, j, tries = 0;
+    do { i = Math.round(cam.x + (Math.random() - .5) * 90); j = Math.round(cam.y + (Math.random() - .5) * 90); i = Math.max(-380, Math.min(380, i)); j = Math.max(-380, Math.min(380, j)); refreshSpecials(); }
+    while (specials.has(keyOf(i, j)) && ++tries < 20);
+    const [, , size, seed] = cellCenter(i, j);
+    sp = tourSp = { kind: 'tour', name: '', seed, i, j, size, P: cellP(i, j, seed), bloomT: null };
+    refreshSpecials();
+  }
+  tourNext = now + 30;   // 닿지 못해도 서른 숨 뒤에는 다음 꽃으로
+  $('tourCap').classList.remove('on');
+  focusCell(sp.i, sp.j, { minDur: prev ? 4.2 : 2.6 });
+  clearTimeout(tourCapT);
+  tourCapT = setTimeout(() => {
+    if (!tourOn) return;
+    const D = describe(sp.P), c = $('tourCap'); c.replaceChildren();
+    const b = document.createElement('b'); b.textContent = D.name; c.append(b);
+    if (sp.kind === 'tag') { const o = document.createElement('i'); o.textContent = `${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃`; c.append(o); }
+    D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
+    const sm = document.createElement('small'); sm.textContent = '화면을 누르면 멈춰요'; c.append(sm);
+    c.classList.add('on');
+  }, 5200);
+}
+function tourTick() {
+  if (!tourOn || albumOn) return;
+  const sp = focus && focus.sp;
+  if (now > tourNext || (sp && sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > (RM ? 7 : 11.5))) tourGo();
+}
+function startTour() {
+  if (tourOn) return;
+  tourOn = true; document.body.classList.add('tour'); if (pair) exitPair(); guideUntil = 0;
+  measureStage(); audio();
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; if (!tourOn) l.release(); }).catch(() => { }); } catch (e) { }
+  toast('꽃 감상을 시작해요 · 화면을 누르면 멈춰요', 3600);
+  tourGo();
+}
+function stopTour() {
+  if (!tourOn) return;
+  tourOn = false; document.body.classList.remove('tour'); clearTimeout(tourCapT); $('tourCap').classList.remove('on');
+  try { tourLock && tourLock.release(); } catch (e) { } tourLock = null;
+  const at = focus ? [focus.i, focus.j] : null;
+  tourSp = null; refreshSpecials(); anim = null;
+  requestAnimationFrame(() => { measureStage(); if (at) focusCell(at[0], at[1]); });
+}
+addEventListener('pointerdown', e => { if (tourOn) { e.stopPropagation(); e.preventDefault(); stopTour(); } }, true);
+addEventListener('keydown', e => { if (tourOn) { e.stopPropagation(); stopTour(); } }, true);
+document.addEventListener('visibilitychange', () => { if (tourOn && !document.hidden && !tourLock) { try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; }).catch(() => { }); } catch (e) { } } else if (document.hidden) tourLock = null; });
+$('albumTour').onclick = () => { closeAlbum(); startTour(); };
+
+/* ---------- 꽃감관의 권한 ②: 꽃밭 통계 ---------- */
+$('albumStats').onclick = async () => {
+  const L = $('statsList'), C = $('statsCol'), N = $('statsNote'), nf = n => Number(n || 0).toLocaleString('ko-KR');
+  const row = (k, v, sub) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; if (sub) { const sm = document.createElement('small'); sm.textContent = ' ' + sub; dd.append(sm); } L.append(dt, dd); };
+  L.replaceChildren(); C.replaceChildren(); N.textContent = '꽃밭 장부를 펼치는 중…'; $('stats').classList.add('on');
+  row('꽃밭의 꽃자리', nf(801 * 801));
+  let r = null; try { r = await rpc('garden_stats', {}); } catch (e) { }
+  if (!r || !r.ok) { N.textContent = r && r.reason === 'slow' ? '장부를 너무 자주 펼쳤어요. 조금 뒤에 다시 보세요' : '꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요'; return; }
+  row('이름표를 단 꽃', nf(r.tags) + '송이', `오늘 +${nf(r.today)} · 이레 +${nf(r.week)}`);
+  row('꽃감관', nf(r.wardens) + '명');
+  row('생일까지 적어 찾은 꽃', nf(r.birth_seeds) + '송이');
+  row('한 꽃을 함께 가진 자리', nf(r.shared) + '곳');
+  if (r.first) { const d = new Date(r.first); row('첫 이름표', `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`); }
+  const [mi, mj] = [user.i + 1000, user.j + 1000]; row('내 꽃', `${mi}번째 이랑 · ${mj}번째 자리`);
+  // 빛깔마다 이름표 수: 고르기 칸과 같은 차례의 막대
+  const cols = COLOR_ORDER.filter(k => k > 0), mx = Math.max(1, ...cols.map(k => +r.colors[k] || 0)); let best = null;
+  for (const k of cols) {
+    const n = +r.colors[k] || 0, el = document.createElement('span'), src = [...$('pickCard').children].find(b => +b.dataset.k === k);
+    el.style.height = Math.round(6 + 94 * n / mx) + '%'; el.style.background = src ? getComputedStyle(src).backgroundColor : '#888'; if (src) el.style.backgroundImage = getComputedStyle(src).backgroundImage;
+    el.title = `${COLORS[k].n} ${n}`; C.append(el);
+    if (n && (!best || n > best[1])) best = [COLORS[k].n, n];
+  }
+  const free = +r.colors[0] || 0;
+  N.textContent = best ? `가장 많이 고른 빛깔은 ${best[0]} (${nf(best[1])}송이)${free ? ` · 꽃밭에 맡긴 꽃 ${nf(free)}송이` : ''}` : free ? `모두 꽃밭에 빛깔을 맡겼어요 (${nf(free)}송이)` : '아직 이름표가 없어요';
+};
+$('statsClose').onclick = () => $('stats').classList.remove('on');
+$('stats').onclick = e => { if (e.target.id === 'stats') $('stats').classList.remove('on'); };
 $('albumName').onclick = () => { closeAlbum(); showIntro(); toast('내 꽃을 찾으면 꽃감관의 이름이 새겨져요', 3600); };
-addEventListener('keydown', e => { if (albumOn && e.key === 'Escape') closeAlbum(); });
+addEventListener('keydown', e => { if (e.key !== 'Escape') return; if ($('stats').classList.contains('on')) $('stats').classList.remove('on'); else if (albumOn) closeAlbum(); });
 $('albumCv').onclick = e => {       // 꽃을 누르면 꽃밭의 그 꽃으로 간다
   const L = albumLayout(innerWidth, innerHeight);
   for (let k = 0; k < 5; k++) if (Math.hypot(e.clientX - L[k][0], e.clientY - L[k][1]) < L[k][2] * 1.3) {
@@ -2012,7 +2121,7 @@ function drawSpecial(sp, t) {
     if ((sp.kind === 'myth' || isWarden(sp)) && R > 6) drawOrbit(sx, sy, R, t);   // 신화 속 꽃과 꽃감관의 꽃 둘레를 도는 작은 빛
   }
   // 멀리서도 자리가 보이게
-  const ma = 1 - smooth(18, 60, ppu);
+  const ma = sp.kind === 'tour' ? 0 : 1 - smooth(18, 60, ppu);
   if (ma > 0) {
     if (sp.kind === 'myth') {
       ctx.globalCompositeOperation = 'lighter';
@@ -2178,6 +2287,7 @@ function frame(ms) {
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
   drawGuide();
+  tourTick();
   firstFrame = false;
   requestAnimationFrame(frame);
 }
