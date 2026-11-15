@@ -1192,7 +1192,21 @@ const MYTHS = [
     motto: ['보는 이를', '멈출 수 없이 웃게 하는 꽃'], glow: [48, 95, 70],
     story: ['「이공본풀이」에서 할락궁이는', '이 꽃으로 원수의 집안을', '멈출 수 없는 웃음에 빠뜨렸다.'] }
 ];
-const mythFound = new Set(store.get('myth', []));
+// 찾은 신화 속 꽃은 '내 꽃'마다 따로 적는다: 꽃감관 칭호는 기기가 아니라 꽃에 붙는다
+let mythBy = store.get('mythBy', {}), mythFound = new Set();
+function loadMyth() {
+  if (!user) { mythFound = new Set(); return; }
+  const k = user.seed.toString(36), old = store.get('myth', null), mv = store.get('mythMoved', null);
+  if (Array.isArray(old) && old.length && !(mv && mv.done)) {
+    // 예전에는 기기에 적어 두었다: 지금 내 꽃으로 옮긴다 (생일 꽃에 닿으면 거기 머문다)
+    if (mv && mv.k && mv.k !== k) delete mythBy[mv.k];
+    mythBy[k] = [...new Set([...(mythBy[k] || []), ...old])];
+    store.set('mythBy', mythBy); store.set('mythMoved', { k, done: !!user.hasBirth });
+  }
+  mythFound = new Set(mythBy[k] || []);
+}
+const saveMyth = () => { mythBy[user.seed.toString(36)] = [...mythFound]; store.set('mythBy', mythBy); };
+const isWarden = sp => !!sp && (sp.kind === 'user' ? mythFound.size === MYTHS.length : !!sp.warden);
 for (const m of MYTHS) {
   m.kind = 'myth'; m.seed = strHash('서천꽃밭|' + m.id); m.i = m.at[0]; m.j = m.at[1]; m.size = .95;
   m.P = gen(m.seed, m.hue, m.pal, m.force); m.P.motto = m.motto; m.bloomT = null;
@@ -1267,12 +1281,12 @@ function makePerson(kind, name, seed, color) {
 function setUser(name, seed, hasBirth) {
   const keepBloom = user && user.seed === seed ? user.bloomT : null;
   if (hasBirth == null) hasBirth = !!(user && user.seed === seed && user.hasBirth);
-  user = makePerson('user', name, seed, pickedColor); user.bloomT = keepBloom; user.hasBirth = hasBirth;
+  user = makePerson('user', name, seed, pickedColor); user.bloomT = keepBloom; user.hasBirth = hasBirth; loadMyth();
   store.set('me', { n: name, s: seed.toString(36), c: pickedColor, b: hasBirth ? 1 : 0, v: 2 });   // 다시 열어도 내 꽃을 기억한다
   refreshSpecials();
-  try { const u = new URL(location.href); u.search = ''; u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); history.replaceState(null, '', u); } catch (e) { }
+  try { const u = new URL(location.href); u.search = ''; u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); if (isWarden(user)) u.searchParams.set('w', '1'); history.replaceState(null, '', u); } catch (e) { }
 }
-const shareURL = () => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('n', user.name); u.searchParams.set('s', user.seed.toString(36)); if (user.color) u.searchParams.set('c', user.color); return u.toString(); } catch (e) { return location.href; } };
+const shareURL = () => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('n', user.name); u.searchParams.set('s', user.seed.toString(36)); if (user.color) u.searchParams.set('c', user.color); if (isWarden(user)) u.searchParams.set('w', '1'); return u.toString(); } catch (e) { return location.href; } };
 
 /* ---------- 이름표 장부 (Supabase) ----------
    원하는 사람만 자기 꽃에 이름표를 단다. 달기 전에는 아무것도 서버로 가지 않는다.
@@ -1332,7 +1346,7 @@ async function loadTaken() {
 async function putTag(color) {
   if (tagBusy) return false; tagBusy = true;
   try {
-    const r = await rpc('put_tag', { p_token: tagToken(), p_seed: user.seed, p_color: color, p_name: user.name, p_has_birth: !!user.hasBirth, p_i: user.i, p_j: user.j });
+    const r = await rpc('put_tag', { p_token: tagToken(), p_seed: user.seed, p_color: color, p_name: user.name, p_has_birth: !!user.hasBirth, p_i: user.i, p_j: user.j, p_warden: isWarden(user) });
     if (r.ok) { myTag = { s: user.seed, c: color }; store.set('tag', myTag); return true; }
     if (r.reason === 'color_taken') { toast('이 빛깔은 같은 꽃을 가진 분이 먼저 골랐어요', 3200); loadTaken(); }
     else if (r.reason === 'bad_name') toast('이 이름으로는 이름표를 달 수 없어요');
@@ -1408,8 +1422,8 @@ function pullTags() {
         const [i, j] = cellOfSeed(seed);                 // 자리는 씨앗에서 다시 셈한다 (받은 값은 믿지 않는다)
         if (i !== r.cell_i || j !== r.cell_j) continue;
         const k = keyOf(i, j), ex = tagSp.get(k);
-        if (ex) { if (ex.seed === seed) ex.more++; continue; }
-        const sp = makePerson('tag', name, seed, color); sp.bloomT = -100; sp.more = 0; tagSp.set(k, sp);
+        if (ex) { if (ex.seed === seed) { ex.more++; if (r.warden && !ex.warden) { ex.warden = true; ex.name = name; } } continue; }
+        const sp = makePerson('tag', name, seed, color); sp.bloomT = -100; sp.more = 0; sp.warden = !!r.warden; tagSp.set(k, sp);
       }
       refreshSpecials();
       if (focus && focus.kind !== 'user' && focus.kind !== 'friend' && focus.kind !== 'myth') {   // 보고 있던 꽃에 이름표가 있었다면 카드도 고친다
@@ -1425,6 +1439,7 @@ setInterval(pullTags, 1500);
    오른쪽 위 '신화 속 꽃 n/5'를 누르면, 아직 못 찾은 꽃 가운데 가장 가까운 꽃이 있는 쪽을 화살표와 걸음 수로 알려 준다 */
 let guideUntil = 0, guideM = null;
 $('mythBtn').onclick = () => {
+  if (!user) { toast('내 꽃을 먼저 찾으면 신화 속 꽃을 모을 수 있어요', 4200); showIntro(); return; }
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) { openAlbum(); return; }
   if (guideM && now < guideUntil && !mythFound.has(guideM.id)) { guideUntil = 0; return; }   // 길잡이가 켜져 있으면 끈다
@@ -1533,10 +1548,13 @@ function focusCell(i, j, opts = {}) {
     if (sp) {
       if (sp.bloomT == null) sp.bloomT = now;
       playMelody(sp.P, 1, .8);
-      if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
-        mythFound.add(sp.id); store.set('myth', [...mythFound]);
+      if (sp.kind === 'myth' && !user) setTimeout(() => toast('내 꽃을 먼저 찾으면 이 꽃을 모을 수 있어요', 4200), 900);
+      else if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
+        mythFound.add(sp.id); saveMyth();
         guideUntil = 0;
         if (mythFound.size === MYTHS.length) {   // 다섯 송이를 모두 찾으면 꽃감관이 된다
+          setUser(user.name, user.seed);   // 링크에도 꽃감관 표시를 싣는다
+          if (myTag && myTag.s === user.seed) putTag(myTag.c);   // 이름표에도
           setTimeout(() => toast('신화 속 꽃 다섯 송이를 모두 찾았어요', 3600), 900);
           setTimeout(() => toast(user ? `${user.name}님은 이제 서천꽃밭의 꽃감관이에요` : '당신은 이제 서천꽃밭의 꽃감관이에요', 4600), 4800);
           setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 꽃감관의 이름이 새겨지고, 꽃 둘레에 빛이 돌아요', 4600), 9800);
@@ -1550,7 +1568,7 @@ const goMine = () => { if (!user) return; if (friendFirst) { friendFirst = false
 
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
-  $('cOwner').textContent = k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${k === 'user' && mythFound.size === MYTHS.length ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
+  $('cOwner').textContent = k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃';
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
   $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
@@ -1913,6 +1931,15 @@ function bloomOf(sp, t) {
   if (sp.kind === 'myth' && mythFound.has(sp.id) && sp.bloomT == null) return 1;
   return sp.bloomT == null ? 0 : RM ? 1 : clamp01((t - sp.bloomT) / 7.5);
 }
+function drawOrbit(sx, sy, R, t) {
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 7; k++) {
+    const a = t * (.25 + k * .03) + k * TAU / 7, rr = R * (1.25 + .12 * Math.sin(t + k)), s = Math.max(6, Math.min(40, R * .12));
+    ctx.globalAlpha = .4 + .3 * Math.sin(t * 2 + k);
+    ctx.drawImage(mote, sx + Math.cos(a) * rr - s / 2, sy + Math.sin(a) * rr - s / 2, s, s);
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
 function drawSpecial(sp, t) {
   const ppu = cam.ppu;
   let wx = sp.i + .5, wy = sp.j + .5, wr = 0;
@@ -1926,6 +1953,7 @@ function drawSpecial(sp, t) {
     if (!c) { c = sp.spr = document.createElement('canvas'); c.width = c.height = 100; const g = c.getContext('2d'); g.translate(50, 50); drawFlower(g, P, 40, { g: 1, px: 40 }); }
     const d = R * 1.25;
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(P.rot0 + wr); ctx.drawImage(c, -d, -d, d * 2, d * 2); ctx.restore();
+    if (sp.warden && R > 6) drawOrbit(sx, sy, R, t);
   } else if (R > 2) {
     const gNow = bloomOf(sp, t), pulse = (sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22) * (.3 + .7 * gNow);
     const halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * (sp.kind === 'myth' ? 2.4 : 1.9));
@@ -1936,15 +1964,7 @@ function drawSpecial(sp, t) {
     if (gNow >= 1 && P.count > 21 && R * DPR < 900) drawBigCached(ctx, P, R);   // 꽃잎이 아주 많은 꽃은 다 핀 뒤 한 번 그려 두고 다시 쓴다
     else drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
     ctx.restore();
-    if ((sp.kind === 'myth' || (sp.kind === 'user' && mythFound.size === MYTHS.length)) && R > 6) {        // 신화 속 꽃 둘레를 도는 작은 빛 (꽃감관의 꽃에도)
-      ctx.globalCompositeOperation = 'lighter';
-      for (let k = 0; k < 7; k++) {
-        const a = t * (.25 + k * .03) + k * TAU / 7, rr = R * (1.25 + .12 * Math.sin(t + k)), s = Math.max(6, Math.min(40, R * .12));
-        ctx.globalAlpha = .4 + .3 * Math.sin(t * 2 + k);
-        ctx.drawImage(mote, sx + Math.cos(a) * rr - s / 2, sy + Math.sin(a) * rr - s / 2, s, s);
-      }
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    }
+    if ((sp.kind === 'myth' || isWarden(sp)) && R > 6) drawOrbit(sx, sy, R, t);   // 신화 속 꽃과 꽃감관의 꽃 둘레를 도는 작은 빛
   }
   // 멀리서도 자리가 보이게
   const ma = 1 - smooth(18, 60, ppu);
@@ -2173,7 +2193,7 @@ async function savePNG() {
   pngBase(g, 1080, 1350, P.seed, P.hue);
   pngFlower(g, P, 540, 520, 320, k === 'myth' ? sp.glow : glowOf(P));
   g.fillStyle = '#a4abc6'; g.font = '400 36px "Gowun Batang", serif';
-  g.fillText(k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${k === 'user' && mythFound.size === MYTHS.length ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
+  g.fillText(k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? '신화 속 꽃 · 이공본풀이' : '이름 모를 이의 꽃', 540, 990);
   g.fillStyle = '#f1d6a0'; g.font = '700 62px "Gowun Batang", serif'; g.fillText(k === 'myth' ? sp.name : D.name, 540, 1075);
   g.fillStyle = '#eadcbe'; g.font = '400 34px "Gowun Batang", serif';
   D.motto.forEach((l, n) => g.fillText(l, 540, 1145 + n * 48));
@@ -2312,7 +2332,7 @@ whenSized(function start() {
       pickedColor = me.c > 0 && me.c < COLORS.length ? me.c : 0;
       markPicker($('pickIntro'), pickedColor);
       const seed = me.v === 2 ? parseInt(me.s, 36) >>> 0 : strHash(nameKey(nm) + '|');
-      user = makePerson('user', nm, seed, pickedColor); user.hasBirth = !!me.b;
+      user = makePerson('user', nm, seed, pickedColor); user.hasBirth = !!me.b; loadMyth();
       if (me.v !== 2) store.set('me', { n: nm, s: seed.toString(36), c: pickedColor, b: 0, v: 2 });
       loadTaken();
       refreshSpecials();
@@ -2331,6 +2351,7 @@ whenSized(function start() {
     // 받은 링크: 보낸 사람의 꽃으로 날아간다
     const c = parseInt(q.get('c') || '0', 10);
     friend = makePerson('friend', n.slice(0, 12), parseInt(s, 36) >>> 0, c > 0 && c < COLORS.length ? c : 0);
+    friend.warden = q.get('w') === '1';
     refreshSpecials();
     cam.x = friend.i + 40; cam.y = friend.j - 25; cam.ppu = 2;
     hideHint();
