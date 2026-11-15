@@ -1265,13 +1265,13 @@ for (const m of MYTHS) {
 
 /* 특별한 칸: 신화 속 꽃, 받은 링크의 꽃, 내 꽃 */
 const specials = new Map(), tagSp = new Map();
-let friendFirst = true, tourOn = false, tourSp = null;
+let friendFirst = true, tourOn = false, tourSp = null, tourPrev = null;
 const friendDiffers = () => !!(user && friend && (friend.seed !== user.seed || friend.color !== user.color || friend.name !== user.name));
 function refreshSpecials() {
   specials.clear();
   for (const m of MYTHS) specials.set(keyOf(m.i, m.j), m);
   for (const [k, t] of tagSp) if (!specials.has(k)) specials.set(k, t);   // 이름표가 달린 꽃
-  if (tourSp && !specials.has(keyOf(tourSp.i, tourSp.j))) specials.set(keyOf(tourSp.i, tourSp.j), tourSp);   // 꽃 감상에서 지금 피어나는 꽃
+  for (const t of [tourPrev, tourSp]) if (t && !specials.has(keyOf(t.i, t.j))) specials.set(keyOf(t.i, t.j), t);   // 꽃 감상에서 방금 본 꽃과 지금 피어나는 꽃
   if (user) specials.set(keyOf(user.i, user.j), user);
   if (friend && !(user && user.seed === friend.seed && !friendFirst)) specials.set(keyOf(friend.i, friend.j), friend);   // 나와 같은 꽃을 가진 친구: 링크로 왔을 때는 친구 꽃부터
 }
@@ -1615,10 +1615,10 @@ addEventListener('resize', hideInvite);
 
 /* ---------- 꽃감관의 권한 ①: 꽃 감상 ----------
    화면보호기처럼 꽃밭을 저절로 옮겨 다니며, 닿는 꽃마다 봉오리에서 피어나는 모습을 보여 준다. 화면을 누르면 멈춘다 */
-let tourNext = 0, tourLock = null, tourCapT = 0;
+let tourNext = 0, tourLock = null;
 function tourGo() {
   if (!tourOn) return;
-  const prev = tourSp; tourSp = null;
+  const prev = tourSp; tourPrev = tourSp; tourSp = null;   // 떠나는 꽃은 화면 밖으로 나갈 때까지 핀 모습 그대로 둔다
   const tags = [...tagSp.values()], useTag = tags.length && Math.random() < .3;
   let sp;
   if (useTag) { sp = tags[(Math.random() * tags.length) | 0]; sp.bloomT = null; sp.spr = null; refreshSpecials(); }
@@ -1634,21 +1634,25 @@ function tourGo() {
   tourNext = now + 30;   // 닿지 못해도 서른 숨 뒤에는 다음 꽃으로
   $('tourCap').classList.remove('on');
   focusCell(sp.i, sp.j, { minDur: prev ? 4.2 : 2.6 });
-  clearTimeout(tourCapT);
-  tourCapT = setTimeout(() => {
-    if (!tourOn) return;
-    const D = describe(sp.P), c = $('tourCap'); c.replaceChildren();
-    const b = document.createElement('b'); b.textContent = D.name; c.append(b);
-    if (sp.kind === 'tag') { const o = document.createElement('i'); o.textContent = `${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃`; c.append(o); }
-    D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
-    const sm = document.createElement('small'); sm.textContent = '화면을 누르면 멈춰요'; c.append(sm);
-    c.classList.add('on');
-  }, 5200);
+  tourTarget = sp; tourCapOn = false;
+}
+let tourTarget = null, tourCapOn = false;
+function tourCaption(sp) {
+  const D = describe(sp.P), c = $('tourCap'); c.replaceChildren();
+  const b = document.createElement('b'); b.textContent = D.name; c.append(b);
+  if (sp.kind === 'tag') { const o = document.createElement('i'); o.textContent = `${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃`; c.append(o); }
+  D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
+  const sm = document.createElement('small'); sm.textContent = '화면을 누르면 멈춰요'; c.append(sm);
+  c.classList.add('on');
 }
 function tourTick() {
   if (!tourOn || albumOn) return;
-  const sp = focus && focus.sp;
-  if (now > tourNext || (sp && sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > (RM ? 7 : 11.5))) tourGo();
+  const sp = tourTarget;
+  if (!sp) return;
+  // 날아가는 길이 끝나기 조금 전부터 봉오리가 벌어지기 시작한다: 다가가는 움직임과 피어나는 움직임이 한 호흡으로 이어지게
+  if (sp.bloomT == null && anim && now > anim.t0 + anim.dur - 1.7) sp.bloomT = now;
+  if (!tourCapOn && sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > 3.2) { tourCapOn = true; tourCaption(sp); }   // 자막은 꽃이 반쯤 벌어졌을 때
+  if (now > tourNext || (sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > (RM ? 7 : 12.5))) tourGo();
 }
 function startTour() {
   if (tourOn) return;
@@ -1660,10 +1664,10 @@ function startTour() {
 }
 function stopTour() {
   if (!tourOn) return;
-  tourOn = false; document.body.classList.remove('tour'); clearTimeout(tourCapT); $('tourCap').classList.remove('on');
+  tourOn = false; document.body.classList.remove('tour'); $('tourCap').classList.remove('on');
   try { tourLock && tourLock.release(); } catch (e) { } tourLock = null;
   const at = focus ? [focus.i, focus.j] : null;
-  tourSp = null; refreshSpecials(); anim = null;
+  tourSp = tourPrev = tourTarget = null; refreshSpecials(); anim = null;
   requestAnimationFrame(() => { measureStage(); if (at) focusCell(at[0], at[1]); });
 }
 addEventListener('pointerdown', e => { if (tourOn) { e.stopPropagation(); e.preventDefault(); stopTour(); } }, true);
