@@ -1638,7 +1638,7 @@ $('albumStats').onclick = async () => {
   row('꽃밭의 꽃자리', nf(801 * 801));
   let r = null; try { r = await rpc('garden_stats', {}); } catch (e) { }
   if (!r || !r.ok) { N.textContent = r && r.reason === 'slow' ? '장부를 너무 자주 펼쳤어요. 조금 뒤에 다시 보세요' : '꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요'; return; }
-  row('이름표를 단 꽃', nf(r.tags) + '송이', `오늘 +${nf(r.today)} · 이레 +${nf(r.week)}`);
+  row('이름표를 단 꽃', nf(r.tags) + '송이');
   row('꽃감관', nf(r.wardens) + '명');
   row('생일까지 적어 찾은 꽃', nf(r.birth_seeds) + '송이');
   row('한 꽃을 함께 가진 자리', nf(r.shared) + '곳');
