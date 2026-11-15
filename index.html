@@ -1383,8 +1383,9 @@ let guideUntil = 0, guideM = null;
 $('mythBtn').onclick = () => {
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) { openAlbum(); return; }
+  if (guideM && now < guideUntil && !mythFound.has(guideM.id)) { guideUntil = 0; return; }   // 길잡이가 켜져 있으면 끈다
   guideM = left.reduce((a, b) => Math.hypot(a.i + .5 - cam.x, a.j + .5 - cam.y) < Math.hypot(b.i + .5 - cam.x, b.j + .5 - cam.y) ? a : b);
-  guideUntil = now + 20; hideHint();
+  guideUntil = Infinity; hideHint();   // 그 꽃을 찾을 때까지 화살표를 계속 보여 준다
   if (mythFound.size === 0 && !store.get('guideTip', false)) { store.set('guideTip', true); toast('화살표를 따라가 반짝이는 빛을 눌러 보세요', 4200); }
 };
 function drawGuide() {
@@ -2040,7 +2041,8 @@ function frame(ms) {
   if (now - hudT > .25) {
     hudT = now;
     const allM = mythFound.size === MYTHS.length;
-    $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${mythFound.size}/${MYTHS.length}${allM ? '' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
+    const guiding = guideM && now < guideUntil && !mythFound.has(guideM.id);
+    $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${mythFound.size}/${MYTHS.length}${allM ? '' : guiding ? ' · 길잡이 끄기' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
     $('hudCount').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
