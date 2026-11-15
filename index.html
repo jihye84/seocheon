@@ -825,8 +825,11 @@ function drawFlower(g, P, R, o) {
       curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
       curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
     }
-    for (let n = 0; n < (SP ? 1 : P.count); n++) {
+    // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 무늬(점·단심·핏줄…)까지 한 번 더 위에 그린다
+    const seam = !FU && !SP && P.count >= 5;
+    for (let n = 0; n < (SP ? 1 : P.count + (seam ? 1 : 0)); n++) {
       g.save(); g.rotate(Ly.rot + n * step + twist);
+      if (n === P.count) { g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip(); }
       if (!FU) {
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
@@ -996,14 +999,6 @@ function drawFlower(g, P, R, o) {
         g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
       g.restore();
-    }
-    if (!FU && !SP && P.count >= 5) {   // 이음매: 마지막 꽃잎이 첫 꽃잎을 덮지 않게, 첫 꽃잎의 그쪽 절반을 다시 위에 칠한다
-      g.save(); g.rotate(Ly.rot + twist);
-      g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, len * 1.4, -step * 1.02, 0); g.closePath(); g.clip();
-      g.fillStyle = fill; g.fill(path);
-      if (curve) { g.fillStyle = curve; g.fill(path); }
-      if (PETAL_EDGE && px > 40) { g.strokeStyle = Ly.edge; g.lineWidth = lw * .8; g.stroke(path); }
-      g.restore(); g.fillStyle = fill;
     }
   }
   g.globalAlpha = 1;
