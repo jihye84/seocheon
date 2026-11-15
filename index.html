@@ -1963,16 +1963,17 @@ function playStory() {
     if (t > 15.4 && t < 27.6) {   // 천년장자의 집
       const a = sm((t - 15.6) / 1) * (1 - sm((t - 26.6) / .9));
       house(540, 1230, 620, a, t);
-      if (t > 16.4 && t < 27.2) {   // 장자의 집 창가에 남은 반쪽 → 아들과 길을 나섬 (집 앞에 그린다)
-        const go = sm((t - 24.0) / 2.6), wa = sm((t - 16.4) / .8) * (1 - sm((t - 26.6) / .6));
-        const B = hgeo(540, 1230, 620).bays[1], bx = B.x + B.w / 2, by = B.y + B.h * .42, x = bx + (900 - bx) * go, y = by - 200 * go - 40 * Math.sin(go * Math.PI), s = 40 + 56 * go;
-        glow(x, y, s * 1.8, '241,214,160', .3 * wa); comb(x, y, s, 'L', wa, 1, .05 * Math.sin(t));
+      if (t > 23.0 && t < 27.0) {   // 아버지를 찾아 나서는 아들: 집 위로 커다란 반쪽 빗이 투명하게 떠오른다
+        const fa = sm((t - 23.3) / 1.1) * (1 - sm((t - 25.9) / .9)), u = c01((t - 23.0) / 4), sc2 = 330 * (.96 + .08 * u);
+        glow(540, 1000 - 24 * u, 520, '241,214,160', .14 * fa);
+        g.save(); g.globalCompositeOperation = 'screen'; comb(540 + .5 * sc2, 1000 - 24 * u, sc2, 'L', .5 * fa, 1, -.03 + .02 * u);   // 반쪽의 한가운데가 화면 가운데에 오도록 g.restore();
       }
       if (t > 19.8 && t < 23.4) { const la = env(t, 20.0, 22.8, .8, .6) * a; const B = hgeo(540, 1230, 620).bays[3]; glow(B.x + B.w * .32, B.y + B.h * .55, 56, '255,214,150', .55 * la); glow(B.x + B.w * .7, B.y + B.h * .65, 36, '255,214,150', .55 * la); }   // 오른쪽 창에 비친 두 그림자 불빛: 어머니와 아들
     }
     if (t > 26.6 && t < 38.0) {   // 아들이 떠난 뒤: 어머니의 눈물이 강이 되어 길을 막는다
       const a = sm((t - 27.0) / .8) * (1 - sm((t - 37.2) / .7)), lv = waterY(t), k = t < 34.45 ? 0 : t < 35.35 ? 1 : 2;
-      house(540, 1230, 620, .35 * a * (1 - sm((t - 30.4) / 2)), t);   // 멀어지는 장자의 집
+      house(540, 1230, 620, .35 * a * (1 - sm((t - 30.4) / 2)), t);
+      g.save(); g.globalAlpha = a; g.fillStyle = '#05060f'; g.fillRect(X0 - 10, 1236, X1 - X0 + 20, Y1 - 1236 + 10); g.restore();   // 강가 바닥   // 멀어지는 장자의 집
       const COLS = [[226, 232, 244], [205, 168, 78], [176, 36, 58]], mk = c01((t - [33.6, 34.5, 35.4][k]) / .6), pv = COLS[Math.max(0, k - 1)], col = pv.map((v, n) => Math.round(v + (COLS[k][n] - v) * (k ? mk : 1)));
       g.save(); g.globalAlpha = a;
       for (let layer = 0; layer < 3; layer++) {
@@ -1987,8 +1988,9 @@ function playStory() {
         else { const rr = (cyc - 1) * 90; g.strokeStyle = `rgba(255,240,240,${.5 * (1 - (cyc - 1) / .6)})`; g.lineWidth = 2; g.beginPath(); g.ellipse(dx, lv + 4, rr, rr * .22, 0, 0, 6.28); g.stroke(); }
       }
       g.restore(); g.globalAlpha = 1;
-      const cx = 140 + c01((t - 30.8) / 6.6) * 800, cy = Math.min(lv, 1190) - 34 + 6 * Math.sin(t * 2.2), ca = sm((t - 27.4) / .8) * (1 - sm((t - 36.8) / .7));   // 물을 건너는 반쪽 빗
-      glow(cx, cy, 110, '241,214,160', .25 * ca); comb(cx, cy, 62, 'L', ca, 1, .1 * Math.sin(t * 1.7));
+      // 반쪽 빗: 처음엔 강가 바닥에 놓여 있다가, 눈물의 강이 차오르면 물 위로 떠올라 건너간다
+      const GY = 1236, CS = 62, cx = 190 + sm((t - 33.4) / 3.6) * 750, cy = Math.min(GY - .6 * CS, lv - .22 * CS) + (lv < GY - .4 * CS ? 6 * Math.sin(t * 2.2) : 0), ca = sm((t - 27.4) / .8) * (1 - sm((t - 36.8) / .7));   // 물을 건너는 반쪽 빗
+      glow(cx, cy, 110, '241,214,160', .25 * ca); comb(cx, cy, CS, 'L', ca, 1, lv < GY - .4 * CS ? .1 * Math.sin(t * 1.7) : 0);
     }
     if (t > 37.4 && t < 45.0) {   // 아버지와 아들: 두 반쪽이 맞는다
       const a = sm((t - 37.5) / .7) * (1 - sm((t - 44.2) / .7)), j = sm((t - 37.9) / 1.4), y = 780;
