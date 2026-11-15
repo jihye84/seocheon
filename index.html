@@ -1754,25 +1754,73 @@ function playStory() {
     }
     g.restore(); g.globalAlpha = 1;
   }
-  function lights(cx, base, w, a, t, mad, out) {   // 집의 창: out(0~4)만큼 하나씩 꺼진다
-    const hw = w / 2, roofY = base - w * .36, rh = w * .2;
-    for (let k = 0; k < 4; k++) {
-      const off = c01(out - k); if (off >= 1) continue;
-      const wx = cx - hw * .6 + k * hw * .4, wy = roofY + rh * .9, ww = hw * .22, wh = (base - roofY) * .42, f = .55 + .45 * Math.sin(t * (6 + mad * 14) + k * 1.9) * (mad > 0 ? 1 : .2);
-      g.fillStyle = `rgba(255,${190 + 30 * f},${110 + 40 * f},${(.35 + .5 * f) * (.6 + .4 * mad) * (1 - off) * a})`; g.fillRect(wx, wy, ww, wh);
-      g.fillStyle = `rgba(4,5,14,${a})`; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh / 2 - 2, ww, 4);
-    }
+  /* 천년장자의 집: 조선 부잣집(양반가)을 본뜬 실루엣
+     높은 돌 기단 위 다섯 칸 사랑채, 팔작지붕(처마 끝이 들리고 용마루 양끝이 솟음), 칸마다 띠살 창호에 비치는 불빛,
+     가운데 칸은 트인 대청, 옆으로 기와 얹은 담장과 지붕이 한 단 솟은 솟을대문 */
+  const hgeo = (cx, base, w) => {
+    const k = w / 620, gT = base - 46 * k, bT = gT - 150 * k, bw = 112 * k, x0 = cx - 280 * k;
+    return { k, gT, bT, eY: bT - 10 * k, rY: bT - 150 * k, bays: [0, 1, 2, 3, 4].map(n => ({ x: x0 + n * bw + 6 * k, y: bT + 4 * k, w: bw - 12 * k, h: gT - 30 * k - (bT + 4 * k) })) };
+  };
+  function roofPath(cx, eY, rY, half, tip, k) {   // 팔작지붕 옆모습: 들린 처마 끝 → 완만한 지붕면 → 합각 → 양끝이 솟은 용마루
+    const p = new Path2D(), r = half;
+    p.moveTo(cx - r - tip, eY - 40 * k);
+    p.quadraticCurveTo(cx - r * .86, eY - 34 * k, cx - r * .74, rY + 66 * k);
+    p.lineTo(cx - r * .66, rY + 8 * k); p.lineTo(cx - r * .68, rY - 12 * k); p.quadraticCurveTo(cx - r * .64, rY, cx - r * .58, rY + 2 * k);
+    p.lineTo(cx + r * .58, rY + 2 * k); p.quadraticCurveTo(cx + r * .64, rY, cx + r * .68, rY - 12 * k); p.lineTo(cx + r * .66, rY + 8 * k);
+    p.lineTo(cx + r * .74, rY + 66 * k); p.quadraticCurveTo(cx + r * .86, eY - 34 * k, cx + r + tip, eY - 40 * k);
+    p.quadraticCurveTo(cx + r * .9, eY + 4 * k, cx + r * .62, eY + 8 * k); p.lineTo(cx - r * .62, eY + 8 * k); p.quadraticCurveTo(cx - r * .9, eY + 4 * k, cx - r - tip, eY - 40 * k);
+    p.closePath(); return p;
   }
-  function house(cx, base, w, a, t, mad = 0, out = 0) {   // 천년장자의 기와집
+  function house(cx, base, w, a, t, mad = 0, out = 0) {
     if (a <= 0) return;
-    g.save(); g.globalAlpha = a; g.fillStyle = '#04050e';
-    const hw = w / 2, rh = w * .2, roofY = base - w * .36;
-    g.beginPath(); g.moveTo(cx - hw * 1.18, roofY + rh * .25);
-    g.quadraticCurveTo(cx - hw * .55, roofY + rh * .1, cx - hw * .36, roofY - rh * .55); g.lineTo(cx + hw * .36, roofY - rh * .55);
-    g.quadraticCurveTo(cx + hw * .55, roofY + rh * .1, cx + hw * 1.18, roofY + rh * .25); g.quadraticCurveTo(cx + hw * .9, roofY + rh * .5, cx + hw * .82, roofY + rh * .55);
-    g.lineTo(cx - hw * .82, roofY + rh * .55); g.quadraticCurveTo(cx - hw * .9, roofY + rh * .5, cx - hw * 1.18, roofY + rh * .25); g.fill();
-    g.fillRect(cx - hw * .78, roofY + rh * .5, hw * 1.56, base - roofY - rh * .5); g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);
-    g.restore(); g.globalAlpha = 1; lights(cx, base, w, a, t, mad, out);
+    const G = hgeo(cx, base, w), k = G.k, D0 = '#05060f';
+    g.save(); g.globalAlpha = a; g.fillStyle = D0;
+    g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);                        // 마당
+    // 담장: 기와를 얹은 낮은 담
+    const wT = base - 92 * k;
+    g.fillRect(X0 - 10, wT, cx - 330 * k - X0 + 10, 92 * k); g.fillRect(cx + 330 * k, wT, X1 - cx - 320 * k, 92 * k);
+    g.beginPath(); g.moveTo(X0 - 10, wT + 4 * k); g.lineTo(cx - 324 * k, wT + 4 * k); g.lineTo(cx - 330 * k, wT - 14 * k); g.lineTo(X0 - 10, wT - 14 * k); g.fill();
+    g.beginPath(); g.moveTo(X1 + 10, wT + 4 * k); g.lineTo(cx + 324 * k, wT + 4 * k); g.lineTo(cx + 330 * k, wT - 14 * k); g.lineTo(X1 + 10, wT - 14 * k); g.fill();
+    // 솟을대문: 양옆 행랑보다 가운데 지붕이 한 단 높이 솟은 대문
+    const gx = cx - 470 * k;
+    g.fillRect(gx - 104 * k, base - 112 * k, 208 * k, 112 * k);
+    g.fill(roofPath(gx, base - 112 * k, base - 168 * k, 104 * k, 26 * k, k * .55));
+    g.fillRect(gx - 40 * k, base - 168 * k, 80 * k, 60 * k);
+    g.fill(roofPath(gx, base - 170 * k, base - 222 * k, 54 * k, 22 * k, k * .5));
+    g.fillStyle = 'rgba(70,52,40,.55)'; g.fillRect(gx - 32 * k, base - 104 * k, 64 * k, 104 * k);   // 대문짝
+    g.fillStyle = D0; g.fillRect(gx - 1.5 * k, base - 104 * k, 3 * k, 104 * k);
+    // 기단과 계단
+    g.fillStyle = '#0a0b1a'; g.fillRect(cx - 330 * k, G.gT, 660 * k, base - G.gT);
+    g.strokeStyle = 'rgba(160,170,210,.08)'; g.lineWidth = 1.5 * k;
+    for (let r = 1; r < 3; r++) { g.beginPath(); g.moveTo(cx - 330 * k, G.gT + r * 15 * k); g.lineTo(cx + 330 * k, G.gT + r * 15 * k); g.stroke(); }
+    g.fillStyle = '#0d0f22'; g.fillRect(cx - 46 * k, G.gT + 12 * k, 92 * k, 34 * k); g.fillRect(cx - 54 * k, G.gT + 28 * k, 108 * k, 18 * k);
+    // 몸채: 기둥 여섯, 칸 다섯
+    g.fillStyle = D0; g.fillRect(cx - 286 * k, G.bT - 16 * k, 572 * k, G.gT - G.bT + 16 * k);
+    G.bays.forEach((b, n) => {
+      if (n === 2) {   // 가운데: 트인 대청 — 깊은 어둠과 마루 끝
+        g.fillStyle = 'rgba(2,2,8,1)'; g.fillRect(b.x, b.y, b.w, G.gT - b.y);
+        g.fillStyle = 'rgba(120,96,70,.35)'; g.fillRect(b.x, G.gT - 8 * k, b.w, 3 * k); return;
+      }
+      const li = n < 2 ? n : n - 1, off = c01(out - li); if (off >= 1) return;
+      const f = .55 + .45 * Math.sin(t * (6 + mad * 14) + li * 1.9) * (mad > 0 ? 1 : .2), al = (.4 + .5 * f) * (.65 + .35 * mad) * (1 - off);
+      const lg = g.createLinearGradient(0, b.y, 0, b.y + b.h); lg.addColorStop(0, `rgba(255,${200 + 25 * f},${130 + 30 * f},${al})`); lg.addColorStop(1, `rgba(255,${176 + 25 * f},${100 + 30 * f},${al * .8})`);
+      g.fillStyle = lg; g.fillRect(b.x, b.y, b.w, b.h);
+      // 띠살: 촘촘한 세로살, 위·가운데·아래의 가로띠
+      g.fillStyle = `rgba(30,18,10,${.75 * (1 - off * .5)})`;
+      for (let x = b.x + 9 * k; x < b.x + b.w - 3 * k; x += 9 * k) g.fillRect(x - 1.1 * k, b.y, 2.2 * k, b.h);
+      for (const fy of [.12, .5, .88]) for (let q = -1; q <= 1; q++) g.fillRect(b.x, b.y + b.h * fy + q * 4.4 * k - 1.1 * k, b.w, 2.2 * k);
+      g.fillRect(b.x + b.w / 2 - 1.6 * k, b.y, 3.2 * k, b.h);   // 두 짝 문의 맞닿는 선
+    });
+    g.fillStyle = '#0b0c1c'; for (let n = 0; n <= 5; n++) g.fillRect(cx - 286 * k + n * 112 * k, G.bT - 8 * k, 12 * k, G.gT - G.bT + 8 * k);   // 기둥
+    g.fillStyle = D0; g.fillRect(cx - 290 * k, G.bT - 20 * k, 580 * k, 16 * k);   // 창방
+    // 지붕과 기왓골
+    const rp = roofPath(cx, G.eY, G.rY, 300 * k, 98 * k, k);
+    g.fillStyle = D0; g.fill(rp);
+    g.save(); g.clip(rp); g.strokeStyle = 'rgba(170,180,220,.06)'; g.lineWidth = 2 * k;
+    for (let x = cx - 400 * k; x <= cx + 400 * k; x += 14 * k) { g.beginPath(); g.moveTo(x, G.rY); g.quadraticCurveTo(x + (x - cx) * .08, (G.rY + G.eY) / 2, x + (x - cx) * .2, G.eY + 10 * k); g.stroke(); }
+    g.restore();
+    g.fillStyle = 'rgba(255,214,160,.05)'; g.fillRect(cx - 290 * k, G.bT - 4 * k, 580 * k, 4 * k);   // 처마 밑 그늘의 가장자리
+    g.restore(); g.globalAlpha = 1;
   }
   function tree(x, base, h, kind, a) {   // 동백(둥근 숲)·오동(키 크고 넓은 잎)
     if (a <= 0) return;
@@ -1837,16 +1885,17 @@ function playStory() {
         comb(540 - 26 * sp, 790 + 30 * sp, 300, 'L', a * fade, 1, -.06 * sp);
         const rx = 540 + 26 * sp - 420 * sm((t - 13.6) / 1.8), ry = 790 - 20 * sp - 560 * sm((t - 13.6) / 1.8), ra = a * (1 - sm((t - 14.2) / 1.2));
         comb(rx, ry, 300 * (1 - .5 * sm((t - 13.6) / 1.8)), 'R', ra, 1, .08 * sp);
-      } else {   // 장자의 집 창가에 남은 반쪽 → 길을 나섬
-        const go = sm((t - 24.0) / 2.6), wa = sm((t - 16.4) / .8) * (1 - sm((t - 26.6) / .6));
-        const x = 418 + (900 - 418) * go, y = 1012 - 180 * go - 40 * Math.sin(go * Math.PI), s = 46 + 50 * go;
-        glow(x, y, s * 1.8, '241,214,160', .3 * wa); comb(x, y, s, 'L', wa, 1, .05 * Math.sin(t));
       }
     }
     if (t > 15.4 && t < 27.6) {   // 천년장자의 집
       const a = sm((t - 15.6) / 1) * (1 - sm((t - 26.6) / .9));
       house(540, 1230, 620, a, t);
-      if (t > 19.8 && t < 23.4) { const la = env(t, 20.0, 22.8, .8, .6) * a; glow(600, 1040, 60, '255,214,150', .6 * la); glow(640, 1052, 38, '255,214,150', .6 * la); }   // 창가의 두 불빛
+      if (t > 16.4 && t < 27.2) {   // 장자의 집 창가에 남은 반쪽 → 아들과 길을 나섬 (집 앞에 그린다)
+        const go = sm((t - 24.0) / 2.6), wa = sm((t - 16.4) / .8) * (1 - sm((t - 26.6) / .6));
+        const B = hgeo(540, 1230, 620).bays[1], bx = B.x + B.w / 2, by = B.y + B.h * .42, x = bx + (900 - bx) * go, y = by - 200 * go - 40 * Math.sin(go * Math.PI), s = 40 + 56 * go;
+        glow(x, y, s * 1.8, '241,214,160', .3 * wa); comb(x, y, s, 'L', wa, 1, .05 * Math.sin(t));
+      }
+      if (t > 19.8 && t < 23.4) { const la = env(t, 20.0, 22.8, .8, .6) * a; const B = hgeo(540, 1230, 620).bays[3]; glow(B.x + B.w * .32, B.y + B.h * .55, 56, '255,214,150', .55 * la); glow(B.x + B.w * .7, B.y + B.h * .65, 36, '255,214,150', .55 * la); }   // 오른쪽 창에 비친 두 그림자 불빛: 어머니와 아들
     }
     if (t > 26.6 && t < 38.0) {   // 아들이 떠난 뒤: 어머니의 눈물이 강이 되어 길을 막는다
       const a = sm((t - 27.0) / .8) * (1 - sm((t - 37.2) / .7)), lv = waterY(t), k = t < 34.45 ? 0 : t < 35.35 ? 1 : 2;
