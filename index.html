@@ -1278,7 +1278,7 @@ function refreshSpecials() {
 refreshSpecials();
 function cellCenter(i, j) {
   const sp = specials.get(keyOf(i, j));
-  if (sp) return [i + .5, j + .5, sp.size, sp.seed, sp];
+  if (sp) return [sp.cx != null ? sp.cx : i + .5, sp.cy != null ? sp.cy : j + .5, sp.size, sp.seed, sp];
   const s = h2(i, j);
   return [i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5, .62 + ((s >>> 19) & 255) / 255 * .3, s, null];
 }
@@ -1627,8 +1627,8 @@ function tourGo() {
     let i, j, tries = 0;
     do { i = Math.round(cam.x + (Math.random() - .5) * 90); j = Math.round(cam.y + (Math.random() - .5) * 90); i = Math.max(-380, Math.min(380, i)); j = Math.max(-380, Math.min(380, j)); refreshSpecials(); }
     while (specials.has(keyOf(i, j)) && ++tries < 20);
-    const [, , size, seed] = cellCenter(i, j);
-    sp = tourSp = { kind: 'tour', name: '', seed, i, j, size, P: cellP(i, j, seed), bloomT: null };
+    const [cx, cy, size, seed] = cellCenter(i, j);   // 그 칸의 꽃이 원래 피어 있던 바로 그 자리·크기 그대로 (칸 한가운데가 아니다)
+    sp = tourSp = { kind: 'tour', name: '', seed, i, j, cx, cy, size, P: cellP(i, j, seed), bloomT: null };
     refreshSpecials();
   }
   tourNext = now + 30;   // 닿지 못해도 서른 숨 뒤에는 다음 꽃으로
@@ -2142,7 +2142,7 @@ function drawOrbit(sx, sy, R, t) {
 }
 function drawSpecial(sp, t) {
   const ppu = cam.ppu;
-  let wx = sp.i + .5, wy = sp.j + .5, wr = 0;
+  let wx = sp.cx != null ? sp.cx : sp.i + .5, wy = sp.cy != null ? sp.cy : sp.j + .5, wr = 0;
   if (winds.length) { const w = windAt(wx, wy); wr = w[0] * .6; wx += w[1] * .5; wy += w[2] * .5; }
   const [sx, sy] = screenOf(wx, wy), R = ppu * sp.size / 2;
   if (sx < -R * 3 || sy < -R * 3 || sx > W + R * 3 || sy > H + R * 3) return;
