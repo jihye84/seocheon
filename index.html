@@ -57,16 +57,17 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#eef0f8; --dim:#a4abc6; --faint:#6f7796;
+  --ink:#f3f4fa; --dim:#bcc2da; --faint:#959cbb;   /* 어두운 바탕에서도 또렷하게 (작은 글씨도 대비 6:1 넘게) */
   --panel:rgba(12,15,34,.66); --line:rgba(255,255,255,.12);
-  --gold:#f1d6a0; --fs:clamp(13px, min(1.85vh, 2.9vw), 22px);
+  --gold:#f1d6a0; --fs:clamp(16px, min(2.1vh, 4.1vw), 22px);   /* 휴대폰에서도 15px 아래로 내려가지 않게 */
 }
 *{box-sizing:border-box}
+.ptitle,.fname,#introText,#tourCap b,#statsBox h2,#inviteText b{font-family:'Gowun Batang','Nanum Myeongjo',serif}
 html,body{word-break:keep-all;margin:0;height:100%;overflow:hidden;background:#04050c;color:var(--ink);
-  font-family:'Gowun Batang','Nanum Myeongjo',serif;font-size:var(--fs);-webkit-tap-highlight-color:transparent}
+  font-family:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:var(--fs);line-height:1.5;-webkit-tap-highlight-color:transparent}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 canvas.drag{cursor:grabbing}
 button,input{font:inherit;color:inherit}
@@ -81,10 +82,10 @@ button,input{font:inherit;color:inherit}
 .view{grid-area:1/1;display:flex;flex-direction:column;gap:.85em;transition:opacity .35s}
 .view.off{visibility:hidden;opacity:0;pointer-events:none}
 .lead{margin:0;line-height:1.75;color:var(--ink)}
-.note{margin:0;color:var(--faint);font-size:.82em;line-height:1.6}
+.note{margin:0;color:var(--faint);font-size:max(15px,.9em);line-height:1.6}
 form{display:flex;flex-direction:column;gap:.6em;margin:0}
-label{display:flex;flex-direction:column;gap:.3em;color:var(--dim);font-size:.86em}
-label small{color:var(--faint)}
+label{display:flex;flex-direction:column;gap:.3em;color:var(--dim);font-size:.92em}
+label small{color:var(--faint);font-size:1em}
 input{min-height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
   background:rgba(255,255,255,.07);font-size:1.12em;color:var(--ink);outline:none;width:100%}
 input:focus{border-color:rgba(241,214,160,.6)}
@@ -92,13 +93,13 @@ input[type=date]{color-scheme:dark}
 .primary{min-height:50px;border-radius:999px;border:0;cursor:pointer;margin-top:.25em;
   background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700;font-size:1.05em}
 .owner{color:var(--dim);font-size:.95em}
-#bReport,#bLink{background:none;border:0;color:var(--faint);font-size:.82em;text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
+#bReport,#bLink{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .traits{line-height:1.6}
 .motto{color:#eadcbe;line-height:1.6;font-size:.95em}
 #corner{position:fixed;z-index:31;right:clamp(12px,2vw,28px);top:clamp(12px,2vh,24px);display:flex;gap:8px;transition:opacity .8s}
-#corner button{min-height:40px;min-width:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:rgba(12,15,34,.55);color:var(--dim);cursor:pointer;font-size:.82em}
+#corner button{min-height:40px;min-width:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:rgba(12,15,34,.55);color:var(--dim);cursor:pointer;font-size:max(15px,.9em)}
 #corner button:hover{color:var(--gold)}
 #fsBtn[hidden]{display:none}
 #fsBtn .ic{font-size:1.55em;line-height:1;vertical-align:-.12em}
@@ -107,7 +108,7 @@ input[type=date]{color-scheme:dark}
 body.narrow #corner{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
 body.narrow #fsBtn{padding:0}
 body.narrow #fsBtn .lab{display:none}
-.loc{color:var(--faint);font-size:.86em}
+.loc{color:var(--faint);font-size:.92em}
 .swatch{display:flex;gap:6px;margin:.1em 0}
 .swatch i{width:1.1em;height:1.1em;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
 .colors{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;justify-items:center}
@@ -117,7 +118,7 @@ body.narrow #fsBtn .lab{display:none}
 .colors button.taken{opacity:.22;filter:grayscale(.6);cursor:not-allowed}
 .colors button.taken:hover{transform:none}
 .colors button[aria-pressed=true]{border-color:var(--gold);box-shadow:inset 0 0 0 3px rgba(10,12,28,.85),0 0 10px rgba(241,214,160,.5)}
-.pickname{color:var(--dim);font-size:.86em;display:flex;justify-content:space-between;gap:8px}
+.pickname{color:var(--dim);font-size:.92em;display:flex;justify-content:space-between;gap:8px}
 .pickname b{color:var(--ink);font-weight:400}
 #cPick{border-radius:12px;padding:6px 8px;margin:-6px -8px;transition:box-shadow .6s}
 #cPick.tip{animation:tipGlow 1.3s ease-in-out 3}
@@ -151,14 +152,17 @@ body.narrow .note{display:none}
   .lead,.note{display:none}
   .pbody{margin-top:.5em} .view{gap:.45em} form{gap:.4em}
   .colors{gap:4px} .colors button{width:min(28px,100%)}
-  body.wide #panel{width:clamp(330px,42vw,400px)} body.wide .btns{grid-template-columns:repeat(3,1fr)}
+  body.wide #panel{width:clamp(340px,47vw,430px)} body.wide .btns{grid-template-columns:repeat(3,1fr)}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
-  .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:.88em;line-height:1.45}
+  .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:max(15px,.88em);line-height:1.45}
 }
 @media (max-height:560px) and (min-width:560px){body.narrow .colors{grid-template-columns:repeat(14,1fr)}}
+@media (max-height:720px){body.narrow .traits,body.narrow .loc{display:none}}
+@media (max-height:560px){body.narrow #hint{display:none} .btns button{padding-left:6px;padding-right:6px}}
+@media (max-height:420px){.traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
 @media (max-height:350px){.motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
-  color:var(--faint);font-size:.8em;text-align:right;pointer-events:none;line-height:1.5}
+  color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
 #hudLinks{display:flex;justify-content:flex-end;margin:-6px 0 -11px}
 #hudLinks button{pointer-events:auto;background:none;border:0;font:inherit;color:var(--faint);cursor:pointer;padding:11px 0 11px 14px;text-decoration:underline;text-underline-offset:3px}
@@ -170,7 +174,7 @@ body.narrow .note{display:none}
 #guide.on{opacity:1}
 /* 신화 속 꽃으로 이끄는 말풍선: 이름표를 달고 '이제 뭐 하지?' 할 때 길잡이 단추 곁에 뜬다 */
 #invite{position:fixed;z-index:7;max-width:min(88vw,19em);padding:14px 16px 12px;border-radius:16px;background:rgba(18,22,50,.94);border:1px solid rgba(241,214,160,.55);
-  box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 18px rgba(241,214,160,.18);line-height:1.6;font-size:.92em;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .6s,transform .6s}
+  box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 18px rgba(241,214,160,.18);line-height:1.6;font-size:1em;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .6s,transform .6s}
 #invite.on{opacity:1;pointer-events:auto;transform:none}
 #invite p{margin:0 0 .6em;color:var(--ink)} #invite p b{color:var(--gold);font-weight:700}
 #invite div{display:flex;gap:.5em}
@@ -182,7 +186,7 @@ body.tour #invite{display:none}
 #story{position:fixed;inset:0;z-index:30;background:#04050f;transition:opacity 1s ease}
 #story.out{opacity:0;pointer-events:none}
 #story canvas{position:absolute;inset:0}
-#storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:#6f7796;font:inherit;font-size:14px;padding:10px 12px;cursor:pointer}
+#storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #storySkip:hover{color:#a4abc6}
 .btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
 .btns button.story.glow{animation:storyTip 1.4s ease-in-out infinite}
@@ -194,7 +198,7 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
 #tourCap.on{opacity:1}
 #tourCap b{display:block;color:var(--gold);font-size:1.5em;font-weight:700;letter-spacing:.04em}
 #tourCap i{display:block;font-style:normal;color:var(--dim);font-size:.92em}
-#tourCap small{display:block;margin-top:.7em;color:var(--faint);font-size:.76em}
+#tourCap small{display:block;margin-top:.7em;color:var(--faint);font-size:.88em}
 #stats{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #stats.on{display:flex}
 #statsBox{width:min(92vw,25em);max-height:94vh;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:clamp(14px,2.6vh,24px) clamp(16px,4vw,26px);font-size:clamp(.78em,2.2vh,1em)}
@@ -204,7 +208,7 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
 #statsBox dd small{color:var(--faint)}
 #statsCol{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;margin:.7em 0 .2em;align-items:end;height:4.4em}
 #statsCol span{display:block;border-radius:4px 4px 2px 2px;min-height:3px;border:1px solid rgba(255,255,255,.18)}
-#statsNote{color:var(--faint);font-size:.82em;margin:.2em 0 .7em}
+#statsNote{color:var(--faint);font-size:.9em;margin:.2em 0 .7em}
 #statsClose{display:block;margin:0 auto;min-height:42px;padding:0 26px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);cursor:pointer}
 /* 꽃감관의 화첩: 신화 속 꽃 여섯 송이 */
 #album{position:fixed;inset:0;z-index:20;background:#05060f;opacity:0;pointer-events:none;transition:opacity .6s}
@@ -219,8 +223,8 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
   filter:drop-shadow(0 0 8px rgba(241,214,160,.7))}
 body.narrow #hud{top:max(12px,env(safe-area-inset-top));bottom:auto}
 #hint{position:fixed;z-index:4;left:50%;top:clamp(14px,3vh,30px);transform:translateX(-50%);
-  color:var(--dim);font-size:.85em;pointer-events:none;transition:opacity 1.2s;text-align:center;white-space:nowrap}
-body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 4.6em)}
+  color:var(--dim);font-size:.92em;pointer-events:none;transition:opacity 1.2s;text-align:center;white-space:nowrap}
+body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 5.2em);line-height:1.5}
 #toast{position:fixed;z-index:9;left:50%;top:clamp(56px,11vh,110px);transform:translateX(-50%);white-space:nowrap;padding:12px 20px;
   border-radius:999px;background:rgba(10,12,28,.9);border:1px solid var(--line);opacity:0;
   transition:opacity .3s;pointer-events:none}
@@ -230,12 +234,12 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 #intro.out{opacity:0;pointer-events:none}
 #introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #introText{position:absolute;left:50%;top:clamp(56px,17vh,170px);transform:translateX(-50%);text-align:center;color:#eadcbe;
-  font-size:clamp(19px,4.4vw,30px);line-height:1.8;white-space:nowrap;opacity:0;filter:blur(6px);transition:opacity 1.1s ease,filter 1.1s ease;text-shadow:0 0 18px rgba(10,12,30,.9)}
+  font-size:clamp(20px,4.9vw,32px);line-height:1.8;white-space:nowrap;opacity:0;filter:blur(6px);transition:opacity 1.1s ease,filter 1.1s ease;text-shadow:0 0 18px rgba(10,12,30,.9)}
 #introText.on{opacity:1;filter:blur(0)}
 #introText.title{color:#f1d6a0;font-size:clamp(34px,8vw,56px);font-weight:700;letter-spacing:.2em;line-height:1.3}
-#introText small{display:block;color:#8f97b8;font-size:.36em;font-weight:400;letter-spacing:.08em;margin-top:.4em}
-#introSkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:#6f7796;
-  font:inherit;font-size:14px;padding:10px 12px;cursor:pointer}
+#introText small{display:block;color:#b3b9d2;font-size:.42em;font-weight:400;letter-spacing:.08em;margin-top:.4em}
+#introSkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);
+  font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #introSkip:hover{color:#a4abc6}
 </style>
 </head>
@@ -1592,12 +1596,12 @@ function albumLayout(w, h) {      // 여섯 송이 자리: 가로로 넓으면 �
 function drawAlbum(g, w, h, t, forPhoto) {
   const u = Math.min(w, h * .8) / 1080, L = albumLayout(w, h);
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  g.fillStyle = '#a4abc6'; g.font = `400 ${Math.max(13, 30 * u)}px "Gowun Batang", serif`; g.fillText('제주 무가 「이공본풀이」', w / 2, h * .075);
+  g.fillStyle = '#a4abc6'; g.font = `400 ${Math.max(15, 32 * u)}px "Gowun Batang", serif`; g.fillText('제주 무가 「이공본풀이」', w / 2, h * .075);
   g.fillStyle = '#f1d6a0'; g.font = `700 ${Math.max(20, 54 * u)}px "Gowun Batang", serif`; g.fillText('서천꽃밭의 신화 속 꽃', w / 2, h * .075 + Math.max(28, 70 * u));
-  if (!forPhoto) { g.fillStyle = '#c9c2b0'; g.font = `400 ${Math.max(12, 26 * u)}px "Gowun Batang", serif`; g.fillText(user ? `꽃감관 ${user.name}의 화첩` : '이름 없는 꽃감관의 화첩', w / 2, h * .075 + Math.max(28, 70 * u) + Math.max(20, 42 * u)); }
+  if (!forPhoto) { g.fillStyle = '#c9c2b0'; g.font = `400 ${Math.max(15, 28 * u)}px "Gowun Batang", serif`; g.fillText(user ? `꽃감관 ${user.name}의 화첩` : '이름 없는 꽃감관의 화첩', w / 2, h * .075 + Math.max(28, 70 * u) + Math.max(20, 42 * u)); }
   // 칸이 좁아 한 송이라도 꽃말이 넘치면, 모두 이름만 적는다
   const gap = L.length > 1 ? Math.abs(L[1][0] - L[0][0]) * .96 : w;
-  g.font = `400 ${Math.max(11, 22 * u)}px "Gowun Batang", serif`;
+  g.font = `400 ${Math.max(14, 25 * u)}px "Gowun Batang", serif`;
   const mottoFit = MYTHS.every(m => m.motto.every(l => g.measureText(l).width <= gap));
   ALBUM_ORDER.forEach((id, k) => {
     const m = MYTHS.find(q => q.id === id), [x, y, R] = L[k], sway = forPhoto ? 0 : .04 * Math.sin(t * .6 + k * 1.7);
@@ -1608,7 +1612,7 @@ function drawAlbum(g, w, h, t, forPhoto) {
       g.globalAlpha = .4 + .3 * Math.sin(t * 2 + q); g.drawImage(mote, x + Math.cos(a) * rr - sz / 2, y + Math.sin(a) * rr - sz / 2, sz, sz);
     }
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-    const f1 = Math.max(15, 34 * u), f2 = Math.max(11, 22 * u), y0 = y + R * 1.22 + f1;
+    const f1 = Math.max(17, 36 * u), f2 = Math.max(14, 25 * u), y0 = y + R * 1.22 + f1;
     g.fillStyle = '#f1d6a0'; g.font = `700 ${f1}px "Gowun Batang", serif`; g.fillText(m.name, x, y0);
     g.fillStyle = '#c9c2b0'; g.font = `400 ${f2}px "Gowun Batang", serif`; if (mottoFit) m.motto.forEach((l, n) => g.fillText(l, x, y0 + f2 * 1.55 * (n + 1)));   // 칸이 좁으면 꽃말은 빼고 이름만
   });
@@ -2028,7 +2032,7 @@ function playStory() {
       }
       REV.forEach((m, k) => {
         const b = c01((t - BLOOM[k]) / 2.2); glow(FX[k], FY[k], 170, rgb(m.glow), .32 * a * b + .25 * lifted * a); flower(m.P, FX[k], FY[k], 98, b, a, true, t + k);
-        const la = a * sm((t - BLOOM[k] - .6) / .8); if (la > 0) { g.font = '400 34px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(241,214,160,${la})`; g.shadowColor = 'rgba(4,5,16,.95)'; g.shadowBlur = 16 * sc * D; g.fillText(m.name, FX[k], FY[k] + 146); g.shadowBlur = 0; }
+        const la = a * sm((t - BLOOM[k] - .6) / .8); if (la > 0) { g.font = '700 44px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(241,214,160,${la})`; g.shadowColor = 'rgba(4,5,16,.95)'; g.shadowBlur = 16 * sc * D; g.fillText(m.name, FX[k], FY[k] + 150); g.shadowBlur = 0; }
       });
       if (t > 66.85) {
         // 회초리는 보이지 않는다: 소리와, 땅을 타고 번지는 은은한 빛 물결만
@@ -2040,8 +2044,8 @@ function playStory() {
     for (const [a, b, L, step] of texts) {
       const al = env(t, a, b); if (al <= 0) continue;
       const tb = Math.min(60, Y0), te = 180 + L.length * 96, tg = g.createLinearGradient(0, tb, 0, te); tg.addColorStop(0, `rgba(4,5,16,${.6 * al})`); tg.addColorStop(c01((120 + L.length * 60 - tb) / (te - tb)), `rgba(4,5,16,${.5 * al})`); tg.addColorStop(1, 'rgba(4,5,16,0)'); g.fillStyle = tg; g.fillRect(X0, tb, X1 - X0, te - tb);   // 글 뒤 그늘: 화면 맨 위부터 부드럽게
-      g.font = '400 60px "Gowun Batang", serif'; g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
-      L.forEach((l, n) => { const la = al * (step ? sm((t - a - n * step) / .8) : 1); if (la <= 0) return; g.fillStyle = `rgba(234,220,190,${la})`; g.fillText(l, VW / 2, 190 + n * 94); });
+      g.font = '400 64px "Gowun Batang", serif'; g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
+      L.forEach((l, n) => { const la = al * (step ? sm((t - a - n * step) / .8) : 1); if (la <= 0) return; g.fillStyle = `rgba(240,228,200,${la})`; g.fillText(l, VW / 2, 190 + n * 98); });
       g.shadowBlur = 0;
     }
     if (t > 74.6) {   // 맺음: 보는 사람의 이름으로
@@ -2049,11 +2053,11 @@ function playStory() {
       const vg = g.createRadialGradient(VW / 2, VH * .45, 0, VW / 2, VH * .45, 700); vg.addColorStop(0, `rgba(4,5,16,${.7 * a1})`); vg.addColorStop(1, `rgba(4,5,16,${.2 * a1})`); g.fillStyle = vg; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
       g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 30 * sc * D;
       g.font = '700 150px "Gowun Batang", serif'; g.fillStyle = `rgba(241,214,160,${a1})`; g.fillText('서 천 꽃 밭', VW / 2, VH * .25);
-      g.font = '400 56px "Gowun Batang", serif'; g.fillStyle = `rgba(234,220,190,${a2})`; endLines.forEach((l, n) => g.fillText(l, VW / 2, VH * .37 + n * 84));
+      g.font = '400 60px "Gowun Batang", serif'; g.fillStyle = `rgba(240,228,200,${a2})`; endLines.forEach((l, n) => g.fillText(l, VW / 2, VH * .37 + n * 88));
       g.shadowBlur = 0;
       SIX.forEach((m, k) => { const x = VW / 2 + (k - 2.5) * 166, y = VH * .62 + (k % 2 ? -26 : 14), b = c01((t - 75.6 - k * .3) / 1.8), got = warden || mythFound.has(m.id); glow(x, y, 120, rgb(m.glow), .3 * b * (got ? 1 : .35)); flower(m.P, x, y, 72, b, got ? 1 : .28, true, t + k); });
       g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
-      g.font = '400 30px "Gowun Batang", serif'; g.fillStyle = `rgba(164,171,198,${a3 * .85})`; g.fillText('제주 무가 「이공본풀이」 이야기', VW / 2, VH * .80);
+      g.font = '400 40px "Gowun Batang", serif'; g.fillStyle = `rgba(188,194,218,${a3 * .9})`; g.fillText('제주 무가 「이공본풀이」 이야기', VW / 2, VH * .80);
       g.shadowBlur = 0;
     }
   }
@@ -2447,7 +2451,8 @@ function toast(msg, ms = 2200) { const t = $('toast'); t.textContent = msg; t.cl
 let hintGone = false;
 function hideHint() { if (!hintGone) { hintGone = true; $('hint').style.opacity = 0; } }
 setTimeout(hideHint, 12000);
-if (matchMedia('(pointer:coarse)').matches) $('hint').textContent = '끌어서 둘러보고, 두 손가락으로 가까이 · 멀리';
+if (matchMedia('(pointer:coarse)').matches) $('hint').innerHTML = '끌어서 둘러보고,<br>두 손가락으로 가까이 · 멀리';
+else if (innerWidth < 560) $('hint').innerHTML = '끌어서 둘러보고,<br>휠이나 두 손가락으로 가까이 · 멀리';
 
 /* ---------- 두 꽃 나란히 ---------- */
 function enterPair() {
