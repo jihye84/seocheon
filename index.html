@@ -1964,9 +1964,11 @@ function playStory() {
       const a = sm((t - 15.6) / 1) * (1 - sm((t - 26.6) / .9));
       house(540, 1230, 620, a, t);
       if (t > 23.0 && t < 27.0) {   // 아버지를 찾아 나서는 아들: 집 위로 커다란 반쪽 빗이 투명하게 떠오른다
-        const fa = sm((t - 23.3) / 1.1) * (1 - sm((t - 25.9) / .9)), u = c01((t - 23.0) / 4), sc2 = 330 * (.96 + .08 * u);
-        glow(540, 1000 - 24 * u, 520, '241,214,160', .14 * fa);
-        g.save(); g.globalCompositeOperation = 'screen'; comb(540 + .5 * sc2, 1000 - 24 * u, sc2, 'L', .5 * fa, 1, -.03 + .02 * u);   // 반쪽의 한가운데가 화면 가운데에 오도록 g.restore();
+        // 집 위 밤하늘에, 비스듬히 기울어 떠오른 커다란 반쪽 빗 (집과 겹치지 않게)
+        const fa = sm((t - 23.3) / 1.1) * (1 - sm((t - 25.9) / .9)), u = c01((t - 23.0) / 4), sc2 = 240 * (.96 + .08 * u), ang = -.32 + .04 * u, cy2 = 610 - 22 * u;
+        const cx2 = 540 + .5 * sc2 * Math.cos(ang) - 40, gy2 = cy2 + .5 * sc2 * Math.sin(ang);
+        glow(540, gy2, 440, '241,214,160', .13 * fa);
+        g.save(); g.globalCompositeOperation = 'screen'; comb(cx2, cy2, sc2, 'L', .55 * fa, 1, ang); g.restore();
       }
       if (t > 19.8 && t < 23.4) { const la = env(t, 20.0, 22.8, .8, .6) * a; const B = hgeo(540, 1230, 620).bays[3]; glow(B.x + B.w * .32, B.y + B.h * .55, 56, '255,214,150', .55 * la); glow(B.x + B.w * .7, B.y + B.h * .65, 36, '255,214,150', .55 * la); }   // 오른쪽 창에 비친 두 그림자 불빛: 어머니와 아들
     }
