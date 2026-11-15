@@ -179,6 +179,14 @@ body.narrow .note{display:none}
 #mythBtn.tip{color:var(--gold);animation:mythTip 1.2s ease-in-out infinite}
 @keyframes mythTip{50%{text-shadow:0 0 12px rgba(241,214,160,.9)}}
 body.tour #invite{display:none}
+#story{position:fixed;inset:0;z-index:30;background:#04050f;transition:opacity 1s ease}
+#story.out{opacity:0;pointer-events:none}
+#story canvas{position:absolute;inset:0}
+#storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:#6f7796;font:inherit;font-size:14px;padding:10px 12px;cursor:pointer}
+#storySkip:hover{color:#a4abc6}
+.btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
+.btns button.story.glow{animation:storyTip 1.4s ease-in-out infinite}
+@keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
 #tourCap{position:fixed;z-index:8;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);text-align:center;pointer-events:none;
@@ -267,6 +275,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
         <button id="bSave" type="button">이미지 저장</button>
         <button id="bPfp" type="button" hidden>프사로 저장</button>
         <button id="bShare" type="button">링크 보내기</button>
+        <button id="bStory" class="wide story" type="button" hidden>이 꽃들의 이야기 보기</button>
         <button id="bMine" class="wide" type="button" hidden>내 꽃으로 돌아가기</button>
         <button id="bNew" class="wide" type="button">다른 이름으로 찾기</button>
       </div>
@@ -277,7 +286,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <div id="corner"><button id="fsBtn" type="button" aria-label="전체 화면" hidden><span class="ic">⛶</span><span class="lab"> 전체 화면</span></button><button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button></div>
 <div id="toast"></div>
@@ -1652,6 +1661,247 @@ $('inviteNo').onclick = hideInvite;
 $('inviteGo').onclick = () => { hideInvite(); (inviteAct || goGuide)(); };
 addEventListener('resize', hideInvite);
 
+/* ---------- 신화 이야기: 「이공본풀이」 속 여섯 송이 ----------
+   신화 속 꽃을 한 송이라도 찾은 사람이 볼 수 있다. 영상 파일 대신 꽃밭과 같은 그리기로 그 자리에서 그린다
+   (1080×1350 세로 화면을 기준으로 짜고, 어떤 화면이든 가운데에 맞춰 넣되 배경·물·땅은 화면 끝까지 채운다) */
+let storyOn = false;
+const storyOK = () => !!user && mythFound.size > 0;
+function playStory() {
+  if (storyOn || !storyOK()) return;
+  if (tourOn) stopTour(); if (albumOn) closeAlbum(); if (pair) exitPair(); hideInvite(); guideUntil = 0;
+  storyOn = true; store.set('storySeen', true); $('bStory').classList.remove('glow');
+  const VW = 1080, VH = 1350, TEND = 51.5;
+  const box = document.createElement('div'); box.id = 'story'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', '신화 이야기');
+  const cv = document.createElement('canvas'), skip = document.createElement('button');
+  skip.id = 'storySkip'; skip.type = 'button'; skip.textContent = '건너뛰기 ›';
+  box.append(cv, skip); document.body.append(box);
+  const g = cv.getContext('2d');
+  const c01 = v => Math.max(0, Math.min(1, v)), sm = v => { v = c01(v); return v * v * (3 - 2 * v); };
+  const env = (t, a, b, fi = .9, fo = .7) => sm((t - a) / fi) * (1 - sm((t - b) / fo));
+  const rgb = ([h, s, l]) => { s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return [f(0), f(8), f(4)].map(v => Math.round(v * 255)).join(','); };
+  const M = {}; for (const m of MYTHS) M[m.id] = m;
+  const SIX = ALBUM_ORDER.map(k => M[k]), REV = SIX.filter(m => m.id !== 'laugh');
+  const warden = isWarden(user), rest = MYTHS.length - mythFound.size, nm = user.name;
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 ? ((c - 0xAC00) % 28 ? a : b) : b; };
+  const rnd = mulberry32(20261116), stars = Array.from({ length: 220 }, () => [rnd(), rnd() * .85, .5 + rnd() * 1.4, rnd() * 6.28]);
+  const drops = Array.from({ length: 26 }, () => [80 + rnd() * 920, rnd() * 2.6, .7 + rnd() * .6]);
+  let W = 0, H = 0, D = 1, sc = 1, ox = 0, oy = 0, X0 = 0, X1 = VW, Y0 = 0, Y1 = VH, meadow = null;
+  const size = () => {
+    W = innerWidth; H = innerHeight; D = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.round(W * D); cv.height = Math.round(H * D); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    sc = Math.min(W / VW, H / VH); ox = (W - VW * sc) / 2; oy = (H - VH * sc) / 2;
+    X0 = -ox / sc; X1 = (W - ox) / sc; Y0 = -oy / sc; Y1 = (H - oy) / sc;
+    // 아득한 꽃밭(처음 장면): 한 번만 그려 두고 겹쳐 쓴다
+    const mw = Math.ceil((X1 - X0) * sc * D), mt = VH * .7, mh = Math.ceil((Math.max(Y1, VH * 1.06) - mt) * sc * D);
+    meadow = document.createElement('canvas'); meadow.width = Math.max(1, mw); meadow.height = Math.max(1, mh);
+    const mg = meadow.getContext('2d'), r = mulberry32(900), n = Math.round(46 * (X1 - X0) / VW), list = [];
+    for (let k = 0; k < n; k++) list.push({ P: gen((r() * 4e9) >>> 0), x: X0 + r() * (X1 - X0), y: VH * (.74 + r() * .3), s: 34 + r() * 46 });
+    list.sort((a, b) => a.y - b.y);
+    for (const f of list) { mg.save(); mg.setTransform(sc * D, 0, 0, sc * D, (f.x - X0) * sc * D, (f.y - mt) * sc * D); mg.globalAlpha = .5 + .5 * (f.y - VH * .74) / (VH * .3); mg.rotate(f.P.rot0); drawFlower(mg, f.P, f.s, { g: 1, px: f.s * sc * D }); mg.restore(); }
+    meadow.mt = mt;
+  };
+  size(); addEventListener('resize', size);
+  const flower = (P, x, y, R, b, a = 1, dew = false, t = 0) => { if (b <= 0 || a <= 0) return; g.save(); g.translate(x, y); g.rotate(P.rot0 + .035 * Math.sin(t * .6)); g.globalAlpha = a; drawFlower(g, P, R, { g: b, px: R * sc * D, dew }); g.restore(); g.globalAlpha = 1; };
+  const glow = (x, y, r, col, a) => { if (a <= 0) return; const gg = g.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, `rgba(${col},${a})`); gg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gg; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); };
+  const moteAt = (x, y, s, a) => { if (a <= 0) return; g.globalCompositeOperation = 'lighter'; g.globalAlpha = a; g.drawImage(mote, x - s / 2, y - s / 2, s, s); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; };
+  function comb(x, y, s, side, a, reveal = 1, rot = 0) {   // 얼레빗 반쪽
+    if (a <= 0) return;
+    g.save(); g.translate(x, y); g.rotate(rot); g.scale(s * side, s); g.globalAlpha = a;
+    if (reveal < 1) { g.beginPath(); g.rect(-1.1, -1, 1.1 * reveal + .02, 2); g.clip(); }
+    g.beginPath(); g.moveTo(-1, 0); g.ellipse(0, 0, 1, .52, 0, Math.PI, Math.PI * 1.5);
+    for (const [px, py] of [[.02, -.52], [-.04, -.4], [.03, -.3], [-.03, -.18], [.02, -.06], [0, 0]]) g.lineTo(px, py);
+    g.closePath();
+    const wd = g.createLinearGradient(0, -.52, 0, .5); wd.addColorStop(0, '#d9a764'); wd.addColorStop(1, '#8c5a2a');
+    g.fillStyle = wd; g.shadowColor = 'rgba(241,214,160,.9)'; g.shadowBlur = 26 * sc * D; g.fill(); g.shadowBlur = 0;
+    for (let k = 0; k < 15; k++) { const tx = -.93 + k * .062; g.beginPath(); g.moveTo(tx - .019, -.005); g.lineTo(tx + .019, -.005); g.lineTo(tx + .012, .44); g.quadraticCurveTo(tx, .47, tx - .012, .44); g.closePath(); g.fill(); }
+    g.lineWidth = .012; g.strokeStyle = 'rgba(255,236,190,.55)'; g.beginPath(); g.ellipse(0, 0, .84, .38, 0, Math.PI * 1.04, Math.PI * 1.5); g.stroke();
+    g.restore(); g.globalAlpha = 1;
+  }
+  function house(cx, base, w, a, t, mad) {   // 원수의 기와집: 창이 웃음에 흔들린다
+    if (a <= 0) return;
+    g.save(); g.globalAlpha = a; g.fillStyle = '#04050e';
+    const hw = w / 2, rh = w * .2, roofY = base - w * .36;
+    g.beginPath(); g.moveTo(cx - hw * 1.18, roofY + rh * .25);
+    g.quadraticCurveTo(cx - hw * .55, roofY + rh * .1, cx - hw * .36, roofY - rh * .55); g.lineTo(cx + hw * .36, roofY - rh * .55);
+    g.quadraticCurveTo(cx + hw * .55, roofY + rh * .1, cx + hw * 1.18, roofY + rh * .25); g.quadraticCurveTo(cx + hw * .9, roofY + rh * .5, cx + hw * .82, roofY + rh * .55);
+    g.lineTo(cx - hw * .82, roofY + rh * .55); g.quadraticCurveTo(cx - hw * .9, roofY + rh * .5, cx - hw * 1.18, roofY + rh * .25); g.fill();
+    g.fillRect(cx - hw * .78, roofY + rh * .5, hw * 1.56, base - roofY - rh * .5); g.fillRect(X0 - 10, base, X1 - X0 + 20, Y1 - base + 10);
+    for (let k = 0; k < 4; k++) {
+      const wx = cx - hw * .6 + k * hw * .4, wy = roofY + rh * .9, ww = hw * .22, wh = (base - roofY) * .42, f = .55 + .45 * Math.sin(t * (6 + mad * 14) + k * 1.9) * (mad > 0 ? 1 : .2);
+      g.fillStyle = `rgba(255,${190 + 30 * f},${110 + 40 * f},${(.35 + .5 * f) * (.6 + .4 * mad)})`; g.fillRect(wx, wy, ww, wh);
+      g.fillStyle = '#04050e'; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh / 2 - 2, ww, 4);
+    }
+    g.restore(); g.globalAlpha = 1;
+  }
+  function tree(x, base, h, kind, a) {   // 동백(둥근 숲)·오동(키 크고 넓은 잎)
+    if (a <= 0) return;
+    g.save(); g.globalAlpha = a; g.fillStyle = '#05060f';
+    g.beginPath(); g.moveTo(x - h * .03, base); g.quadraticCurveTo(x - h * .02, base - h * .4, x - h * .05, base - h * .62); g.lineTo(x + h * .05, base - h * .62); g.quadraticCurveTo(x + h * .02, base - h * .4, x + h * .035, base); g.fill();
+    const r = mulberry32(kind === 'c' ? 7 : 11), cam = kind === 'c';
+    for (let k = 0; k < (cam ? 14 : 9); k++) {
+      const ang = r() * 6.28, d = r() * (cam ? .26 : .34) * h, bx = x + Math.cos(ang) * d * (cam ? 1.1 : 1.3), by = base - h * (cam ? .72 : .82) + Math.sin(ang) * d * .7, br = h * (cam ? .14 + r() * .08 : .1 + r() * .07);
+      g.beginPath(); if (cam) g.arc(bx, by, br, 0, 6.28); else g.ellipse(bx, by, br * 1.2, br * .9, ang, 0, 6.28); g.fill();
+    }
+    if (cam) for (let k = 0; k < 16; k++) { const ang = r() * 6.28, d = r() * .3 * h; g.fillStyle = 'rgba(200,40,60,.75)'; g.beginPath(); g.arc(x + Math.cos(ang) * d * 1.1, base - h * .72 + Math.sin(ang) * d * .7, h * .018, 0, 6.28); g.fill(); }
+    g.restore(); g.globalAlpha = 1;
+  }
+  const waterY = t => { let y = VH; for (const [a, b, y0, y1] of [[10.6, 11.6, VH, 1060], [12.15, 13.0, 1060, 900], [13.25, 14.1, 900, 720]]) if (t > a) y = y0 + (y1 - y0) * sm((t - a) / (b - a)); return y + 8 * Math.sin(t * 1.1); };
+  const texts = [
+    [.5, 4.6, ['서쪽 하늘 끝 서천꽃밭에는', '죽은 이를 살리는 꽃이 핀다.']],
+    [5.6, 10.1, ['꽃감관이 되어 떠난 아버지는', '얼레빗 반쪽을 남겼다.']],
+    [11.0, 14.3, ['흰 물은 무릎까지,', '누런 물은 허리까지,', '붉은 물은 목까지.'], 1.1],
+    [14.8, 17.4, ['어머니의 눈물로', '생긴 강이었다.']],
+    [18.2, 22.0, ['두 반쪽이 꼭 맞자,', '아버지는 꽃을 내주었다.']],
+    [22.8, 27.2, ['웃음꽃 한 송이에', '원수의 집안은', '웃음을 멈추지 못했다.']],
+    [28.0, 31.4, ['동백과 오동이 자라난', '청대밭에', '어머니가 잠들어 있었다.']],
+    [31.9, 39.65, ['뼈가 이어지고,', '살이 돋고,', '피가 돌고,', '숨이 트이고,', '넋이 돌아왔다.'], 1.45],
+    [40.45, 44.05, ['회초리로 세 번 내리치자,', '어머니가 일어났다.']]];
+  const BLOOM = [31.9, 33.35, 34.8, 36.25, 37.7], FX = [130, 335, 540, 745, 950], FY = [1125, 1082, 1110, 1082, 1125], STRIKE = [40.95, 41.7, 42.45];
+  const endLines = warden ? ['이제 서천꽃밭은', `꽃감관 ${nm}${josa(nm, '이', '가')} 돌봅니다`] : [`남은 ${rest}송이를 마저 찾으면,`, `${nm}님도 꽃감관이 됩니다`];
+  function draw(t) {
+    g.setTransform(D, 0, 0, D, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    const bg = g.createRadialGradient(W / 2, H * .56, 0, W / 2, H * .56, Math.max(W, H) * .8);
+    bg.addColorStop(0, '#171d42'); bg.addColorStop(.6, '#090b1f'); bg.addColorStop(1, '#020309'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    for (const [x, y, r, ph] of stars) { g.globalAlpha = .2 + .35 * (.5 + .5 * Math.sin(t * 1.3 + ph)); g.fillStyle = '#cfd6ff'; g.beginPath(); g.arc(x * W, y * H, r, 0, 6.2832); g.fill(); }
+    g.globalAlpha = 1;
+    g.setTransform(sc * D, 0, 0, sc * D, ox * D, oy * D);
+    const dusk = sm(t / 1.2) * (1 - sm((t - 3) / 3));
+    if (dusk > 0) { const sg = g.createRadialGradient(X0 - 80, VH * .78, 0, X0 - 80, VH * .78, VH * .8); sg.addColorStop(0, `rgba(240,150,110,${.3 * dusk})`); sg.addColorStop(1, 'rgba(150,80,120,0)'); g.fillStyle = sg; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    const mA = .38 * env(t, 0, 5.0, 1.4, .9);   // 처음: 아득한 꽃밭과 여섯 빛 씨앗
+    if (mA > 0) { g.globalAlpha = mA; g.drawImage(meadow, X0, meadow.mt, meadow.width / (sc * D), meadow.height / (sc * D)); g.globalAlpha = 1; }
+    const sA = env(t, 1.0, 5.0, 1.2, .8);
+    SIX.forEach((m, k) => { const a = -Math.PI / 2 + k * 6.2832 / 6 + t * .15, x = VW / 2 + Math.cos(a) * 150, y = 760 + Math.sin(a) * 150; glow(x, y, 70, rgb(m.glow), .45 * sA); moteAt(x, y, 38 + 6 * Math.sin(t * 2 + k), sA); });
+    if (t > 5.2 && t < 18) {   // 얼레빗 반쪽 → 세 강을 건너는 길손
+      const mv = sm((t - 10.0) / 1.1), rev = sm((t - 5.5) / 1.8);
+      let x = 560 - 340 * mv, y = 770 - 40 * Math.sin(t * .8) * (1 - mv) + 240 * mv, s = 300 - 215 * mv, a = sm((t - 5.3) / .8);
+      if (t > 10.6) { x = 150 + (t - 10.6) / 7 * 760; y = waterY(t) - 30 + 6 * Math.sin(t * 2.2); s = 85; a *= 1 - sm((t - 17.0) / .8); }
+      glow(x, y + s * .05, s * 1.5, '241,214,160', .16 * a); comb(x, y, s, -1, a, rev, .05 * Math.sin(t * .9));
+    }
+    if (t > 10.6 && t < 18.3) {   // 흰 물·누런 물·붉은 물
+      const a = sm((t - 10.6) / .6) * (1 - sm((t - 17.6) / .7)), lv = waterY(t), k = t < 12.15 ? 0 : t < 13.25 ? 1 : 2;
+      const COLS = [[226, 232, 244], [205, 168, 78], [176, 36, 58]], mk = c01((t - [11, 12.15, 13.25][k]) / .6), pv = COLS[Math.max(0, k - 1)], col = pv.map((v, n) => Math.round(v + (COLS[k][n] - v) * (k ? mk : 1)));
+      g.save(); g.globalAlpha = a;
+      for (let layer = 0; layer < 3; layer++) {
+        const yy = lv + layer * 34; g.beginPath(); g.moveTo(X0, Y1 + 10);
+        for (let x = X0 - 20; x <= X1 + 20; x += 20) g.lineTo(x, yy + 9 * Math.sin(x * .011 + t * (1.4 + layer * .3) + layer));
+        g.lineTo(X1 + 20, Y1 + 10); g.closePath();
+        const wg = g.createLinearGradient(0, yy, 0, Math.max(VH, Y1)); wg.addColorStop(0, `rgba(${col},${.42 - layer * .08})`); wg.addColorStop(1, `rgba(${col.map(v => v * .35 | 0)},.6)`); g.fillStyle = wg; g.fill();
+      }
+      for (const [dx, ph, sp] of drops) {   // 눈물방울과 물무늬
+        const tt = (t - 14.6) * sp - ph; if (tt < 0 || t < 14.6) continue; const cyc = tt % 1.6;
+        if (cyc < 1.0) { g.fillStyle = 'rgba(230,236,255,.75)'; g.beginPath(); g.ellipse(dx, lv * Math.min(1, cyc), 4, 9, 0, 0, 6.28); g.fill(); }
+        else { const rr = (cyc - 1) * 90; g.strokeStyle = `rgba(255,240,240,${.5 * (1 - (cyc - 1) / .6)})`; g.lineWidth = 2; g.beginPath(); g.ellipse(dx, lv + 4, rr, rr * .22, 0, 0, 6.28); g.stroke(); }
+      }
+      g.restore(); g.globalAlpha = 1;
+    }
+    if (t > 17.8 && t < 23.2) {   // 두 반쪽이 맞는다
+      const a = sm((t - 17.9) / .7) * (1 - sm((t - 22.4) / .7)), j = sm((t - 18.3) / 1.4), y = 760;
+      comb(540 - 300 * (1 - j) - 2, y, 230, -1, a); comb(540 + 300 * (1 - j) + 2, y, 230, 1, a);
+      const fl = env(t, 19.6, 20.5, .25, 1.2); glow(540, y - 20, 520, '255,232,180', .55 * fl * a); glow(540, y - 20, 200, '255,250,235', .7 * fl * a);
+      SIX.forEach((m, k) => { const p = sm((t - 20.0) / 1.8), ang = -Math.PI / 2 + k * 6.2832 / 6; moteAt(540 + Math.cos(ang) * 260 * p, y - 20 + Math.sin(ang) * 260 * p, 40, a * p); });
+    }
+    if (t > 22.0 && t < 28.2) {   // 웃음꽃과 원수의 집
+      const a = sm((t - 22.2) / .8) * (1 - sm((t - 27.3) / .8)), mad = sm((t - 24.4) / 1.5);
+      house(540, 1230, 560, a, t, mad);
+      glow(540, 640, 420, rgb(M.laugh.glow), .3 * a * sm((t - 22.6) / 2)); flower(M.laugh.P, 540, 640, 215, c01((t - 22.6) / 2.6), a, true, t);
+    }
+    if (t > 27.4 && t < 45.05) {   // 청대밭: 다섯 송이가 차례로 피고, 회초리 세 번
+      const a = sm((t - 27.5) / 1.2) * (1 - sm((t - 44.25) / .8)), hz = 990;
+      g.save(); g.globalAlpha = a; const gg = g.createLinearGradient(0, hz - 60, 0, Math.max(VH, Y1)); gg.addColorStop(0, 'rgba(5,6,15,0)'); gg.addColorStop(.15, '#05060f'); gg.addColorStop(1, '#020309'); g.fillStyle = gg; g.fillRect(X0, hz - 60, X1 - X0, Y1 - hz + 70); g.restore();
+      tree(150, 1010, 560, 'c', a); tree(940, 1010, 700, 'o', a);
+      const lifted = sm((t - 42.75) / 1.4), n = BLOOM.reduce((s, b0) => s + c01((t - b0) / 2.2), 0);
+      glow(540, 1000, 330 + 120 * lifted, '255,228,180', a * (.08 + .056 * n + .35 * lifted));
+      g.save(); g.translate(540, 1004); g.scale(1, .14); glow(0, 0, 230 + 30 * n, '255,236,200', a * (.18 + .1 * n)); g.restore();
+      if (lifted > 0) {
+        g.save(); g.globalCompositeOperation = 'lighter';
+        for (let k = 0; k < 12; k++) { g.save(); g.translate(540, 1000 - k * 52 * lifted); g.scale(.55, 1); glow(0, 0, 150, '255,232,190', .16 * lifted * a * (1 - k / 12)); g.restore(); }
+        g.restore();
+        for (let k = 0; k < 14; k++) { const p = ((t - 42.75) * .35 + k / 14) % 1; moteAt(540 + 110 * Math.sin(k * 2.3 + t), 1000 - p * 620, 26, a * lifted * (1 - p)); }
+      }
+      REV.forEach((m, k) => {
+        const b = c01((t - BLOOM[k]) / 2.2); glow(FX[k], FY[k], 170, rgb(m.glow), .32 * a * b + .25 * lifted * a); flower(m.P, FX[k], FY[k], 98, b, a, true, t + k);
+        const la = a * sm((t - BLOOM[k] - .6) / .8); if (la > 0) { g.font = '400 34px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(241,214,160,${la})`; g.shadowColor = 'rgba(4,5,16,.95)'; g.shadowBlur = 16 * sc * D; g.fillText(m.name, FX[k], FY[k] + 146); g.shadowBlur = 0; }
+      });
+      if (t > 40.05) {
+        const ca = sm((t - 40.15) / .6) * (1 - sm((t - 43.45) / .6)); let sw = 0;
+        for (const st of STRIKE) { const d = t - st; if (d > -.18 && d < .5) sw = Math.max(sw, d < 0 ? 1 + d / .18 : 1 - d / .5); }
+        g.save(); g.globalAlpha = ca; g.translate(820, 560); g.rotate(-.95 + .75 * sm(sw)); g.strokeStyle = '#6b4a28'; g.lineCap = 'round'; g.shadowColor = 'rgba(241,214,160,.8)'; g.shadowBlur = 14 * sc * D;
+        g.lineWidth = 9; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-160, 150, -330, 330); g.stroke();
+        g.lineWidth = 4; g.beginPath(); g.moveTo(-150, 140); g.quadraticCurveTo(-170, 170, -215, 178); g.stroke();
+        g.fillStyle = '#4f7a46'; g.beginPath(); g.ellipse(-222, 180, 16, 8, .4, 0, 6.28); g.fill(); g.restore(); g.globalAlpha = 1;
+        for (const st of STRIKE) { const d = t - st; if (d < 0 || d > 1.4) continue; const rr = 60 + d * 380; g.strokeStyle = `rgba(255,236,200,${.6 * (1 - d / 1.4) * a})`; g.lineWidth = 3; g.beginPath(); g.ellipse(540, 1004, rr, rr * .16, 0, 0, 6.28); g.stroke(); }
+      }
+    }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const [a, b, L, step] of texts) {
+      const al = env(t, a, b); if (al <= 0) continue;
+      const tb = Math.min(60, Y0), te = 180 + L.length * 96, tg = g.createLinearGradient(0, tb, 0, te); tg.addColorStop(0, `rgba(4,5,16,${.6 * al})`); tg.addColorStop(c01((120 + L.length * 60 - tb) / (te - tb)), `rgba(4,5,16,${.5 * al})`); tg.addColorStop(1, 'rgba(4,5,16,0)'); g.fillStyle = tg; g.fillRect(X0, tb, X1 - X0, te - tb);   // 글 뒤 그늘: 화면 맨 위부터 부드럽게
+      g.font = '400 60px "Gowun Batang", serif'; g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
+      L.forEach((l, n) => { const la = al * (step ? sm((t - a - n * step) / .8) : 1); if (la <= 0) return; g.fillStyle = `rgba(234,220,190,${la})`; g.fillText(l, VW / 2, 190 + n * 94); });
+      g.shadowBlur = 0;
+    }
+    if (t > 44.45) {   // 맺음: 보는 사람의 이름으로
+      const a1 = sm((t - 44.85) / 1), a2 = sm((t - 45.85) / 1), a3 = sm((t - 46.75) / 1);
+      const vg = g.createRadialGradient(VW / 2, VH * .45, 0, VW / 2, VH * .45, 700); vg.addColorStop(0, `rgba(4,5,16,${.7 * a1})`); vg.addColorStop(1, `rgba(4,5,16,${.2 * a1})`); g.fillStyle = vg; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+      g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 30 * sc * D;
+      g.font = '700 150px "Gowun Batang", serif'; g.fillStyle = `rgba(241,214,160,${a1})`; g.fillText('서 천 꽃 밭', VW / 2, VH * .25);
+      g.font = '400 56px "Gowun Batang", serif'; g.fillStyle = `rgba(234,220,190,${a2})`; endLines.forEach((l, n) => g.fillText(l, VW / 2, VH * .37 + n * 84));
+      g.shadowBlur = 0;
+      SIX.forEach((m, k) => { const x = VW / 2 + (k - 2.5) * 166, y = VH * .62 + (k % 2 ? -26 : 14), b = c01((t - 45.45 - k * .3) / 1.8), got = warden || mythFound.has(m.id); glow(x, y, 120, rgb(m.glow), .3 * b * (got ? 1 : .35)); flower(m.P, x, y, 72, b, got ? 1 : .28, true, t + k); });
+      g.shadowColor = 'rgba(6,8,24,.95)'; g.shadowBlur = 24 * sc * D;
+      g.font = '400 30px "Gowun Batang", serif'; g.fillStyle = `rgba(164,171,198,${a3 * .85})`; g.fillText('제주 무가 「이공본풀이」 이야기', VW / 2, VH * .80);
+      g.shadowBlur = 0;
+    }
+  }
+  // 소리: 낮게 깔리는 울림, 장면마다 종소리, 강물, 회초리
+  let out = null;
+  const AC0 = soundOn ? audio() : null;
+  if (AC0) {
+    out = AC0.createGain(); out.gain.value = 0; out.connect(master || AC0.destination);
+    out.gain.linearRampToValueAtTime(soundOn ? 1 : 0, AC0.currentTime + 1);
+    const T0 = AC0.currentTime + .05, P5 = [293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99];
+    const bell = (at, f, amp = .5, dec = 2.6) => {
+      for (const [m, a2, d2] of [[1, 1, dec], [2.01, .35, .6], [3, .15, .3]]) {
+        const o = AC0.createOscillator(), e = AC0.createGain(); o.frequency.value = f * m; o.connect(e); e.connect(out);
+        e.gain.setValueAtTime(0, T0 + at); e.gain.linearRampToValueAtTime(amp * a2, T0 + at + .005); e.gain.exponentialRampToValueAtTime(.0001, T0 + at + d2 * 4);
+        o.start(T0 + at); o.stop(T0 + at + d2 * 4 + .1);
+      }
+    };
+    for (const [f, amp] of [[73.42, .22], [110, .16], [146.83, .09]]) {   // 바탕 울림
+      const o = AC0.createOscillator(), e = AC0.createGain(); o.frequency.value = f; o.connect(e); e.connect(out);
+      e.gain.setValueAtTime(0, T0); e.gain.linearRampToValueAtTime(amp, T0 + 3); e.gain.setValueAtTime(amp, T0 + TEND - 3); e.gain.linearRampToValueAtTime(0, T0 + TEND);
+      o.start(T0); o.stop(T0 + TEND + .1);
+    }
+    for (const [at, k] of [[.6, 2], [4.2, 4], [5.6, 1], [6.2, 3], [11.0, 0], [12.1, 1], [13.2, 2], [14.8, 4], [18.3, 3], [22.6, 6], [24.6, 7], [25.4, 6], [28.0, 1]]) bell(at, P5[k], .35);
+    bell(19.6, P5[2], .5, 3.5); bell(19.62, P5[4], .4, 3.5); bell(19.64, P5[6], .3, 3.5);
+    BLOOM.forEach((at, k) => bell(at, P5[[0, 2, 3, 4, 6][k]], .45, 3));
+    bell(43.05, P5[0], .45, 4); bell(43.1, P5[2], .38, 4); bell(43.15, P5[4], .38, 4); bell(43.55, P5[7], .25, 4);
+    [44.85, 45.85, 46.45, 47.05, 47.65, 48.25].forEach((at, k) => bell(at, P5[[4, 2, 3, 5, 6, 7][k]], .3, 3.5));
+    const nb = AC0.createBuffer(1, AC0.sampleRate * 2, AC0.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const water = AC0.createBufferSource(), bp = AC0.createBiquadFilter(), wg = AC0.createGain(); water.buffer = nb; water.loop = true; bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = .8;
+    water.connect(bp); bp.connect(wg); wg.connect(out); wg.gain.setValueAtTime(0, T0 + 10.6); wg.gain.linearRampToValueAtTime(.12, T0 + 11.4); wg.gain.setValueAtTime(.12, T0 + 17.1); wg.gain.linearRampToValueAtTime(0, T0 + 17.9);
+    water.start(T0 + 10.6); water.stop(T0 + 18);
+    for (const at of STRIKE) {   // 회초리
+      const s = AC0.createBufferSource(), f = AC0.createBiquadFilter(), e = AC0.createGain(); s.buffer = nb; f.type = 'lowpass'; f.frequency.value = 1400; s.connect(f); f.connect(e); e.connect(out);
+      e.gain.setValueAtTime(.5, T0 + at); e.gain.exponentialRampToValueAtTime(.001, T0 + at + .25); s.start(T0 + at); s.stop(T0 + at + .3);
+      const o = AC0.createOscillator(), e2 = AC0.createGain(); o.frequency.value = 95; o.connect(e2); e2.connect(out); e2.gain.setValueAtTime(.5, T0 + at); e2.gain.exponentialRampToValueAtTime(.001, T0 + at + .5); o.start(T0 + at); o.stop(T0 + at + .55);
+    }
+  }
+  storyAudio = out;
+  let t0 = null, done = false, raf = 0;
+  const end = () => {
+    if (done) return; done = true; storyOn = false; storyAudio = null;
+    if (out && AC) { out.gain.cancelScheduledValues(AC.currentTime); out.gain.setValueAtTime(out.gain.value, AC.currentTime); out.gain.linearRampToValueAtTime(0, AC.currentTime + .8); setTimeout(() => out.disconnect(), 1200); }
+    box.classList.add('out'); removeEventListener('resize', size); removeEventListener('keydown', key);
+    setTimeout(() => { cancelAnimationFrame(raf); box.remove(); }, 1100);
+  };
+  const key = e => { if (e.key === 'Escape') end(); };
+  skip.onclick = e => { e.stopPropagation(); end(); }; addEventListener('keydown', key);
+  const step = ms => { if (done) return; if (t0 == null) t0 = ms; const t = (ms - t0) / 1000; draw(Math.min(t, TEND)); if (t > TEND + 1.5) end(); raf = requestAnimationFrame(step); };
+  (document.fonts && document.fonts.load ? Promise.all([document.fonts.load('400 60px "Gowun Batang"'), document.fonts.load('700 150px "Gowun Batang"')]).catch(() => { }) : Promise.resolve()).then(() => { raf = requestAnimationFrame(step); });
+}
+let storyAudio = null;
+
 /* ---------- 꽃감관의 권한 ①: 꽃 감상 ----------
    화면보호기처럼 꽃밭을 저절로 옮겨 다니며, 닿는 꽃마다 봉오리에서 피어나는 모습을 보여 준다. 화면을 누르면 멈춘다 */
 let tourNext = 0, tourLock = null, tourLeft = Infinity;   // 꽃감관이 아니면 잠깐 구경: 다섯 송이
@@ -1728,6 +1978,8 @@ addEventListener('pointerdown', e => { if (tourOn) { e.stopPropagation(); e.prev
 addEventListener('keydown', e => { if (tourOn) { e.stopPropagation(); stopTour(); } }, true);
 document.addEventListener('visibilitychange', () => { if (tourOn && !document.hidden && !tourLock) { try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; }).catch(() => { }); } catch (e) { } } else if (document.hidden) tourLock = null; });
 $('albumTour').onclick = () => { closeAlbum(); startTour(); };
+$('albumStory').onclick = () => playStory();
+$('bStory').onclick = () => playStory();
 $('tourBtn').onclick = () => { if (albumOn) closeAlbum(); if (!wide && !panel.classList.contains('collapsed') && !$('intro')) setSheet(false); startTour(); };
 
 /* ---------- 꽃감관의 권한 ②: 꽃밭 통계 ---------- */
@@ -1801,7 +2053,9 @@ function focusCell(i, j, opts = {}) {
           setTimeout(() => toast(user ? `${user.name}님은 이제 서천꽃밭의 꽃감관이에요` : '당신은 이제 서천꽃밭의 꽃감관이에요', 4600), 4800);
           setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 꽃감관의 이름이 새겨지고, 꽃 둘레에 빛이 돌아요', 4600), 9800);
           setTimeout(() => toast("'꽃감관 · 신화 속 꽃 6/6'을 누르면 여섯 송이를 언제든 볼 수 있어요", 5200), 14600);
+          setTimeout(() => { if (!storyOn && !tourOn && !albumOn) showInvite(['여섯 송이를 모두 찾았어요.', ['꽃감관', '이 된 이야기를'], '볼까요?'], '이야기 보기', playStory); }, 20500);
         } else setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
+        if (mythFound.size === 1) { showCard(); setTimeout(() => toast('이제 신화 속 꽃들의 이야기를 볼 수 있어요', 4200), 4600); }   // 첫 송이: 이야기를 볼 자격
       }
     } else playMelody(focusP(), .6);
   }, opts.minDur || (sp ? 2.2 : 1.2));
@@ -1825,6 +2079,7 @@ function showCard() {
   $('bShare').hidden = !mine;
   $('bSave').classList.toggle('wide', !mine);
   $('bMine').hidden = mine;
+  $('bStory').hidden = !(k === 'myth' && storyOK()); $('bStory').classList.toggle('glow', !store.get('storySeen', false));
   $('bMine').textContent = user ? '내 꽃으로 돌아가기' : k === 'friend' ? '나도 내 꽃 찾아보기' : '내 꽃 찾기';
   $('bNew').hidden = !mine; $('bNew').classList.toggle('wide', mine && canPair);
   $('bPfp').hidden = !mine;
@@ -1998,7 +2253,7 @@ addEventListener('keydown', audio, { once: true });
 // 홈 화면에 추가해 앱처럼 열 수 있게 (안드로이드 크롬 등)
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 function updSnd() { $('snd').textContent = soundOn ? '♪ 소리 켜짐' : '♪ 소리 꺼짐'; $('snd').classList.toggle('off', !soundOn); }
-$('snd').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); updSnd(); if (soundOn) { audio(); if (focus) playMelody(focusP(), .8); } };
+$('snd').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); updSnd(); if (storyAudio && AC) storyAudio.gain.setTargetAtTime(soundOn ? 1 : 0, AC.currentTime, .1); if (soundOn) { audio(); if (focus) playMelody(focusP(), .8); } };
 updSnd();
 const PENTA = [0, 2, 4, 7, 9];
 function melodyOf(P) {
@@ -2334,6 +2589,7 @@ function fmtCount(n) {
 
 let lastT = 0, firstFrame = true;
 function frame(ms) {
+  if (storyOn) { lastT = ms / 1000; requestAnimationFrame(frame); return; }   // 신화 이야기가 화면을 덮는 동안은 꽃밭을 쉬게 한다
   now = ms / 1000; const dt = Math.min(.05, now - (lastT || now)); lastT = now; frameNo++;
   if (firstFrame) { stg.x = stg.tx; stg.y = stg.ty; } else { stg.x += (stg.tx - stg.x) * .12; stg.y += (stg.ty - stg.y) * .12; }
   if (anim) {
