@@ -2930,8 +2930,10 @@ function pngFlower(g, P, x, y, R, th) {
 }
 function downloadCanvas(c, name) {
   c.toBlob(async b => {
-    // 휴대폰: 공유 창으로 넘겨 '이미지 저장'을 누르면 바로 사진첩에 들어가게
-    if (navigator.canShare && matchMedia('(pointer:coarse)').matches) {
+    // 아이폰·아이패드: 내려받기는 '파일' 앱으로 가서, 공유 창의 '이미지 저장'으로 사진첩에 넣는다
+    // 안드로이드·컴퓨터: 바로 내려받는다 (안드로이드는 갤러리의 Download 앨범에 들어간다)
+    const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (iOS && navigator.canShare) {
       try {
         const f = new File([b], name, { type: 'image/png' });
         if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
@@ -2940,7 +2942,7 @@ function downloadCanvas(c, name) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(b);
     a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    toast('이미지를 저장했어요');
+    toast(/Android/i.test(navigator.userAgent) ? '갤러리에 저장했어요' : '이미지를 저장했어요');
   }, 'image/png');
 }
 async function savePNG() {
