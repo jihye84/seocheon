@@ -112,6 +112,7 @@ body.narrow #snd{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
 .btns button{min-height:48px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);
   cursor:pointer;padding:0 8px;line-height:1.25}
 .btns button.wide{grid-column:1/-1}
+.btns button.armed{border-color:var(--gold);color:var(--gold);animation:tipGlow 1.1s ease-in-out infinite}
 .btns button:hover,#toggle:hover{background:rgba(255,255,255,.13)}
 [hidden]{display:none!important}
 
@@ -1321,7 +1322,8 @@ const reported = new Set(store.get('reported', []));
 let reportArmed = 0;
 function refreshTagUI() {
   const b = $('bTag'); if (!user) return;
-  b.textContent = tagArmed ? '한 번 더 누르면 달아요' : myTag && myTag.s === user.seed ? '이름표 떼기' : myTag ? '이름표 옮겨 달기' : '이름표 달기';
+  b.classList.toggle('armed', !!tagArmed);
+  b.textContent = tagArmed ? '한 번 더 눌러야 달려요' : myTag && myTag.s === user.seed ? '이름표 떼기' : myTag ? '이름표 옮겨 달기' : '이름표 달기';
   [...$('pickCard').children].forEach(el => el.classList.toggle('taken', takenSet.has(+el.dataset.k)));
 }
 // 생일까지 적은 사람끼리는 같은 꽃에 같은 빛깔을 겹쳐 고를 수 없다: 이미 고른 빛깔을 받아 온다
@@ -1365,10 +1367,10 @@ $('bTag').onclick = async () => {
     tagBusy = false; refreshTagUI(); return;
   }
   if (BAD_NAME.test(user.name)) { toast('이 이름으로는 이름표를 달 수 없어요'); return; }
-  if (!tagArmed || now - tagArmed > 6) {         // 공개되는 일이라 한 번 더 묻는다
+  if (!tagArmed || now - tagArmed > 15) {        // 공개되는 일이라 한 번 더 묻는다
     tagArmed = now; refreshTagUI();
-    toast(`이름표를 달면 꽃밭을 걷는 누구나 '${user.name}의 꽃'을 볼 수 있어요`, 4200);
-    setTimeout(() => { if (tagArmed && now - tagArmed > 5.9) { tagArmed = 0; refreshTagUI(); } }, 6100);
+    toast(`아직 달지 않았어요. 단추를 한 번 더 누르면 누구나 '${user.name}의 꽃'을 볼 수 있어요`, 6000);
+    setTimeout(() => { if (tagArmed && now - tagArmed > 14.9) { tagArmed = 0; refreshTagUI(); toast('이름표를 달지 않았어요', 2600); } }, 15100);
     return;
   }
   tagArmed = 0;
