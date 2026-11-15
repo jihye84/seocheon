@@ -1660,14 +1660,17 @@ function tourGo() {
   if (tourLeft <= 0) { endTaste(); return; }
   tourLeft--;
   const prev = tourSp; tourPrev = tourSp; tourSp = null;   // 떠나는 꽃은 화면 밖으로 나갈 때까지 핀 모습 그대로 둔다
-  const tags = [...tagSp.values()], useTag = tags.length && Math.random() < .3;
+  // 이름표 꽃: 지금 보고 있는 자리나 방금 본 꽃, 내 꽃·신화 속 꽃이 차지한 자리는 빼고 고른다
+  // (예전엔 이름표가 내 것 하나뿐일 때 같은 자리를 또 골라, 카메라가 움직이지 않고 서른 숨 동안 멈춰 있었다)
+  const here = focus ? keyOf(focus.i, focus.j) : '', tags = [...tagSp.entries()].filter(([k, t]) => k !== here && t !== prev && specials.get(k) === t).map(([, t]) => t);
+  const useTag = tags.length && Math.random() < .3;
   let sp;
   if (useTag) { sp = tags[(Math.random() * tags.length) | 0]; sp.bloomT = null; sp.spr = null; refreshSpecials(); }
   else {
     // 지금 자리에서 너무 멀지 않은 이름 모를 꽃 한 송이
     let i, j, tries = 0;
     do { i = Math.round(cam.x + (Math.random() - .5) * 90); j = Math.round(cam.y + (Math.random() - .5) * 90); i = Math.max(-380, Math.min(380, i)); j = Math.max(-380, Math.min(380, j)); refreshSpecials(); }
-    while (specials.has(keyOf(i, j)) && ++tries < 20);
+    while ((specials.has(keyOf(i, j)) || keyOf(i, j) === here) && ++tries < 20);
     const [cx, cy, size, seed] = cellCenter(i, j);   // 그 칸의 꽃이 원래 피어 있던 바로 그 자리·크기 그대로 (칸 한가운데가 아니다)
     sp = tourSp = { kind: 'tour', name: '', seed, i, j, cx, cy, size, P: cellP(i, j, seed), bloomT: null };
     refreshSpecials();
@@ -1691,7 +1694,7 @@ function tourTick() {
   const sp = tourTarget;
   if (!sp) return;
   // 날아가는 길이 끝나기 조금 전부터 봉오리가 벌어지기 시작한다: 다가가는 움직임과 피어나는 움직임이 한 호흡으로 이어지게
-  if (sp.bloomT == null && anim && now > anim.t0 + anim.dur - 1.7) sp.bloomT = now;
+  if (sp.bloomT == null && (!anim || now > anim.t0 + anim.dur - 1.7)) sp.bloomT = now;   // 날아갈 길이 없으면(이미 그 자리면) 바로 피운다
   if (!tourCapOn && sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > 3.2) { tourCapOn = true; tourCaption(sp); }   // 자막은 꽃이 반쯤 벌어졌을 때
   if (now > tourNext || (sp.bloomT != null && sp.bloomT > 0 && now - sp.bloomT > (RM ? 7 : 12.5))) tourGo();
 }
