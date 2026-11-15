@@ -1908,6 +1908,28 @@ function playStory() {
   const BLOOM = [58.7, 60.15, 61.6, 63.05, 64.5], FX = [130, 335, 540, 745, 950], FY = [1125, 1082, 1110, 1082, 1125], STRIKE = [67.75, 68.5, 69.25];
   const FATHER = gen(strHash('서천꽃밭|아버지의 꽃'), 42, 0), POPS = [0, 1, 2, 3, 4].map(k => ({ P: gen(strHash('서천꽃밭|꽃밭' + k)), a: -2.6 + k * 1.3, d: 250 + (k % 2) * 60 }));
   const endLines = warden ? ['이제 서천꽃밭은', `꽃감관 ${nm}${josa(nm, '이', '가')} 돌봅니다`] : [`남은 ${rest}송이를 마저 찾으면,`, `${nm}님도 꽃감관이 됩니다`];
+  // 신호가 끊긴 CCTV: 잡티, 주사선, 가로로 찢기는 화면, 빛깔 어긋남, 잠깐씩 끊기는 신호
+  const NZ = document.createElement('canvas'); NZ.width = 160; NZ.height = 200; const nzg = NZ.getContext('2d'), nzd = nzg.createImageData(160, 200);
+  const CUTS = [[49.9, .18], [51.0, .26], [52.35, .14], [53.25, .2]];
+  const cctvI = t => sm((t - 48.6) / 1.0) * (1 - sm((t - 53.8) / .8)) * (.55 + .2 * Math.sin(t * 9) * Math.sin(t * 3.7));
+  function cctv(t) {
+    const I = cctvI(t); if (I <= .01) return;
+    const cut = CUTS.some(([c, d]) => t > c && t < c + d), PW = cv.width, PH = cv.height;
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+    for (let n = 0, m = 2 + (Math.random() * 5 | 0); n < m; n++) {   // 가로로 찢기는 띠
+      const y = Math.random() * PH | 0, h = (6 + Math.random() * 46) * D | 0, dx = (Math.random() - .5) * 160 * D * I;
+      g.drawImage(cv, 0, y, PW, h, dx, y, PW, h);
+    }
+    if (Math.random() < .5 * I) { g.globalAlpha = .35 * I; g.globalCompositeOperation = 'screen'; g.drawImage(cv, 6 * D * I, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 빛깔이 어긋난 잔상
+    const d = nzd.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255 | 0; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+    nzg.putImageData(nzd, 0, 0);
+    if (cut) { g.fillStyle = 'rgba(4,5,10,.88)'; g.fillRect(0, 0, PW, PH); }
+    g.imageSmoothingEnabled = false; g.globalAlpha = cut ? .55 : .12 + .2 * I; g.globalCompositeOperation = cut ? 'source-over' : 'overlay'; g.drawImage(NZ, 0, 0, PW, PH);
+    g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true;
+    g.globalAlpha = .16 + .1 * I; g.fillStyle = '#000'; for (let y = (t * 120 * D) % (4 * D); y < PH; y += 4 * D) g.fillRect(0, y, PW, 1.4 * D);   // 주사선
+    if (Math.random() < .3 * I) { const y = Math.random() * PH; g.globalAlpha = .25; g.fillStyle = '#d8e0ff'; g.fillRect(0, y, PW, 2 * D); }   // 번쩍 지나가는 줄
+    g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  }
   function draw(t) {
     g.setTransform(D, 0, 0, D, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     const bg = g.createRadialGradient(W / 2, H * .56, 0, W / 2, H * .56, Math.max(W, H) * .8);
@@ -2007,6 +2029,7 @@ function playStory() {
         for (const st of STRIKE) { const d = t - st; if (d < 0 || d > 1.4) continue; const rr = 60 + d * 380; g.strokeStyle = `rgba(255,236,200,${.45 * (1 - d / 1.4) * a})`; g.lineWidth = 3; g.beginPath(); g.ellipse(540, 1004, rr, rr * .16, 0, 0, 6.28); g.stroke(); }
       }
     }
+    if (t > 48.5 && t < 54.6) cctv(t);   // 이름을 부를 수 없는 꽃: 신호가 끊긴 감시 화면처럼
     g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const [a, b, L, step] of texts) {
       const al = env(t, a, b); if (al <= 0) continue;
@@ -2048,11 +2071,40 @@ function playStory() {
       e.gain.setValueAtTime(0, T0); e.gain.linearRampToValueAtTime(amp, T0 + 3); e.gain.setValueAtTime(amp, T0 + TEND - 3); e.gain.linearRampToValueAtTime(0, T0 + TEND);
       o.start(T0); o.stop(T0 + TEND + .1);
     }
-    for (const [at, k] of [[.6, 2], [4.2, 4], [5.6, 1], [6.6, 3], [7.0, 4], [7.4, 5], [7.8, 6], [8.6, 7], [10.9, 2], [16.0, 1], [20.0, 0], [23.2, 3], [24.2, 4], [27.2, 1], [30.4, 0], [33.6, 0], [34.5, 1], [35.4, 2], [37.8, 3], [41.5, 4], [41.8, 5], [45.0, 6], [46.2, 7], [47.0, 6], [51.5, 1], [54.8, 1]]) bell(at, P5[k], .35);
+    for (const [at, k] of [[.6, 2], [4.2, 4], [5.6, 1], [6.6, 3], [7.0, 4], [7.4, 5], [7.8, 6], [8.6, 7], [10.9, 2], [16.0, 1], [20.0, 0], [23.2, 3], [24.2, 4], [27.2, 1], [30.4, 0], [33.6, 0], [34.5, 1], [35.4, 2], [37.8, 3], [41.5, 4], [41.8, 5], [45.0, 6], [51.5, 1], [54.8, 1]]) bell(at, P5[k], .35);
     bell(12.6, 1200, .25, .25); bell(12.62, 900, .2, .3);   // 빗이 갈라지는 소리
     bell(39.1, P5[2], .5, 3.5); bell(39.12, P5[4], .4, 3.5); bell(39.14, P5[6], .3, 3.5);   // 두 반쪽이 맞을 때
-    { const o = AC0.createOscillator(), e = AC0.createGain(); o.type = 'triangle'; o.frequency.value = 55; o.connect(e); e.connect(out);   // 이름을 부를 수 없는 꽃: 낮게 깔리는 울림
-      e.gain.setValueAtTime(0, T0 + 48.4); e.gain.linearRampToValueAtTime(.35, T0 + 49.6); e.gain.setValueAtTime(.35, T0 + 52.4); e.gain.linearRampToValueAtTime(0, T0 + 54.4); o.start(T0 + 48.4); o.stop(T0 + 54.5); }
+    // 천년장자 집의 웃음소리: 목소리 넷이 '하하하' 끊어 웃다가 점점 빨라지고, 지직 하는 잡음 속으로 끊긴다
+    const nb0 = AC0.createBuffer(1, AC0.sampleRate * 2, AC0.sampleRate), nd0 = nb0.getChannelData(0); for (let i = 0; i < nd0.length; i++) nd0[i] = Math.random() * 2 - 1;
+    const lr = mulberry32(4501);
+    for (const [st, f0, gain] of [[45.4, 128, .5], [45.9, 236, .42], [46.5, 168, .45], [47.0, 290, .35]]) {
+      const src = AC0.createOscillator(), f1 = AC0.createBiquadFilter(), f2 = AC0.createBiquadFilter(), v = AC0.createGain(), pan = AC0.createStereoPanner ? AC0.createStereoPanner() : null;
+      src.type = 'sawtooth'; f1.type = 'bandpass'; f1.frequency.value = 760; f1.Q.value = 5; f2.type = 'bandpass'; f2.frequency.value = 1250; f2.Q.value = 7;
+      src.connect(f1); src.connect(f2); f1.connect(v); f2.connect(v); if (pan) { pan.pan.value = (lr() - .5) * 1.2; v.connect(pan); pan.connect(out); } else v.connect(out);
+      v.gain.setValueAtTime(0, T0); let tt = st, n = 0;
+      while (tt < 48.55) {   // 한 음절씩: 숨소리로 시작해 짧게 '하'
+        const len = .085 + lr() * .05, gap = Math.max(.035, .1 - (tt - 45.4) * .018) + lr() * .04, ff = f0 * (1.08 - .3 * ((n % 6) / 6)) * (1 + (tt - 45.4) * .03);
+        src.frequency.setValueAtTime(ff, T0 + tt); src.frequency.linearRampToValueAtTime(ff * .86, T0 + tt + len);
+        v.gain.setValueAtTime(0, T0 + tt); v.gain.linearRampToValueAtTime(gain, T0 + tt + .015); v.gain.setValueAtTime(gain, T0 + tt + len - .025); v.gain.linearRampToValueAtTime(0, T0 + tt + len);
+        const h = AC0.createBufferSource(), hf = AC0.createBiquadFilter(), hg = AC0.createGain(); h.buffer = nb0; hf.type = 'bandpass'; hf.frequency.value = 1600; hf.Q.value = 1;
+        h.connect(hf); hf.connect(hg); hg.connect(pan || out); hg.gain.setValueAtTime(.12 * gain, T0 + tt - .02); hg.gain.exponentialRampToValueAtTime(.001, T0 + tt + .05); h.start(T0 + tt - .02, lr()); h.stop(T0 + tt + .06);
+        tt += len + gap; n++; if (n % 6 === 5) tt += .18 + lr() * .2;   // 숨 고르기
+      }
+      src.start(T0 + st - .05); src.stop(T0 + 48.7);
+    }
+    { // 지직: 화면이 끊길 때마다 터지는 잡음, 낮게 웅웅대는 전기 소리
+      const sn = AC0.createBufferSource(), hp = AC0.createBiquadFilter(), sg = AC0.createGain(); sn.buffer = nb0; sn.loop = true; hp.type = 'highpass'; hp.frequency.value = 1800;
+      sn.connect(hp); hp.connect(sg); sg.connect(out); sg.gain.setValueAtTime(0, T0);
+      const cr = mulberry32(777);
+      for (let tt = 48.55; tt < 54.3; tt += .03 + cr() * .05) {
+        const cutting = CUTS.some(([c, d]) => tt > c - .02 && tt < c + d), lvl = cutting ? .5 : cctvI(tt) * (cr() < .55 ? .22 * cr() : .02);
+        sg.gain.setValueAtTime(lvl, T0 + tt);
+      }
+      sg.gain.setValueAtTime(0, T0 + 54.35); sn.start(T0 + 48.5); sn.stop(T0 + 54.4);
+      const hum = AC0.createOscillator(), hum2 = AC0.createOscillator(), hgn = AC0.createGain(); hum.frequency.value = 60; hum2.frequency.value = 120; hum.connect(hgn); hum2.connect(hgn); hgn.connect(out);
+      hgn.gain.setValueAtTime(0, T0 + 48.5); hgn.gain.linearRampToValueAtTime(.12, T0 + 49.2); hgn.gain.setValueAtTime(.12, T0 + 53.6); hgn.gain.linearRampToValueAtTime(0, T0 + 54.4);
+      hum.start(T0 + 48.5); hum2.start(T0 + 48.5); hum.stop(T0 + 54.5); hum2.stop(T0 + 54.5);
+    }
     BLOOM.forEach((at, k) => bell(at, P5[[0, 2, 3, 4, 6][k]], .45, 3));
     bell(69.85, P5[0], .45, 4); bell(69.9, P5[2], .38, 4); bell(69.95, P5[4], .38, 4); bell(70.35, P5[7], .25, 4);
     bell(71.6, P5[3], .3, 3);
