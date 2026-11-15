@@ -1710,7 +1710,7 @@ function playStory() {
     sc = Math.min(W / VW, H / VH); ox = (W - VW * sc) / 2; oy = (H - VH * sc) / 2;
     X0 = -ox / sc; X1 = (W - ox) / sc; Y0 = -oy / sc; Y1 = (H - oy) / sc;
     // 아득한 꽃밭(처음 장면): 한 번만 그려 두고 겹쳐 쓴다
-    const mw = Math.ceil((X1 - X0) * sc * D), mt = VH * .7, mh = Math.ceil((Math.max(Y1, VH * 1.06) - mt) * sc * D);
+    const mw = Math.ceil((X1 - X0) * sc * D), mt = VH * .74 - 80 * 2.2, mh = Math.ceil((Math.max(Y1, VH * 1.06) - mt) * sc * D);
     meadow = document.createElement('canvas'); meadow.width = Math.max(1, mw); meadow.height = Math.max(1, mh);
     const mg = meadow.getContext('2d'), r = mulberry32(900), n = Math.round(46 * (X1 - X0) / VW), list = [];
     for (let k = 0; k < n; k++) list.push({ P: gen((r() * 4e9) >>> 0), x: X0 + r() * (X1 - X0), y: VH * (.74 + r() * .3), s: 34 + r() * 46 });
