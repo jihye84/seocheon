@@ -183,7 +183,7 @@ body.tour #panel,body.tour #hud,body.tour #snd,body.tour #guide,body.tour #hint{
 #statsCol span{display:block;border-radius:4px 4px 2px 2px;min-height:3px;border:1px solid rgba(255,255,255,.18)}
 #statsNote{color:var(--faint);font-size:.82em;margin:.2em 0 .7em}
 #statsClose{display:block;margin:0 auto;min-height:42px;padding:0 26px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);cursor:pointer}
-/* 꽃감관의 화첩: 신화 속 꽃 다섯 송이 */
+/* 꽃감관의 화첩: 신화 속 꽃 여섯 송이 */
 #album{position:fixed;inset:0;z-index:20;background:#05060f;opacity:0;pointer-events:none;transition:opacity .6s}
 #album.on{opacity:1;pointer-events:auto}
 #albumCv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer}
@@ -262,7 +262,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 다섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
@@ -1241,6 +1241,8 @@ const MYTHS = [
     motto: ['멈춘 몸에', '피를 다시 돌게 하는 꽃'], glow: [355, 85, 66], story: MYTH_REVIVE },
   { id: 'breath', name: '숨살이꽃', at: [97, 251], hue: 196, pal: 3, force: { flat: true, shape: 'notch', count: 5, layers: 2, cType: 'ring' },
     motto: ['끊어진 숨을', '다시 쉬게 하는 꽃'], glow: [196, 80, 80], story: MYTH_REVIVE },
+  { id: 'soul', name: '혼살이꽃', at: [-318, 292], hue: 270, pal: 3, force: { flat: true, shape: 'lance', count: 21, layers: 2, cType: 'ring' },
+    motto: ['떠난 넋을 불러', '몸으로 돌아오게 하는 꽃'], glow: [270, 70, 80], story: MYTH_REVIVE },
   { id: 'laugh', name: '웃음꽃', at: [-286, -129], hue: 48, pal: 0, force: { flat: true, shape: 'fringe', count: 8, layers: 3, cType: 'dots' },
     motto: ['보는 이를', '멈출 수 없이 웃게 하는 꽃'], glow: [48, 95, 70],
     story: ['「이공본풀이」에서 할락궁이는', '이 꽃으로 원수의 집안을', '멈출 수 없는 웃음에 빠뜨렸다.'] }
@@ -1378,6 +1380,7 @@ async function syncMyTag() {
   try {
     const r = await rpc('my_tag', { p_token: tagToken() });
     myTag = r && r.seed != null ? { s: Number(r.seed) >>> 0, c: r.color | 0, slot: r.slot | 0 } : null; store.set('tag', myTag); placeUser();
+    if (myTag && user && myTag.s === user.seed && !!r.warden !== isWarden(user)) putTag(myTag.c);   // 꽃감관 요건이 바뀌었거나 다른 기기에서 마저 찾았으면 이름표도 맞춘다
     if (myTag && user && myTag.s === user.seed && myTag.c !== user.color) {   // 다른 기기에서 빛깔을 바꿨으면 여기서도 따라간다
       pickedColor = myTag.c; markPicker($('pickIntro'), pickedColor); setUser(user.name, user.seed);
       if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
@@ -1536,17 +1539,15 @@ function drawGuide() {
 }
 
 /* ---------- 꽃감관의 화첩 ----------
-   다섯 송이를 모두 찾으면 '꽃감관 · 신화 속 꽃 5/5'를 눌러 언제든 다섯 송이를 한자리에서 보고, 합동 사진으로 저장할 수 있다 */
-const ALBUM_ORDER = ['bone', 'flesh', 'blood', 'breath', 'laugh'];   // 이야기 속 차례: 뼈 → 살 → 피 → 숨, 그리고 웃음
-function albumLayout(w, h) {      // 다섯 송이 자리: 가로로 넓으면 한 줄, 세로로 길면 2·1·2 (줄마다 꽃 아래에 이름과 꽃말 두 줄이 들어갈 자리를 둔다)
-  const top = h * .15, bot = h * .875, out = [];
-  if (w > h * 1.15) {
-    const R = Math.min(w / 5 * .3, (bot - top) * .27), y = top + (bot - top) * .4;
-    for (let k = 0; k < 5; k++) out.push([w * (k + .5) / 5, y, R]);
-  } else {
-    const B = (bot - top) / 3, R = Math.min(w * .17, B * .31), y = r => top + B * r + R * 1.2;
-    out.push([w * .27, y(0), R], [w * .73, y(0), R], [w * .5, y(1), R], [w * .27, y(2), R], [w * .73, y(2), R]);
-  }
+   여섯 송이를 모두 찾으면 '꽃감관 · 신화 속 꽃 6/6'을 눌러 언제든 여섯 송이를 한자리에서 보고, 합동 사진으로 저장할 수 있다 */
+const ALBUM_ORDER = ['bone', 'flesh', 'blood', 'breath', 'soul', 'laugh'];   // 이야기 속 차례: 뼈 → 살 → 피 → 숨 → 넋, 그리고 웃음
+function albumLayout(w, h) {      // 여섯 송이 자리: 가로로 넓으면 세 송이씩 두 줄, 세로로 길면 두 송이씩 세 줄 (꽃 아래에 이름과 꽃말 두 줄이 들어갈 자리를 둔다)
+  const top = h * .15, bot = h * .875, out = [], N = ALBUM_ORDER.length;
+  const cols = w > h * 1.9 || (h < 560 && w > h * 1.3) ? N : w > h * 1.15 ? 3 : 2,   // 아주 납작한 화면(가로로 든 휴대폰)은 한 줄로
+        rows = Math.ceil(N / cols), B = (bot - top) / rows, cw = w / cols;
+  if (rows === 1) { const R = Math.min(cw * .3, h * .12); for (let k = 0; k < N; k++) out.push([cw * (k + .5), h * .46, R]); return out; }   // 한 줄: 제목 아래 가운데쯤
+  const R = Math.min(cw * .26, B * .31);
+  for (let k = 0; k < N; k++) out.push([cw * (k % cols + .5), top + B * Math.floor(k / cols) + R * 1.2, R]);
   return out;
 }
 function drawAlbum(g, w, h, t, forPhoto) {
@@ -1555,6 +1556,10 @@ function drawAlbum(g, w, h, t, forPhoto) {
   g.fillStyle = '#a4abc6'; g.font = `400 ${Math.max(13, 30 * u)}px "Gowun Batang", serif`; g.fillText('제주 무가 「이공본풀이」', w / 2, h * .075);
   g.fillStyle = '#f1d6a0'; g.font = `700 ${Math.max(20, 54 * u)}px "Gowun Batang", serif`; g.fillText('서천꽃밭의 신화 속 꽃', w / 2, h * .075 + Math.max(28, 70 * u));
   if (!forPhoto) { g.fillStyle = '#c9c2b0'; g.font = `400 ${Math.max(12, 26 * u)}px "Gowun Batang", serif`; g.fillText(user ? `꽃감관 ${user.name}의 화첩` : '이름 없는 꽃감관의 화첩', w / 2, h * .075 + Math.max(28, 70 * u) + Math.max(20, 42 * u)); }
+  // 칸이 좁아 한 송이라도 꽃말이 넘치면, 모두 이름만 적는다
+  const gap = L.length > 1 ? Math.abs(L[1][0] - L[0][0]) * .96 : w;
+  g.font = `400 ${Math.max(11, 22 * u)}px "Gowun Batang", serif`;
+  const mottoFit = MYTHS.every(m => m.motto.every(l => g.measureText(l).width <= gap));
   ALBUM_ORDER.forEach((id, k) => {
     const m = MYTHS.find(q => q.id === id), [x, y, R] = L[k], sway = forPhoto ? 0 : .04 * Math.sin(t * .6 + k * 1.7);
     g.save(); g.translate(x, y); g.rotate(sway); g.translate(-x, -y); pngFlower(g, m.P, x, y, R, m.glow); g.restore();
@@ -1566,7 +1571,7 @@ function drawAlbum(g, w, h, t, forPhoto) {
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     const f1 = Math.max(15, 34 * u), f2 = Math.max(11, 22 * u), y0 = y + R * 1.22 + f1;
     g.fillStyle = '#f1d6a0'; g.font = `700 ${f1}px "Gowun Batang", serif`; g.fillText(m.name, x, y0);
-    g.fillStyle = '#c9c2b0'; g.font = `400 ${f2}px "Gowun Batang", serif`; m.motto.forEach((l, n) => g.fillText(l, x, y0 + f2 * 1.55 * (n + 1)));
+    g.fillStyle = '#c9c2b0'; g.font = `400 ${f2}px "Gowun Batang", serif`; if (mottoFit) m.motto.forEach((l, n) => g.fillText(l, x, y0 + f2 * 1.55 * (n + 1)));   // 칸이 좁으면 꽃말은 빼고 이름만
   });
 }
 let albumOn = false, albumBg = null;
@@ -1591,7 +1596,7 @@ function closeAlbum() { albumOn = false; $('album').classList.remove('on'); $('a
 $('albumClose').onclick = closeAlbum;
 
 /* ---------- 신화 속 꽃으로 이끄는 말풍선 ----------
-   이름표를 단 뒤(또는 내 꽃을 찾고 한참 머문 뒤) 길잡이 단추 곁에 한 번 떠서, 다섯 송이를 찾으면 꽃감관이 된다고 알려 준다 */
+   이름표를 단 뒤(또는 내 꽃을 찾고 한참 머문 뒤) 길잡이 단추 곁에 한 번 떠서, 여섯 송이를 찾으면 꽃감관이 된다고 알려 준다 */
 let inviteT = 0, inviteOffT = 0;
 function hideInvite() { clearTimeout(inviteOffT); $('invite').classList.remove('on'); $('mythBtn').classList.remove('tip'); }
 function inviteMyth(delay) {
@@ -1603,7 +1608,7 @@ function inviteMyth(delay) {
     if (!user || user.seed.toString(36) !== key || mythFound.size === MYTHS.length || (guideM && now < guideUntil) || albumOn || pair || tourOn || $('stats').classList.contains('on')) return;
     store.set('invited', [...store.get('invited', []), key].slice(-30));
     const left = MYTHS.length - mythFound.size;
-    showInvite(left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 다섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']]);
+    showInvite(left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 여섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']]);
   }, delay);
 }
 let inviteAct = null;
@@ -1669,8 +1674,8 @@ function endTaste() {
   stopTour();
   const found = mythFound.size, rest = MYTHS.length - found;
   setTimeout(() => {
-    if (!user) showInvite(['맛보기 감상이 끝났어요.', '내 꽃을 찾고', ['신화 속 꽃 다섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.'], '내 꽃 찾기', () => showIntro());
-    else showInvite(['맛보기 감상이 끝났어요.', found ? ['신화 속 꽃', ` ${rest}송이를 마저 찾아`] : ['신화 속 꽃 다섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.']);
+    if (!user) showInvite(['맛보기 감상이 끝났어요.', '내 꽃을 찾고', ['신화 속 꽃 여섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.'], '내 꽃 찾기', () => showIntro());
+    else showInvite(['맛보기 감상이 끝났어요.', found ? ['신화 속 꽃', ` ${rest}송이를 마저 찾아`] : ['신화 속 꽃 여섯 송이', '를 모두 찾아'], ['꽃감관', '이 되면'], '끝없이 감상할 수 있어요.']);
   }, 1400);
 }
 function startTour() {
@@ -1728,7 +1733,7 @@ $('albumName').onclick = () => { closeAlbum(); showIntro(); toast('내 꽃을 �
 addEventListener('keydown', e => { if (e.key !== 'Escape') return; if ($('stats').classList.contains('on')) $('stats').classList.remove('on'); else if (albumOn) closeAlbum(); });
 $('albumCv').onclick = e => {       // 꽃을 누르면 꽃밭의 그 꽃으로 간다
   const L = albumLayout(innerWidth, innerHeight);
-  for (let k = 0; k < 5; k++) if (Math.hypot(e.clientX - L[k][0], e.clientY - L[k][1]) < L[k][2] * 1.3) {
+  for (let k = 0; k < L.length; k++) if (Math.hypot(e.clientX - L[k][0], e.clientY - L[k][1]) < L[k][2] * 1.3) {
     const m = MYTHS.find(q => q.id === ALBUM_ORDER[k]); closeAlbum(); focusCell(m.i, m.j); return;
   }
 };
@@ -1738,9 +1743,9 @@ $('albumSave').onclick = async () => {
   pngBase(g, 1080, 1350, 5, 40);
   drawAlbum(g, 1080, 1350, 2.4, true);
   g.textAlign = 'center';
-  g.fillStyle = '#eadcbe'; g.font = '400 30px "Gowun Batang", serif'; g.fillText(user ? `다섯 송이를 모두 찾은 꽃감관 ${user.name}` : '다섯 송이를 모두 찾은 꽃감관', 540, 1262);
+  g.fillStyle = '#eadcbe'; g.font = '400 30px "Gowun Batang", serif'; g.fillText(user ? `여섯 송이를 모두 찾은 꽃감관 ${user.name}` : '여섯 송이를 모두 찾은 꽃감관', 540, 1262);
   g.fillStyle = '#6f7796'; g.font = '400 24px "Gowun Batang", serif'; g.fillText('서천꽃밭 · jihye84.github.io/seocheon', 540, 1306);
-  downloadCanvas(c, '서천꽃밭_신화속꽃_다섯송이.png');
+  downloadCanvas(c, '서천꽃밭_신화속꽃_여섯송이.png');
 };
 
 /* ---------- 초점 맞추기 ---------- */
@@ -1761,13 +1766,13 @@ function focusCell(i, j, opts = {}) {
       else if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
         mythFound.add(sp.id); saveMyth();
         guideUntil = 0;
-        if (mythFound.size === MYTHS.length) {   // 다섯 송이를 모두 찾으면 꽃감관이 된다
+        if (mythFound.size === MYTHS.length) {   // 여섯 송이를 모두 찾으면 꽃감관이 된다
           setUser(user.name, user.seed);   // 링크에도 꽃감관 표시를 싣는다
           if (myTag && myTag.s === user.seed) putTag(myTag.c);   // 이름표에도
-          setTimeout(() => toast('신화 속 꽃 다섯 송이를 모두 찾았어요', 3600), 900);
+          setTimeout(() => toast('신화 속 꽃 여섯 송이를 모두 찾았어요', 3600), 900);
           setTimeout(() => toast(user ? `${user.name}님은 이제 서천꽃밭의 꽃감관이에요` : '당신은 이제 서천꽃밭의 꽃감관이에요', 4600), 4800);
           setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 꽃감관의 이름이 새겨지고, 꽃 둘레에 빛이 돌아요', 4600), 9800);
-          setTimeout(() => toast("'꽃감관 · 신화 속 꽃 5/5'를 누르면 다섯 송이를 언제든 볼 수 있어요", 5200), 14600);
+          setTimeout(() => toast("'꽃감관 · 신화 속 꽃 6/6'을 누르면 여섯 송이를 언제든 볼 수 있어요", 5200), 14600);
         } else setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
       }
     } else playMelody(focusP(), .6);
