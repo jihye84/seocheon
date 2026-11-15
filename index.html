@@ -113,7 +113,7 @@ body.narrow #snd{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
   cursor:pointer;padding:0 8px;line-height:1.25}
 .btns button.wide{grid-column:1/-1}
 .btns button.armed,.btns button.armed:hover{border-color:#ffd9a0;background:linear-gradient(180deg,#ff9a6b,#e8553f);color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(90,20,10,.5);animation:armPulse .9s ease-in-out infinite}
-@keyframes armPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,140,100,.0);transform:scale(1)}50%{box-shadow:0 0 0 7px rgba(255,140,100,.28),0 0 22px rgba(255,120,90,.6);transform:scale(1.03)}}
+@keyframes armPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,140,100,0)}50%{box-shadow:0 0 0 7px rgba(255,140,100,.3),0 0 24px rgba(255,120,90,.65)}}
 @media (prefers-reduced-motion:reduce){.btns button.armed{animation:none;box-shadow:0 0 0 5px rgba(255,140,100,.3)}}
 .btns button:hover,#toggle:hover{background:rgba(255,255,255,.13)}
 [hidden]{display:none!important}
@@ -149,6 +149,17 @@ body.narrow .note{display:none}
 #guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
   font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
 #guide.on{opacity:1}
+/* 신화 속 꽃으로 이끄는 말풍선: 이름표를 달고 '이제 뭐 하지?' 할 때 길잡이 단추 곁에 뜬다 */
+#invite{position:fixed;z-index:7;max-width:min(88vw,19em);padding:14px 16px 12px;border-radius:16px;background:rgba(18,22,50,.94);border:1px solid rgba(241,214,160,.55);
+  box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 18px rgba(241,214,160,.18);line-height:1.6;font-size:.92em;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .6s,transform .6s}
+#invite.on{opacity:1;pointer-events:auto;transform:none}
+#invite p{margin:0 0 .6em;color:var(--ink)} #invite p b{color:var(--gold);font-weight:700}
+#invite div{display:flex;gap:.5em}
+#invite button{min-height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.07);cursor:pointer;padding:0 12px}
+#inviteGo{flex:1;border:0!important;background:linear-gradient(180deg,#f6e2b6,#e4bf7a)!important;color:#1c1408;font-weight:700}
+#mythBtn.tip{color:var(--gold);animation:mythTip 1.2s ease-in-out infinite}
+@keyframes mythTip{50%{text-shadow:0 0 12px rgba(241,214,160,.9)}}
+body.tour #invite{display:none}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #snd,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
 #tourCap{position:fixed;z-index:8;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);text-align:center;pointer-events:none;
@@ -251,6 +262,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button>
 <div id="toast"></div>
+<div id="invite" role="status"><p id="inviteText"></p><div><button id="inviteGo" type="button">찾으러 가기</button><button id="inviteNo" type="button">나중에</button></div></div>
 <div id="tourCap" aria-live="off"></div>
 <div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
 
@@ -1429,6 +1441,7 @@ $('bTag').onclick = async () => {
   refreshTagUI();
   if (ok && user.slot) toast('같은 꽃을 가진 분이 먼저 자리를 잡아, 바로 곁 여분 자리에 피었어요', 5200);
   else if (ok) { toast('이름표를 달았어요'); sameFlowerNote(); }
+  if (ok) inviteMyth(7200);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다
 };
 // 남의 이름표 신고: 두 번 눌러야 들어간다. 신고한 이름표는 이 기기에서 바로 가린다
 $('bReport').onclick = async () => {
@@ -1495,6 +1508,7 @@ setInterval(pullTags, 1500);
    오른쪽 위 '신화 속 꽃 n/5'를 누르면, 아직 못 찾은 꽃 가운데 가장 가까운 꽃이 있는 쪽을 화살표와 걸음 수로 알려 준다 */
 let guideUntil = 0, guideM = null;
 $('mythBtn').onclick = () => {
+  hideInvite();
   if (!user) { toast('내 꽃을 먼저 찾으면 신화 속 꽃을 모을 수 있어요', 4200); showIntro(); return; }
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) { openAlbum(); return; }
@@ -1571,6 +1585,31 @@ function openAlbum() {
 }
 function closeAlbum() { albumOn = false; $('album').classList.remove('on'); $('album').setAttribute('aria-hidden', 'true'); }
 $('albumClose').onclick = closeAlbum;
+
+/* ---------- 신화 속 꽃으로 이끄는 말풍선 ----------
+   이름표를 단 뒤(또는 내 꽃을 찾고 한참 머문 뒤) 길잡이 단추 곁에 한 번 떠서, 다섯 송이를 찾으면 꽃감관이 된다고 알려 준다 */
+let inviteT = 0, inviteOffT = 0;
+function hideInvite() { clearTimeout(inviteOffT); $('invite').classList.remove('on'); $('mythBtn').classList.remove('tip'); }
+function inviteMyth(delay) {
+  clearTimeout(inviteT);
+  if (!user || mythFound.size === MYTHS.length) return;
+  const key = user.seed.toString(36);
+  if (store.get('invited', []).includes(key)) return;
+  inviteT = setTimeout(() => {
+    if (!user || user.seed.toString(36) !== key || mythFound.size === MYTHS.length || (guideM && now < guideUntil) || albumOn || pair || tourOn || $('stats').classList.contains('on')) return;
+    store.set('invited', [...store.get('invited', []), key].slice(-30));
+    const left = MYTHS.length - mythFound.size, T = $('inviteText'), el = $('invite'); T.replaceChildren();
+    const lines = left === MYTHS.length ? ['꽃밭 어딘가에', ['신화 속 꽃 다섯 송이', '가 피어 있어요.'], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']] : [['신화 속 꽃', `이 ${left}송이 남았어요.`], '모두 찾으면', ['서천꽃밭의 꽃감관', '이 됩니다.']];
+    lines.forEach((l, k) => { if (k) T.append(document.createElement('br')); if (Array.isArray(l)) { const b = document.createElement('b'); b.textContent = l[0]; T.append(b, l[1]); } else T.append(l); });
+    const r = $('mythBtn').getBoundingClientRect(), below = r.top < innerHeight / 2;   // 길잡이 단추 바로 곁에
+    el.style.top = below ? Math.round(r.bottom + 10) + 'px' : ''; el.style.bottom = below ? '' : Math.round(innerHeight - r.top + 10) + 'px'; el.style.right = Math.max(10, Math.round(innerWidth - r.right)) + 'px';
+    el.classList.add('on'); $('mythBtn').classList.add('tip');
+    clearTimeout(inviteOffT); inviteOffT = setTimeout(hideInvite, 30000);
+  }, delay);
+}
+$('inviteNo').onclick = hideInvite;
+$('inviteGo').onclick = () => { hideInvite(); if (!wide) setSheet(false); $('mythBtn').click(); };
+addEventListener('resize', hideInvite);
 
 /* ---------- 꽃감관의 권한 ①: 꽃 감상 ----------
    화면보호기처럼 꽃밭을 저절로 옮겨 다니며, 닿는 꽃마다 봉오리에서 피어나는 모습을 보여 준다. 화면을 누르면 멈춘다 */
@@ -1776,6 +1815,7 @@ $('f').addEventListener('submit', async e => {
   const newWarden = !user && mythFound.size === MYTHS.length;
   friendFirst = false;
   setUser(name, seed, !!birth);
+  inviteMyth(70000);   // 이름표를 달지 않고 한참 머물러도 한 번 알려 준다
   loadTaken();
   if (newWarden) setTimeout(() => toast(`꽃감관 ${name}님, 화첩과 합동 사진에 이름을 새겼어요`, 4600), 8200);
   $('inName').blur(); $('inBirth').blur();
