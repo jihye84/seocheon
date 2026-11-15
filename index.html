@@ -1716,9 +1716,9 @@ function playStory() {
     for (let k = 0; k < n; k++) list.push({ P: gen((r() * 4e9) >>> 0), x: X0 + r() * (X1 - X0), y: VH * (.74 + r() * .3), s: 34 + r() * 46 });
     list.sort((a, b) => a.y - b.y);
     for (const f of list) { mg.save(); mg.setTransform(sc * D, 0, 0, sc * D, (f.x - X0) * sc * D, (f.y - mt) * sc * D); mg.globalAlpha = .5 + .5 * (f.y - VH * .74) / (VH * .3); mg.rotate(f.P.rot0); drawFlower(mg, f.P, f.s, { g: 1, px: f.s * sc * D }); mg.restore(); }
-    meadow.mt = mt;
+    meadow.mt = mt; buildTrees();
   };
-  size(); addEventListener('resize', size);
+  addEventListener('resize', size);
   const flower = (P, x, y, R, b, a = 1, dew = false, t = 0) => { if (b <= 0 || a <= 0) return; g.save(); g.translate(x, y); g.rotate(P.rot0 + .035 * Math.sin(t * .6)); g.globalAlpha = a; drawFlower(g, P, R, { g: b, px: R * sc * D, dew }); g.restore(); g.globalAlpha = 1; };
   const glow = (x, y, r, col, a) => { if (a <= 0) return; const gg = g.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, `rgba(${col},${a})`); gg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gg; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); };
   const moteAt = (x, y, s, a) => { if (a <= 0) return; g.globalCompositeOperation = 'lighter'; g.globalAlpha = a; g.drawImage(mote, x - s / 2, y - s / 2, s, s); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; };
@@ -1732,23 +1732,28 @@ function playStory() {
       const sx = part === 'L' ? -1.3 : 1.3; g.beginPath(); g.moveTo(sx, -.7);
       for (const [px, py] of JAG) g.lineTo(px, py); g.lineTo(sx, .7); g.closePath(); g.clip();
     }
-    const wood = g.createLinearGradient(0, -.5, 0, .62); wood.addColorStop(0, '#e2b57a'); wood.addColorStop(.42, '#b98446'); wood.addColorStop(1, '#7a4a20');
-    g.shadowColor = 'rgba(241,214,160,.75)'; g.shadowBlur = 22 * sc * D;
-    // 등(반달)과 빗살(끝이 둥글고 조금씩 가늘어지는 살 서른넷)을 한 모양으로
-    const cp = new Path2D(); cp.moveTo(-1, .02); cp.ellipse(0, .02, 1, .5, 0, Math.PI, TAU); cp.lineTo(1, .08); cp.lineTo(-1, .08); cp.closePath();
-    const N = 34;
+    // 얼레빗: 반달 등에 굵고 성긴 빗살 열여덟 (대추나무 빛깔)
+    const back = new Path2D(); back.moveTo(-1, .04); back.ellipse(0, .04, 1, .52, 0, Math.PI, TAU); back.closePath();
+    const cp = new Path2D(); cp.addPath(back);
+    const N = 18;
     for (let k = 0; k < N; k++) {
-      const cx = -.93 + k * 1.86 / (N - 1), w0 = .021, w1 = .013, top = .07, bot = .6 - .05 * Math.pow(Math.abs(cx), 6);
-      cp.moveTo(cx - w0, top); cp.lineTo(cx + w0, top); cp.lineTo(cx + w1, bot - w1); cp.quadraticCurveTo(cx, bot + w1 * .6, cx - w1, bot - w1); cp.closePath();
+      const cx = -.9 + k * 1.8 / (N - 1), w0 = .032, w1 = .019, top = .03, bot = .62 - .07 * Math.pow(Math.abs(cx), 4);
+      cp.moveTo(cx - w0, top); cp.lineTo(cx + w0, top); cp.bezierCurveTo(cx + w0, top + .2, cx + w1, bot - .1, cx + w1, bot - w1); cp.quadraticCurveTo(cx, bot + w1 * .8, cx - w1, bot - w1); cp.bezierCurveTo(cx - w1, bot - .1, cx - w0, top + .2, cx - w0, top); cp.closePath();
     }
-    const back = new Path2D(); back.moveTo(-1, .02); back.ellipse(0, .02, 1, .5, 0, Math.PI, TAU); back.closePath();
-    g.fillStyle = wood; g.fill(back); g.shadowBlur = 0; g.fill(cp);   // 은은한 빛은 등에만 (빗살 틈이 메워지지 않게)
-    g.clip(cp);   // 나뭇결·반짝임·부러진 자국은 빗 안에만
-    // 결과 테두리: 등의 나뭇결, 위쪽 반짝임, 빗살이 시작하는 띠
-    g.lineWidth = .01; g.strokeStyle = 'rgba(90,50,18,.45)';
-    for (const r of [.86, .72, .58]) { g.beginPath(); g.ellipse(0, .04, r, r * .46, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); }
-    g.strokeStyle = 'rgba(255,240,205,.55)'; g.lineWidth = .016; g.beginPath(); g.ellipse(0, .02, .985, .485, 0, Math.PI * 1.08, Math.PI * 1.62); g.stroke();
-    g.fillStyle = 'rgba(70,38,12,.5)'; g.fillRect(-1, .055, 2, .022);
+    const wood = g.createLinearGradient(0, -.5, 0, .64); wood.addColorStop(0, '#c8875a'); wood.addColorStop(.45, '#9a5a34'); wood.addColorStop(1, '#5e3018');
+    g.shadowColor = 'rgba(241,214,160,.7)'; g.shadowBlur = 20 * sc * D; g.fillStyle = wood; g.fill(back); g.shadowBlur = 0; g.fill(cp);
+    g.clip(cp);   // 이 아래는 빗 안에만 그린다
+    const sheen = g.createLinearGradient(-1, 0, 1, 0); sheen.addColorStop(.2, 'rgba(255,230,200,0)'); sheen.addColorStop(.38, 'rgba(255,230,200,.18)'); sheen.addColorStop(.52, 'rgba(255,230,200,0)');
+    g.fillStyle = sheen; g.fillRect(-1, -.6, 2, 1.3);   // 기름 먹인 나무의 은은한 윤
+    g.lineWidth = .008; g.strokeStyle = 'rgba(60,24,8,.35)';
+    for (const r of [.94, .88, .8, .66, .55]) { g.beginPath(); g.ellipse(0, .05, r, r * .5, 0, Math.PI * 1.03, Math.PI * 1.97); g.stroke(); }   // 나뭇결
+    g.lineWidth = .014; g.strokeStyle = 'rgba(50,20,6,.55)'; g.beginPath(); g.ellipse(0, .04, .9, .44, 0, Math.PI * 1.02, Math.PI * 1.98); g.stroke();   // 등을 따라 판 홈
+    g.strokeStyle = 'rgba(255,236,205,.5)'; g.lineWidth = .016; g.beginPath(); g.ellipse(0, .04, .985, .505, 0, Math.PI * 1.1, Math.PI * 1.6); g.stroke();
+    // 등 한가운데 나전 꽃 한 송이: 빗이 부러지면 꽃도 반으로, 다시 맞으면 온전한 꽃
+    g.save(); g.translate(0, -.24);
+    for (let q = 0; q < 5; q++) { g.save(); g.rotate(q * TAU / 5 - Math.PI / 2); const pg = g.createLinearGradient(0, 0, .11, .03); pg.addColorStop(0, 'rgba(210,240,255,.95)'); pg.addColorStop(.5, 'rgba(255,220,250,.9)'); pg.addColorStop(1, 'rgba(200,255,230,.85)'); g.fillStyle = pg; g.beginPath(); g.ellipse(.065, 0, .062, .036, 0, 0, TAU); g.fill(); g.restore(); }
+    g.fillStyle = 'rgba(255,236,190,.95)'; g.beginPath(); g.arc(0, 0, .022, 0, TAU); g.fill(); g.restore();
+    g.fillStyle = 'rgba(50,20,6,.45)'; g.fillRect(-1, .03, 2, .018);   // 빗살이 시작하는 띠
     if (part !== 'full') {   // 부러진 자리: 밝은 속살
       g.strokeStyle = 'rgba(255,226,180,.7)'; g.lineWidth = .014; g.beginPath(); JAG.forEach(([px, py], k) => k ? g.lineTo(px, py) : g.moveTo(px, py)); g.stroke();
     }
@@ -1759,7 +1764,7 @@ function playStory() {
      가운데 칸은 트인 대청, 옆으로 기와 얹은 담장과 지붕이 한 단 솟은 솟을대문 */
   const hgeo = (cx, base, w) => {
     const k = w / 620, gT = base - 46 * k, bT = gT - 150 * k, bw = 112 * k, x0 = cx - 280 * k;
-    return { k, gT, bT, eY: bT - 10 * k, rY: bT - 150 * k, bays: [0, 1, 2, 3, 4].map(n => ({ x: x0 + n * bw + 6 * k, y: bT + 4 * k, w: bw - 12 * k, h: gT - 30 * k - (bT + 4 * k) })) };
+    return { k, gT, bT, eY: bT - 10 * k, rY: bT - 150 * k, bays: [0, 1, 2, 3, 4].map(n => ({ x: x0 + n * bw + 26 * k, y: bT + 30 * k, w: bw - 52 * k, h: gT - 46 * k - (bT + 30 * k) })) };   // 창호는 칸 가운데에: 둘레에 벽, 위 인방, 아래 머름
   };
   function roofPath(cx, eY, rY, half, tip, k) {   // 팔작지붕 옆모습: 들린 처마 끝 → 완만한 지붕면 → 합각 → 양끝이 솟은 용마루
     const p = new Path2D(), r = half;
@@ -1796,21 +1801,29 @@ function playStory() {
     g.fillStyle = '#0d0f22'; g.fillRect(cx - 46 * k, G.gT + 12 * k, 92 * k, 34 * k); g.fillRect(cx - 54 * k, G.gT + 28 * k, 108 * k, 18 * k);
     // 몸채: 기둥 여섯, 칸 다섯
     g.fillStyle = D0; g.fillRect(cx - 286 * k, G.bT - 16 * k, 572 * k, G.gT - G.bT + 16 * k);
+    g.fillStyle = '#0e1024'; g.fillRect(cx - 280 * k, G.bT - 4 * k, 560 * k, G.gT - G.bT - 14 * k);   // 회벽(밤이라 어둡게)
     G.bays.forEach((b, n) => {
-      if (n === 2) {   // 가운데: 트인 대청 — 깊은 어둠과 마루 끝
-        g.fillStyle = 'rgba(2,2,8,1)'; g.fillRect(b.x, b.y, b.w, G.gT - b.y);
-        g.fillStyle = 'rgba(120,96,70,.35)'; g.fillRect(b.x, G.gT - 8 * k, b.w, 3 * k); return;
+      const bx = cx - 280 * k + n * 112 * k;
+      if (n === 2) {   // 가운데: 트인 대청 — 깊은 어둠, 안쪽 분합문의 희미한 불빛
+        g.fillStyle = '#020208'; g.fillRect(bx + 6 * k, G.bT - 4 * k, 100 * k, G.gT - G.bT - 14 * k);
+        g.fillStyle = 'rgba(255,200,140,.07)'; g.fillRect(bx + 22 * k, G.bT + 40 * k, 68 * k, 60 * k); return;
       }
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(b.x - 4 * k, b.y - 4 * k, b.w + 8 * k, b.h + 8 * k);   // 문얼굴(창틀)
+      g.fillStyle = '#090a18'; g.fillRect(bx + 14 * k, b.y + b.h + 6 * k, 84 * k, G.gT - 14 * k - (b.y + b.h + 6 * k));   // 머름
       const li = n < 2 ? n : n - 1, off = c01(out - li); if (off >= 1) return;
       const f = .55 + .45 * Math.sin(t * (6 + mad * 14) + li * 1.9) * (mad > 0 ? 1 : .2), al = (.4 + .5 * f) * (.65 + .35 * mad) * (1 - off);
-      const lg = g.createLinearGradient(0, b.y, 0, b.y + b.h); lg.addColorStop(0, `rgba(255,${200 + 25 * f},${130 + 30 * f},${al})`); lg.addColorStop(1, `rgba(255,${176 + 25 * f},${100 + 30 * f},${al * .8})`);
+      const lg = g.createLinearGradient(0, b.y, 0, b.y + b.h); lg.addColorStop(0, `rgba(255,${196 + 25 * f},${126 + 30 * f},${al * .75})`); lg.addColorStop(1, `rgba(255,${180 + 25 * f},${104 + 30 * f},${al})`);
       g.fillStyle = lg; g.fillRect(b.x, b.y, b.w, b.h);
-      // 띠살: 촘촘한 세로살, 위·가운데·아래의 가로띠
+      // 띠살: 촘촘한 세로살, 위·가운데·아래의 가로띠, 두 짝이 맞닿는 선
       g.fillStyle = `rgba(30,18,10,${.75 * (1 - off * .5)})`;
-      for (let x = b.x + 9 * k; x < b.x + b.w - 3 * k; x += 9 * k) g.fillRect(x - 1.1 * k, b.y, 2.2 * k, b.h);
-      for (const fy of [.12, .5, .88]) for (let q = -1; q <= 1; q++) g.fillRect(b.x, b.y + b.h * fy + q * 4.4 * k - 1.1 * k, b.w, 2.2 * k);
-      g.fillRect(b.x + b.w / 2 - 1.6 * k, b.y, 3.2 * k, b.h);   // 두 짝 문의 맞닿는 선
+      for (let x = b.x + 6 * k; x < b.x + b.w - 2 * k; x += 6 * k) g.fillRect(x - .8 * k, b.y, 1.6 * k, b.h);
+      for (const fy of [.12, .5, .88]) for (let q = -1; q <= 1; q++) g.fillRect(b.x, b.y + b.h * fy + q * 3.2 * k - .8 * k, b.w, 1.6 * k);
+      g.fillRect(b.x + b.w / 2 - 1.4 * k, b.y, 2.8 * k, b.h);
     });
+    const sh = g.createLinearGradient(0, G.bT - 4 * k, 0, G.bT + 60 * k); sh.addColorStop(0, 'rgba(2,2,8,.85)'); sh.addColorStop(1, 'rgba(2,2,8,0)');   // 깊은 처마가 드리운 그늘
+    g.fillStyle = sh; g.fillRect(cx - 290 * k, G.bT - 4 * k, 580 * k, 64 * k);
+    g.fillStyle = '#16120f'; g.fillRect(cx - 300 * k, G.gT - 14 * k, 600 * k, 10 * k);   // 툇마루
+    g.fillStyle = 'rgba(255,214,160,.08)'; g.fillRect(cx - 300 * k, G.gT - 14 * k, 600 * k, 2 * k);
     g.fillStyle = '#0b0c1c'; for (let n = 0; n <= 5; n++) g.fillRect(cx - 286 * k + n * 112 * k, G.bT - 8 * k, 12 * k, G.gT - G.bT + 8 * k);   // 기둥
     g.fillStyle = D0; g.fillRect(cx - 290 * k, G.bT - 20 * k, 580 * k, 16 * k);   // 창방
     // 지붕과 기왓골
@@ -1822,17 +1835,55 @@ function playStory() {
     g.fillStyle = 'rgba(255,214,160,.05)'; g.fillRect(cx - 290 * k, G.bT - 4 * k, 580 * k, 4 * k);   // 처마 밑 그늘의 가장자리
     g.restore(); g.globalAlpha = 1;
   }
-  function tree(x, base, h, kind, a) {   // 동백(둥근 숲)·오동(키 크고 넓은 잎)
-    if (a <= 0) return;
-    g.save(); g.globalAlpha = a; g.fillStyle = '#05060f';
-    g.beginPath(); g.moveTo(x - h * .03, base); g.quadraticCurveTo(x - h * .02, base - h * .4, x - h * .05, base - h * .62); g.lineTo(x + h * .05, base - h * .62); g.quadraticCurveTo(x + h * .02, base - h * .4, x + h * .035, base); g.fill();
-    const r = mulberry32(kind === 'c' ? 7 : 11), cam = kind === 'c';
-    for (let k = 0; k < (cam ? 14 : 9); k++) {
-      const ang = r() * 6.28, d = r() * (cam ? .26 : .34) * h, bx = x + Math.cos(ang) * d * (cam ? 1.1 : 1.3), by = base - h * (cam ? .72 : .82) + Math.sin(ang) * d * .7, br = h * (cam ? .14 + r() * .08 : .1 + r() * .07);
-      g.beginPath(); if (cam) g.arc(bx, by, br, 0, 6.28); else g.ellipse(bx, by, br * 1.2, br * .9, ang, 0, 6.28); g.fill();
+  /* 동백나무: 늘푸른 작은 나무, 밑동에서 여러 줄기로 갈라지는 일이 많고 줄기는 매끈한 회갈색.
+       윤기 나는 짙은 녹색 타원형 잎이 빽빽한 둥근 수관, 가지 끝·잎겨드랑이에 반쯤 벌어진 붉은 꽃과 노란 꽃밥.
+     오동나무: 갈잎 큰키나무, 곧고 굵은 줄기가 위에서 몇 갈래로 벌어지고, 아주 큰 둥근 심장꼴 잎이 마주나며,
+       가지 끝에 원뿔 모양 꽃차례로 깔때기 모양 연보라 꽃이 선다. (둘 다 밤이라 어둡게) */
+  const treeCv = {};
+  function buildTrees() {
+    for (const [kind, h] of [['c', 560], ['o', 620]]) {
+      const S = sc * D, cw = Math.ceil(h * 1.25 * S), ch = Math.ceil(h * 1.08 * S), c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      const q = c.getContext('2d'); q.setTransform(S, 0, 0, S, cw / 2, ch - 4 * S);   // 밑동 가운데가 (0,0)
+      const r = mulberry32(kind === 'c' ? 70 : 110), leaf = (x, y, L, W, ang, col) => { q.save(); q.translate(x, y); q.rotate(ang); q.fillStyle = col; q.beginPath(); q.moveTo(0, 0); q.quadraticCurveTo(L * .5, -W, L, 0); q.quadraticCurveTo(L * .5, W, 0, 0); q.fill(); q.restore(); };
+      const limb = (x0, y0, x1, y1, w0, w1, col) => { const nx = -(y1 - y0), ny = x1 - x0, l = Math.hypot(nx, ny) || 1, ux = nx / l, uy = ny / l; q.fillStyle = col; q.beginPath(); q.moveTo(x0 + ux * w0, y0 + uy * w0); q.quadraticCurveTo((x0 + x1) / 2 + ux * (w0 + w1) * .6, (y0 + y1) / 2 + uy * (w0 + w1) * .6, x1 + ux * w1, y1 + uy * w1); q.lineTo(x1 - ux * w1, y1 - uy * w1); q.quadraticCurveTo((x0 + x1) / 2 - ux * (w0 + w1) * .4, (y0 + y1) / 2 - uy * (w0 + w1) * .4, x0 - ux * w0, y0 - uy * w0); q.closePath(); q.fill(); };
+      if (kind === 'c') {
+        const bark = '#2a2622', cy = -h * .62, rx = h * .42, ry = h * .4;
+        for (const [dx, tx, w] of [[-14, -60, 13], [6, 30, 15], [18, 90, 10]]) limb(dx, 0, tx, -h * .45, w, w * .45, bark);   // 밑동에서 갈라지는 줄기
+        for (let n = 0; n < 620; n++) {   // 빽빽한 잎: 안쪽은 어둡고 바깥은 윤이 난다
+          const a = r() * TAU, d = Math.sqrt(r()), x = Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d * (1 - .12 * Math.sin(a)), lit = .55 + .45 * d * (.6 - .4 * Math.sin(a));
+          const g0 = 18 + 26 * lit; leaf(x, y, 22 + r() * 10, 7 + r() * 3, r() * TAU, `rgb(${g0 * .35 | 0},${g0 | 0},${g0 * .55 | 0})`);
+          if (r() < .35) leaf(x, y, 16, 3, a + 1.2, `rgba(170,220,190,${.05 + .08 * lit})`);   // 잎의 윤기
+        }
+        for (let n = 0; n < 34; n++) {   // 반쯤 벌어진 붉은 꽃: 바깥쪽에 많이
+          const a = r() * TAU, d = .55 + .45 * Math.sqrt(r()), x = Math.cos(a) * rx * d * .95, y = cy + Math.sin(a) * ry * d * .95, R = 11 + r() * 5, rot = r() * TAU;
+          for (let p = 0; p < 6; p++) { q.save(); q.translate(x, y); q.rotate(rot + p * TAU / 6); q.fillStyle = p % 2 ? '#8e1426' : '#b41c32'; q.beginPath(); q.ellipse(R * .5, 0, R * .55, R * .4, 0, 0, TAU); q.fill(); q.restore(); }
+          q.fillStyle = '#e8c860'; q.beginPath(); q.arc(x, y, R * .3, 0, TAU); q.fill(); q.fillStyle = '#f4ead0'; q.beginPath(); q.arc(x, y, R * .14, 0, TAU); q.fill();
+        }
+        for (let n = 0; n < 5; n++) { const x = (r() - .5) * h * .7, R = 9 + r() * 4; q.fillStyle = '#7a1222'; q.beginPath(); q.ellipse(x, -2 - r() * 6, R, R * .55, 0, 0, TAU); q.fill(); q.fillStyle = '#c9a850'; q.beginPath(); q.arc(x, -3, R * .25, 0, TAU); q.fill(); }   // 통째로 떨어진 꽃
+      } else {
+        const bark = '#26221f';
+        limb(0, 0, 4, -h * .5, 26, 17, bark);   // 곧고 굵은 줄기
+        const tips = [];
+        for (const [ang, len, w] of [[-2.35, .38, 15], [-1.95, .44, 13], [-1.2, .42, 13], [-.8, .36, 12], [-1.58, .3, 10]]) {
+          const x1 = 4 + Math.cos(ang) * h * len, y1 = -h * .5 + Math.sin(ang) * h * len * .8; limb(4, -h * .5, x1, y1, w, w * .4, bark);
+          for (const da of [-.5, .45]) { const x2 = x1 + Math.cos(ang + da) * h * .14, y2 = y1 + Math.sin(ang + da) * h * .11; limb(x1, y1, x2, y2, w * .4, w * .2, bark); tips.push([x2, y2]); }
+          tips.push([x1, y1]);
+        }
+        const heart = (x, y, R, ang, col) => { q.save(); q.translate(x, y); q.rotate(ang); q.fillStyle = col; q.beginPath(); q.moveTo(0, R * .35); q.bezierCurveTo(-R * 1.05, -R * .15, -R * .55, -R * 1.05, 0, -R * .55); q.bezierCurveTo(R * .55, -R * 1.05, R * 1.05, -R * .15, 0, R * .35); q.fill(); q.restore(); };
+        for (const [tx, ty] of tips) for (let n = 0; n < 9; n++) {   // 가지 끝마다 아주 큰 심장꼴 잎
+          const a = r() * TAU, d = r() * h * .1, x = tx + Math.cos(a) * d, y = ty + Math.sin(a) * d * .7, lit = .5 + .5 * r();
+          heart(x, y, h * (.05 + r() * .025), a + Math.PI / 2 + (r() - .5), `rgb(${14 + 14 * lit | 0},${30 + 26 * lit | 0},${20 + 16 * lit | 0})`);
+        }
+        for (const [tx, ty] of tips.filter((_, i) => i % 2 === 0)) {   // 가지 끝에 선 원뿔꼴 꽃차례: 연보라 깔때기 꽃
+          for (let n = 0; n < 16; n++) { const u = n / 15, x = tx + (r() - .5) * h * .05 * (1 - u), y = ty - h * .04 - u * h * .11; q.fillStyle = `rgba(${150 + 30 * r() | 0},${120 + 20 * r() | 0},${190 + 30 * r() | 0},.8)`; q.beginPath(); q.ellipse(x, y, h * .011, h * .008, (r() - .5), 0, TAU); q.fill(); }
+        }
+      }
+      treeCv[kind] = { c, w: cw / S, h: ch / S };
     }
-    if (cam) for (let k = 0; k < 16; k++) { const ang = r() * 6.28, d = r() * .3 * h; g.fillStyle = 'rgba(200,40,60,.75)'; g.beginPath(); g.arc(x + Math.cos(ang) * d * 1.1, base - h * .72 + Math.sin(ang) * d * .7, h * .018, 0, 6.28); g.fill(); }
-    g.restore(); g.globalAlpha = 1;
+  }
+  function tree(x, base, h, kind, a) {
+    const T = treeCv[kind]; if (!T || a <= 0) return;
+    g.save(); g.globalAlpha = a * .92; g.drawImage(T.c, x - T.w / 2, base - T.h + 4, T.w, T.h); g.restore(); g.globalAlpha = 1;
   }
   const waterY = t => { let y = VH + 40; for (const [a, b, y0, y1] of [[30.4, 32.6, VH + 40, 1190], [33.6, 34.4, 1190, 1060], [34.5, 35.3, 1060, 900], [35.4, 36.2, 900, 720]]) if (t > a) y = y0 + (y1 - y0) * sm((t - a) / (b - a)); return y + 8 * Math.sin(t * 1.1); };
   const texts = [   // [나타남, 사라짐, 줄들, 줄마다 늦춤]
@@ -1937,7 +1988,7 @@ function playStory() {
     if (t > 54.2 && t < 71.85) {   // 청대밭: 다섯 송이가 차례로 피고, 회초리 세 번
       const a = sm((t - 54.3) / 1.2) * (1 - sm((t - 71.05) / .8)), hz = 990;
       g.save(); g.globalAlpha = a; const gg = g.createLinearGradient(0, hz - 60, 0, Math.max(VH, Y1)); gg.addColorStop(0, 'rgba(5,6,15,0)'); gg.addColorStop(.15, '#05060f'); gg.addColorStop(1, '#020309'); g.fillStyle = gg; g.fillRect(X0, hz - 60, X1 - X0, Y1 - hz + 70); g.restore();
-      tree(150, 1010, 560, 'c', a); tree(940, 1010, 700, 'o', a);
+      tree(150, 1010, 560, 'c', a); tree(960, 1010, 620, 'o', a);
       const lifted = sm((t - 69.55) / 1.4), n = BLOOM.reduce((s, b0) => s + c01((t - b0) / 2.2), 0);
       glow(540, 1000, 330 + 120 * lifted, '255,228,180', a * (.08 + .056 * n + .35 * lifted));
       g.save(); g.translate(540, 1004); g.scale(1, .14); glow(0, 0, 230 + 30 * n, '255,236,200', a * (.18 + .1 * n)); g.restore();
@@ -1952,16 +2003,8 @@ function playStory() {
         const la = a * sm((t - BLOOM[k] - .6) / .8); if (la > 0) { g.font = '400 34px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(241,214,160,${la})`; g.shadowColor = 'rgba(4,5,16,.95)'; g.shadowBlur = 16 * sc * D; g.fillText(m.name, FX[k], FY[k] + 146); g.shadowBlur = 0; }
       });
       if (t > 66.85) {
-        const ca = sm((t - 66.95) / .6) * (1 - sm((t - 70.25) / .6)); let sw = 0;
-        // 손잡이를 축으로 왼쪽 위를 향한 채, 세 번 부드럽게 20°쯤 내려갔다 올라온다 (소리에 딱 맞추지 않고 숨 쉬듯)
-        for (const st of STRIKE) { const u = (t - st + .45) / 1.05; if (u > 0 && u < 1) sw = Math.max(sw, Math.pow(Math.sin(Math.PI * u), 2)); }
-        const ang = -2.25 - .35 * sw + .02 * Math.sin(t * 1.3);
-        g.save(); g.globalAlpha = ca; g.translate(905, 905); g.rotate(ang); g.strokeStyle = '#6b4a28'; g.lineCap = 'round'; g.shadowColor = 'rgba(241,214,160,.75)'; g.shadowBlur = 14 * sc * D;
-        g.lineWidth = 10; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(190, -14, 380, 6); g.stroke();   // 손잡이 쪽이 굵고
-        g.lineWidth = 5; g.beginPath(); g.moveTo(330, 2); g.lineTo(395, 8); g.stroke();                       // 끝은 가늘게
-        g.lineWidth = 4; g.beginPath(); g.moveTo(215, -8); g.quadraticCurveTo(245, -34, 268, -44); g.stroke();  // 곁가지
-        g.fillStyle = '#4f7a46'; g.beginPath(); g.ellipse(276, -48, 17, 8, -.5, 0, 6.28); g.fill(); g.restore(); g.globalAlpha = 1;
-        for (const st of STRIKE) { const d = t - st; if (d < 0 || d > 1.4) continue; const rr = 60 + d * 380; g.strokeStyle = `rgba(255,236,200,${.6 * (1 - d / 1.4) * a})`; g.lineWidth = 3; g.beginPath(); g.ellipse(540, 1004, rr, rr * .16, 0, 0, 6.28); g.stroke(); }
+        // 회초리는 보이지 않는다: 소리와, 땅을 타고 번지는 은은한 빛 물결만
+        for (const st of STRIKE) { const d = t - st; if (d < 0 || d > 1.4) continue; const rr = 60 + d * 380; g.strokeStyle = `rgba(255,236,200,${.45 * (1 - d / 1.4) * a})`; g.lineWidth = 3; g.beginPath(); g.ellipse(540, 1004, rr, rr * .16, 0, 0, 6.28); g.stroke(); }
       }
     }
     g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -1985,6 +2028,7 @@ function playStory() {
       g.shadowBlur = 0;
     }
   }
+  size();   // 화면 크기에 맞춰 아득한 꽃밭·나무를 그려 둔다 (나무 함수가 정의된 뒤에)
   // 소리: 낮게 깔리는 울림, 장면마다 종소리, 강물, 회초리
   let out = null;
   const AC0 = soundOn ? audio() : null;
