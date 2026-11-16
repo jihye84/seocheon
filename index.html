@@ -674,13 +674,13 @@ function hueFamily(hsl) {
 }
 function mottoOf(P) {
   if (P.motto) return P.motto;
-  const A = MOTTO_A[hueFamily(P.tipHSL)], B = MOTTO_B[P.shape];
+  const A = P.gray ? ['아직 빛깔을 고르지 않은 채,', '어떤 빛깔이든 품을 수 있게,', '제 빛깔을 기다리며,'] : MOTTO_A[hueFamily(P.tipHSL)], B = MOTTO_B[P.shape];   // 흑백 꽃은 빛깔을 짐작하게 하는 말을 쓰지 않는다
   return [A[mix(P.seed, 0x3141) % A.length], B[mix(P.seed, 0x2718) % B.length]];
 }
 function describe(P) {
   return {
     motto: mottoOf(P),
-    name: P.fused ? `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
+    name: P.fused ? `${P.gray ? '빛깔을 기다리는' : colorWord(P.tipHSL)} ${COUNT_KO[P.count]}갈래 ${P.fused.f > .7 ? '나팔꽃' : P.fused.f > .42 ? '종꽃' : '통꽃'}` : `${P.gray ? '빛깔을 기다리는' : colorWord(P.tipHSL)} ${COUNT_KO[P.count]}잎 ${SHAPE_NAME[P.shape]}`,
     traits: `${P.fused ? `${P.count}갈래로 갈라진 통꽃` : `${SHAPE_KO[P.shape]} ${P.count}장 · ${P.layers}겹`} · ${CENTER_KO[P.cType]}${P.many && P.many.grad ? ' · 속빛 물듦' : ''}${P.breaker ? ' · 깃털무늬' : ''}${P.eye ? ' · 단심' : ''}${P.spots ? ' · 점박이' : ''}${P.net ? (P.netEmboss ? ' · 돋을 핏줄' : ' · 핏줄무늬') : ''}${P.gloss ? ' · 윤기' : ''}${P.fuzz ? ' · 솜털' : ''}${P.tuft ? (P.tuft.kind === 'ring' ? ' · 술 고리' : ' · 술 다발') : ''}`,
     colors: [P.L[0].tip, P.L[0].base, P.c1, P.c2]
   };
@@ -1383,7 +1383,7 @@ function grayP(P) {
     }
     return v;
   };
-  return walk(P, '');
+  const G = walk(P, ''); G.gray = true; return G;
 }
 function swatchBg(c) {
   if (c.pure) return 'radial-gradient(circle at 35% 35%,#fff,#d9d9d9)';
