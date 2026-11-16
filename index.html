@@ -163,7 +163,8 @@ body.narrow .note{display:none}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
   .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:max(15px,.88em);line-height:1.45}
 }
-@media (max-height:560px) and (min-width:560px){body.narrow .colors{grid-template-columns:repeat(14,1fr)}}
+@media (max-height:560px){.colors{grid-template-columns:repeat(10,1fr)}}
+@media (max-height:560px) and (min-width:560px){body.narrow .colors{grid-template-columns:repeat(20,1fr)}}
 @media (max-height:560px){#vCard.pinning #cPick,#vCard.pinning .motto,#vCard.pinning .traits,#vCard.pinning .loc{display:none}}
 @media (max-height:720px){body.narrow .traits,body.narrow .loc{display:none}}
 body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.narrow #vCard.myth .motto{display:none}}
@@ -379,14 +380,28 @@ const NEB = buildNoise([[256, .55, 11], [128, .3, 23], [64, .15, 37]]);
 for (let k = 0; k < NP * NP; k++) NEB[k] = .06 + .94 * smooth(.32, .74, NEB[k]);
 const HUEF = buildNoise([[512, .6, 51], [128, .4, 67]]);
 const nebAt = (i, j) => NEB[((j & 1023) << 10) | (i & 1023)];
-/* 칸마다 꽃 빛깔: 대부분은 그 자리 무리의 빛깔을 따르고, 일부는 제멋대로 */
-function cellHue(i, j, s) {
-  // 풀빛(75~160°) 꽃잎은 드물게: 무리 빛깔은 160°→435° 사이에서만 고른다
+/* 칸마다 꽃 빛깔: 실제 들판처럼 흰빛·노랑·귤빛이 흔하고, 파랑·옥빛은 드물다.
+   대부분은 그 자리 무리의 빛깔을 따르고(무리 무늬를 빛깔 비율에 맞춰 펼친다), 일부는 제멋대로 */
+const FIELD_MIX = [   // [몫, 빛깔 시작°, 빛깔 끝°, 쓸 수 있는 팔레트]  0 한빛 1 이웃빛 2 테두리빛 3 파스텔 4 짙은 5 흰
+  [.11, 165, 245, [0, 1, 2, 3]],    // 옥빛 3 · 파랑 7 (무리 무늬의 한끝)
+  [.145, 250, 295, [0, 1, 2, 3, 4]], // 보라
+  [.135, 298, 345, [0, 1, 2, 3, 4]], // 자주 · 분홍
+  [.08, 348, 372, [0, 1, 4]],       // 빨강 · 다홍
+  [.13, 16, 34, [0, 1, 3]],         // 주황 · 귤빛
+  [.11, 42, 52, [0, 1]],            // 진노랑
+  [.11, 50, 58, [3, 2]],            // 연노랑
+  [.045, 62, 90, [3, 2, 0]],         // 연두
+  [.135, 0, 360, [5]],               // 흰빛 (빛이 살짝 도는 흰 꽃)
+];
+const FIELD_CDF = (() => { let a = 0; return FIELD_MIX.map(m => (a += m[0])); })();
+function cellPH(i, j, s) {
   const v = mix(s, 0x55aa) % 100;
-  if (v < 72) { const f = (HUEF[((j & 1023) << 10) | (i & 1023)] * 1.7) % 1; return (160 + f * 275 + (hueOf(s) - 180) * .14 + 720) % 360; }
-  const h = hueOf(s);
-  return v < 94 && h > 75 && h < 160 ? (h + 120) % 360 : h;
+  const u = v < 72 ? (HUEF[((j & 1023) << 10) | (i & 1023)] * 1.7 + (mix(s, 0x3c3c) % 100) / 100 * .04) % 1 : (mix(s, 0x9e37) % 10000) / 10000;
+  let k = FIELD_CDF.findIndex(c => u < c); if (k < 0) k = FIELD_MIX.length - 1;
+  const [, h0, h1, pals] = FIELD_MIX[k], t = (mix(s, 0x1234567) % 1000) / 1000;
+  return [(h0 + (h1 - h0) * t) % 360, pals[mix(s, 0x7654321) % pals.length]];
 }
+const cellHue = (i, j, s) => cellPH(i, j, s)[0];
 
 /* 멀리서 본 점 색: 색상 24칸 × 팔레트 6가지 */
 const DOT_HSL = [[78, 64], [80, 66], [62, 76], [66, 74], [80, 52], [28, 90]];
@@ -396,7 +411,8 @@ for (let hb = 0; hb < 24; hb++) for (let p = 0; p < 6; p++) {
   DOT_RGB.push(rgb); DOT_CSS.push(`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`);
 }
 const bucketOf = (s, h) => ((h / 15) | 0) % 24 * 6 + palOf(s);
-const cellP = (i, j, s) => gen(s, cellHue(i, j, s));
+const bucketPH = ([h, pal]) => ((h / 15) | 0) % 24 * 6 + Math.min(5, pal);
+const cellP = (i, j, s) => { const [h, pal] = cellPH(i, j, s); return gen(s, h, pal); };
 
 /* ---------- 꽃 만들기 규칙 ---------- */
 const COUNTS = [[3, 1], [4, 1], [5, 5], [6, 3], [7, 2], [8, 3], [9, 1], [10, 1], [12, 2], [13, 2], [16, 1], [21, 1]];
@@ -1175,7 +1191,7 @@ const tile = document.createElement('canvas'); tile.width = tile.height = NP;
 (function buildTile() {
   const g = tile.getContext('2d'), img = g.createImageData(NP, NP), d = img.data;
   for (let y = 0; y < NP; y++) for (let x = 0; x < NP; x++) {
-    const s = h2(x, y), rgb = DOT_RGB[bucketOf(s, cellHue(x, y, s))], k = (y * NP + x) * 4;
+    const s = h2(x, y), rgb = DOT_RGB[bucketPH(cellPH(x, y, s))], k = (y * NP + x) * 4;
     const rnd = (s >>> 24) / 255, nb = NEB[y * NP + x];
     d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2];
     d[k + 3] = Math.min(255, 255 * Math.pow(nb, 1.6) * (rnd > .72 ? .5 + .5 * rnd : rnd * .16));
@@ -1337,16 +1353,21 @@ function focusP() { return focus.sp ? focus.sp.P : cellP(focus.i, focus.j, focus
 
 /* 고를 수 있는 꽃 빛깔 — 모양은 그대로, 빛깔만 바뀐다 */
 const COLORS = [
-  { n: '꽃밭에 맡기기' }, { n: '빨강', h: 355 }, { n: '주황', h: 24 }, { n: '노랑', h: 50 }, { n: '초록', h: 125 }, { n: '하늘', h: 198 },
-  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰빛', white: true }, { n: '순백', pure: true }, { n: '진자주', h: 302, deep: true }, { n: '검정', black: true }];
+  { n: '꽃밭에 맡기기' }, { n: '빨강', h: 355 }, { n: '주황', h: 24 }, { n: '진노랑', h: 47, vivid: true }, { n: '초록', h: 125 }, { n: '하늘', h: 198 },
+  { n: '파랑', h: 226 }, { n: '보라', h: 272 }, { n: '자주', h: 305 }, { n: '분홍', h: 335 }, { n: '흰빛', white: true }, { n: '순백', pure: true }, { n: '진자주', h: 302, deep: true }, { n: '검정', black: true },
+  { n: '연노랑', h: 55, light: true }, { n: '다홍', h: 8, vivid: true }, { n: '연분홍', h: 345, light: true }, { n: '진분홍', h: 328, vivid: true },
+  { n: '산홋빛', h: 6, light: true }, { n: '장밋빛', h: 348, rose: true }];
 // 고르기 칸에 놓는 차례(번호는 저장된 꽃·링크와 맞물려 있어 그대로 둔다): 무지개 차례로 돌고, 자줏빛에서 분홍·흰빛을 지나 검정으로
-const COLOR_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 12, 8, 9, 10, 11, 13];
+const COLOR_ORDER = [0, 1, 15, 2, 3, 14, 4, 5, 6, 7, 12, 8, 17, 9, 19, 18, 16, 10, 11, 13];
 let pickedColor = 0;
 function swatchBg(c) {
   if (c.pure) return 'radial-gradient(circle at 35% 35%,#fff,#d9d9d9)';
   if (c.black) return 'radial-gradient(circle at 35% 35%,#5a5a68,#0b0b10 70%)';
   if (c.deep) return `radial-gradient(circle at 35% 35%,${hsla(c.h, 70, 46)},${hsla(c.h, 78, 24)})`;
   if (c.white) return 'radial-gradient(circle at 35% 35%,#fff,#f0dfe8)';
+  if (c.light) return `radial-gradient(circle at 35% 35%,${hsla(c.h, 80, 92)},${hsla(c.h, 70, 76)})`;
+  if (c.vivid) return `radial-gradient(circle at 35% 35%,${hsla(c.h, 95, 64)},${hsla(c.h, 90, 46)})`;
+  if (c.rose) return `radial-gradient(circle at 35% 35%,${hsla(c.h, 70, 66)},${hsla(c.h, 72, 38)})`;
   if (c.h == null) return 'linear-gradient(135deg,#f06a8a,#f4b35c,#f2e27a,#6fd0e8,#8a7cf0,#d77ae0)';
   return `radial-gradient(circle at 35% 35%,${hsla(c.h, 85, 74)},${hsla(c.h, 75, 52)})`;
 }
@@ -1373,6 +1394,9 @@ function userP(seed, ck) {
   else {
     if (pal === 5) pal = 0;
     if (pal === 4 && hue > 38 && hue < 90) pal = 0;     // 짙은 노랑은 흙빛이 되므로 피한다
+    if (c.light) pal = [3, 2, 3][mix(seed, 0x51) % 3];   // 연한 빛깔: 파스텔이나 끝이 연한 꽃
+    else if (c.vivid) pal = [0, 1, 0][mix(seed, 0x51) % 3];   // 또렷한 빛깔
+    else if (c.rose) pal = [4, 0, 4][mix(seed, 0x51) % 3];   // 장밋빛: 깊고 붉은 분홍
     hue = (hue + ((mix(seed, 0x77) % 100) / 100 - .5) * 14 + 360) % 360;
   }
   return gen(seed, hue, pal);
@@ -2726,7 +2750,7 @@ function drawDots(x0, y0, x1, y1, alpha) {
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     if (n >= MAXD) break;
     if (specials.has(keyOf(i, j))) continue;
-    const s = h2(i, j), b = bucketOf(s, cellHue(i, j, s));
+    const s = h2(i, j), b = bucketPH(cellPH(i, j, s));
     const wx = i + .5 + (((s >>> 3) & 255) / 255 - .5) * .5, wy = j + .5 + (((s >>> 11) & 255) / 255 - .5) * .5;
     const size = .62 + ((s >>> 19) & 255) / 255 * .3;
     dBuf[n * 3] = stg.x + (wx - cam.x) * ppu; dBuf[n * 3 + 1] = stg.y + (wy - cam.y) * ppu;
@@ -2770,7 +2794,7 @@ function drawSprites(x0, y0, x1, y1, alpha, t) {
     const a = alpha * (.45 + .55 * nebAt(i, j));
     if (!spr) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = a * .8;
-      ctx.fillStyle = DOT_CSS[bucketOf(s, P.hue)]; ctx.beginPath(); ctx.arc(sx, sy, ppu * size * .2, 0, TAU); ctx.fill();
+      ctx.fillStyle = DOT_CSS[bucketPH([P.hue, P.pal])]; ctx.beginPath(); ctx.arc(sx, sy, ppu * size * .2, 0, TAU); ctx.fill();
       continue;
     }
     const ang = P.rot0 + .05 * Math.sin(t * .6 + (s & 1023) * .01) + wr, k = dpx / spr.width;
