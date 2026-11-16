@@ -271,7 +271,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
         <div class="pickname" id="pnRow"><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
         <div class="colors" id="pickIntro"></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
-        <button id="bOpen" type="button">이름표를 단 적 있어요 · 불러오기</button>
+        <button id="bOpen" type="button">이름표를 단 적 있어요 · 비밀번호로 찾기</button>
       </form>
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.</p>
     </section>
@@ -2432,8 +2432,8 @@ let openMode = false;
 function setOpenMode(on) {
   openMode = on;
   $('lbBirth').hidden = on; $('pnRow').hidden = on; $('pickIntro').hidden = on; $('lbPin').hidden = !on;
-  $('f').querySelector('.primary').textContent = on ? '내 이름표 불러오기' : '내 꽃 찾아가기';
-  $('bOpen').textContent = on ? '이름과 생일로 꽃 찾기로 돌아가기' : '이름표를 단 적 있어요 · 불러오기';
+  $('f').querySelector('.primary').textContent = '내 꽃 찾아가기';
+  $('bOpen').textContent = on ? '이름과 생일로 찾기' : '이름표를 단 적 있어요 · 비밀번호로 찾기';
   $('inOpenPin').value = '';
   setTimeout(() => (on && $('inName').value.trim() ? $('inOpenPin') : $('inName')).focus({ preventScroll: true }), 50);
   requestAnimationFrame(measureStage);
@@ -2442,7 +2442,7 @@ $('bOpen').onclick = () => setOpenMode(!openMode);
 async function openByPin(name) {
   const pin = $('inOpenPin').value;
   if (!/^\d{4}$/.test(pin)) { toast('비밀번호 숫자 4자리를 적어 주세요', 2800); $('inOpenPin').focus(); return; }
-  finding = true; const sb = $('f').querySelector('.primary'), sbText = sb.textContent; sb.textContent = '이름표를 찾는 중…';
+  finding = true; const sb = $('f').querySelector('.primary'), sbText = sb.textContent; sb.textContent = '꽃밭을 살피는 중…';
   let r;
   try { r = await rpc('open_tag', { p_token: tagToken(), p_name: name, p_pin: pin }); }
   catch (err) { toast('꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요', 3800); return; }
@@ -2463,7 +2463,7 @@ async function openByPin(name) {
   $('inName').value = user.name;
   $('inName').blur(); $('inOpenPin').blur(); hideHint();
   loadTaken(); goMine();
-  setTimeout(() => toast(rows.length > 1 ? `이름표 ${rows.length}개를 불러왔어요` : '이름표를 불러왔어요', 3600), 600);
+  setTimeout(() => toast(rows.length > 1 ? `이름표 단 꽃 ${rows.length}송이를 찾았어요` : '이름표 단 내 꽃을 찾았어요', 3600), 600);
   inviteMyth(11000);
 }
 $('f').addEventListener('submit', async e => {
