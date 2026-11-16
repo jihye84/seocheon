@@ -1597,7 +1597,10 @@ function pullTags() {
 setInterval(pullTags, 1500);
 
 /* ---------- 신화 속 꽃 길잡이 ----------
-   오른쪽 위 '신화 속 꽃 n/5'를 누르면, 아직 못 찾은 꽃 가운데 가장 가까운 꽃이 있는 쪽을 화살표와 걸음 수로 알려 준다 */
+   신화 속 꽃은 이야기 차례대로만 모을 수 있다: 웃음꽃(원수의 집) → 뼈 → 살 → 피 → 숨 → 혼.
+   '신화 속 꽃 n/6'을 누르면 차례가 된 꽃이 있는 쪽을 화살표와 걸음 수로 알려 준다 */
+const MYTH_FLOW = ['laugh', 'bone', 'flesh', 'blood', 'breath', 'soul'];
+const nextMyth = () => MYTH_FLOW.map(id => MYTHS.find(m => m.id === id)).find(m => !mythFound.has(m.id)) || null;
 let guideUntil = 0, guideM = null;
 $('mythBtn').onclick = () => {
   hideInvite();
@@ -1605,8 +1608,9 @@ $('mythBtn').onclick = () => {
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) { openAlbum(); return; }
   if (guideM && now < guideUntil && !mythFound.has(guideM.id)) { guideUntil = 0; return; }   // 길잡이가 켜져 있으면 끈다
-  guideM = left.reduce((a, b) => Math.hypot(a.i + .5 - cam.x, a.j + .5 - cam.y) < Math.hypot(b.i + .5 - cam.x, b.j + .5 - cam.y) ? a : b);
+  guideM = nextMyth();
   guideUntil = Infinity; hideHint();   // 그 꽃을 찾을 때까지 화살표를 계속 보여 준다
+  toast(`이야기 차례대로, 이번에는 ${guideM.name}이에요`, 3200);
   if (mythFound.size === 0 && !store.get('guideTip', false)) { store.set('guideTip', true); toast('화살표를 따라가 반짝이는 빛을 눌러 보세요', 4200); }
 };
 function drawGuide() {
@@ -1625,7 +1629,7 @@ function drawGuide() {
 
 /* ---------- 꽃감관의 화첩 ----------
    여섯 송이를 모두 찾으면 '꽃감관 · 신화 속 꽃 6/6'을 눌러 언제든 여섯 송이를 한자리에서 보고, 합동 사진으로 저장할 수 있다 */
-const ALBUM_ORDER = ['bone', 'flesh', 'blood', 'breath', 'soul', 'laugh'];   // 이야기 속 차례: 뼈 → 살 → 피 → 숨 → 넋, 그리고 웃음
+const ALBUM_ORDER = MYTH_FLOW;   // 이야기 속 차례: 원수의 집에 웃음, 그리고 뼈 → 살 → 피 → 숨 → 넋
 function albumLayout(w, h) {      // 여섯 송이 자리: 가로로 넓으면 세 송이씩 두 줄, 세로로 길면 두 송이씩 세 줄 (꽃 아래에 이름과 꽃말 두 줄이 들어갈 자리를 둔다)
   const top = h * .15, bot = h * .875, out = [], N = ALBUM_ORDER.length;
   const cols = w > h * 1.9 || (h < 560 && w > h * 1.3) ? N : w > h * 1.15 ? 3 : 2,   // 아주 납작한 화면(가로로 든 휴대폰)은 한 줄로
@@ -2332,6 +2336,11 @@ function focusCell(i, j, opts = {}) {
         if (!store.get('ruinSeen', false)) { store.set('ruinSeen', true); setTimeout(() => toast('금단의 꽃을 찾았어요 · 꽃감관만 아는 꽃이에요', 4600), 900); }
       }
       else if (sp.kind === 'myth' && !user) setTimeout(() => toast('내 꽃을 먼저 찾으면 이 꽃을 모을 수 있어요', 4200), 900);
+      else if (sp.kind === 'myth' && !mythFound.has(sp.id) && nextMyth() && nextMyth().id !== sp.id) {   // 아직 차례가 아닌 꽃
+        const nx = nextMyth();
+        setTimeout(() => toast('이 꽃은 아직 차례가 아니에요', 3000), 900);
+        setTimeout(() => { toast(`이야기 차례대로 ${nx.name}부터 찾아야 해요`, 4200); guideM = nx; guideUntil = Infinity; }, 4100);
+      }
       else if (sp.kind === 'myth' && !mythFound.has(sp.id)) {
         mythFound.add(sp.id); saveMyth();
         guideUntil = 0;
@@ -2343,7 +2352,7 @@ function focusCell(i, j, opts = {}) {
           setTimeout(() => toast(user ? '내 꽃 둘레에 신화 속 꽃의 빛이 돌아요' : '내 꽃을 찾으면 꽃감관의 이름이 새겨지고, 꽃 둘레에 빛이 돌아요', 4600), 9800);
           setTimeout(() => toast("'꽃감관 · 신화 속 꽃 6/6'을 누르면 여섯 송이를 언제든 볼 수 있어요", 5200), 14600);
           setTimeout(() => { if (!storyOn && !tourOn && !albumOn) showInvite(['여섯 송이를 모두 찾았어요.', ['꽃감관', '이 된 이야기를'], '볼까요?'], '이야기 보기', playStory); }, 20500);
-        } else setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900);
+        } else { setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900); const nx = nextMyth(); if (nx) setTimeout(() => toast(`다음 차례는 ${nx.name}이에요`, 3400), mythFound.size === 1 ? 9200 : 4200); }
         if (mythFound.size === 1) { showCard(); setTimeout(() => toast('이제 신화 속 꽃들의 이야기를 볼 수 있어요', 4200), 4600); }   // 첫 송이: 이야기를 볼 자격
       }
     } else playMelody(focusP(), .6);
