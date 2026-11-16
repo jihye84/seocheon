@@ -116,6 +116,8 @@ body.narrow #fsBtn .lab{display:none}
 .colors button{width:min(34px,100%);aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.18);padding:0;cursor:pointer;
   box-shadow:inset 0 0 0 2px rgba(10,12,28,.55);transition:transform .15s}
 .colors button:hover{transform:scale(1.1)}
+.colors button{display:grid;place-items:center}
+.colors .q{font-weight:700;font-size:1.05em;line-height:1;color:#fff;text-shadow:0 0 3px rgba(20,10,40,.9),0 0 6px rgba(20,10,40,.7);pointer-events:none}
 .colors button.taken{opacity:.22;filter:grayscale(.6);cursor:not-allowed}
 .colors button.taken:hover{transform:none}
 .colors button[aria-pressed=true]{border-color:var(--gold);box-shadow:inset 0 0 0 3px rgba(10,12,28,.85),0 0 10px rgba(241,214,160,.5)}
@@ -199,7 +201,7 @@ body.tour #invite{display:none}
 #storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #storySkip:hover{color:#a4abc6}
 .btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
-.btns button.story.glow{animation:storyTip 1.4s ease-in-out infinite}
+.btns button.story.glow,#bTag.glow{animation:storyTip 1.4s ease-in-out infinite}
 @keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
@@ -268,8 +270,8 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
         <label><span>이름 <small>(별명으로 적어도 괜찮아요)</small></span><input id="inName" maxlength="12" placeholder="12자까지 적을 수 있어요" required></label>
         <label id="lbBirth"><span>생일 <small>(적지 않아도 돼요)</small></span><input id="inBirth" inputmode="numeric" maxlength="10" placeholder="예: 1984.03.15"></label>
         <label id="lbPin" hidden><span>비밀번호 <small>(이름표를 달 때 정한 숫자 4자리)</small></span><input id="inOpenPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리"></label>
-        <div class="pickname" id="pnRow"><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
-        <div class="colors" id="pickIntro"></div>
+        <div class="pickname" id="pnRow" hidden><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
+        <div class="colors" id="pickIntro" hidden></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
         <button id="bOpen" type="button">이름표를 단 적 있어요 · 비밀번호로 찾기</button>
       </form>
@@ -1360,6 +1362,25 @@ const COLORS = [
 // 고르기 칸에 놓는 차례(번호는 저장된 꽃·링크와 맞물려 있어 그대로 둔다): 무지개 차례로 돌고, 자줏빛에서 분홍·흰빛을 지나 검정으로
 const COLOR_ORDER = [0, 1, 15, 2, 3, 14, 4, 5, 6, 7, 12, 8, 17, 9, 19, 18, 16, 10, 11, 13];
 let pickedColor = 0;
+// 처음 만난 내 꽃은 빛깔 없이(흑백으로) 핀다: 빛깔은 사람이 골라 입힌다
+let uncolored = false;
+const HSL_KEYS = new Set(['glow', 'th', 'bh', 'tipHSL', 'baseHSL']);
+function grayP(P) {
+  const seen = new Map();
+  const walk = (v, key) => {
+    if (typeof v === 'string') return v.startsWith('hsl') ? v.replace(/^(hsla?\(\s*[-\d.]+\s*,\s*)[\d.]+%/, '$10%') : v;
+    if (Array.isArray(v)) {
+      if (HSL_KEYS.has(key) && v.length >= 3 && v.every(x => typeof x === 'number')) { const o = v.slice(); o[1] = 0; return o; }
+      if (seen.has(v)) return seen.get(v); const o = []; seen.set(v, o); v.forEach((x, k) => o.push(walk(x, key))); return o;
+    }
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      if (seen.has(v)) return seen.get(v); const o = {}; seen.set(v, o);
+      for (const k of Object.keys(v)) o[k] = walk(v[k], k); return o;
+    }
+    return v;
+  };
+  return walk(P, '');
+}
 function swatchBg(c) {
   if (c.pure) return 'radial-gradient(circle at 35% 35%,#fff,#d9d9d9)';
   if (c.black) return 'radial-gradient(circle at 35% 35%,#5a5a68,#0b0b10 70%)';
@@ -1376,10 +1397,11 @@ function buildPicker(el, nameEl, onPick) {
   COLOR_ORDER.forEach(k => {
     const c = COLORS[k], b = document.createElement('button'); b.type = 'button'; b.title = c.n; b.setAttribute('aria-label', c.n); b.dataset.k = k;
     b.style.background = swatchBg(c); b.onclick = () => onPick(k); el.appendChild(b);
+    if (k === 0) { b.innerHTML = '<span class="q" aria-hidden="true">?</span>'; }   // 무지개 빛깔이 아니라 '꽃밭이 골라 준다'는 뜻
   });
   el._name = nameEl;
 }
-function markPicker(el, k) { [...el.children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.k === k)); el._name.textContent = COLORS[k].n; }
+function markPicker(el, k) { [...el.children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.k === k)); el._name.textContent = COLORS[k] ? COLORS[k].n : ''; }
 function userP(seed, ck) {
   const c = COLORS[ck] || COLORS[0];
   if (c.pure) return gen(seed, 0, 6);   // 순백: 다른 빛이 하나도 섞이지 않은 흰 꽃
@@ -1405,7 +1427,8 @@ function userP(seed, ck) {
 const SLOT_OFF = [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1], [2, 0], [0, 2], [-2, 0], [0, -2], [2, 1], [1, 2], [-1, 2], [-2, 1]];
 function makePerson(kind, name, seed, color, slot) {
   const [bi, bj] = cellOfSeed(seed); slot = SLOT_OFF[slot] ? slot | 0 : 0;
-  return { kind, name, seed, bi, bj, slot, i: bi + SLOT_OFF[slot][0], j: bj + SLOT_OFF[slot][1], size: .95, color, bloomT: null, P: userP(seed, color) };
+  const gray = kind === 'user' && uncolored;
+  return { kind, name, seed, bi, bj, slot, i: bi + SLOT_OFF[slot][0], j: bj + SLOT_OFF[slot][1], size: .95, color, bloomT: null, gray, P: gray ? grayP(userP(seed, color)) : userP(seed, color) };
 }
 const mySlot = seed => { const t = typeof myTags !== 'undefined' ? myTags.find(x => x.s === seed) : null; return t ? t.slot | 0 : 0; };
 function placeUser() {   // 이름표를 달거나 떼어 자리가 바뀌었으면 내 꽃을 옮긴다
@@ -1419,7 +1442,8 @@ function setUser(name, seed, hasBirth) {
   const keepBloom = user && user.seed === seed ? user.bloomT : null;
   if (hasBirth == null) hasBirth = !!(user && user.seed === seed && user.hasBirth);
   user = makePerson('user', name, seed, pickedColor, mySlot(seed)); user.bloomT = keepBloom; user.hasBirth = hasBirth; loadMyth();
-  store.set('me', { n: name, s: seed.toString(36), c: pickedColor, b: hasBirth ? 1 : 0, v: 2 });   // 다시 열어도 내 꽃을 기억한다
+  store.set('me', { n: name, s: seed.toString(36), c: pickedColor, b: hasBirth ? 1 : 0, v: 2, u: uncolored ? 1 : 0 });   // 다시 열어도 내 꽃을 기억한다
+  if (!uncolored) { const cb = store.get('colorBy', {}); delete cb[seed.toString(36)]; cb[seed.toString(36)] = pickedColor; const ks = Object.keys(cb); if (ks.length > 60) delete cb[ks[0]]; store.set('colorBy', cb); }   // 꽃마다 입힌 빛깔
   refreshSpecials();
   try { const u = new URL(location.href); u.search = ''; u.searchParams.set('n', name); u.searchParams.set('s', seed.toString(36)); if (pickedColor) u.searchParams.set('c', pickedColor); if (isWarden(user)) u.searchParams.set('w', '1'); if (user.slot) u.searchParams.set('p', user.slot); history.replaceState(null, '', u); } catch (e) { }
 }
@@ -1459,7 +1483,8 @@ async function syncMyTags() {
     const t = curTag();
     if (t && t.w && !isWarden(user)) wardenFromTag();
     else if (t && !t.w && isWarden(user)) putTag(t.c);   // 이 기기에서 여섯 송이를 마저 찾았으면 이름표에도 적는다
-    if (t && t.c !== user.color) {   // 다른 기기에서 빛깔을 바꿨으면 여기서도 따라간다
+    if (t && (t.c !== user.color || user.gray)) {   // 다른 기기에서 빛깔을 바꿨으면 여기서도 따라간다
+      uncolored = false;
       pickedColor = t.c; markPicker($('pickIntro'), pickedColor); setUser(user.name, user.seed);
       if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
     }
@@ -2395,7 +2420,7 @@ function showCard() {
   $('cSw').innerHTML = D.colors.map(c => `<i style="background:${c}"></i>`).join('');
   const mine = k === 'user', canPair = friendDiffers() && (k === 'user' || k === 'friend');
   $('cPick').hidden = !mine; $('cSw').hidden = mine || k === 'myth';
-  if (mine) markPicker($('pickCard'), user.color);
+  if (mine) { markPicker($('pickCard'), user.gray ? -1 : user.color); if (user.gray) $('pnCard').textContent = '빛깔을 골라 주세요'; }
   $('bFar').hidden = !mine;
   $('bPair').hidden = !canPair; $('bPair').classList.toggle('wide', !mine);
   $('bPair').textContent = pair ? '꽃밭으로 돌아가기' : '두 꽃 나란히 보기';
@@ -2409,6 +2434,8 @@ function showCard() {
   $('bFar').classList.toggle('wide', !mine);
   $('bReport').hidden = k !== 'tag'; reportArmed = 0; $('bReport').textContent = '신고';
   $('bTag').hidden = !mine; if (mine) { tagArmed = 0; refreshTagUI(); } if (pinMode) closePin();
+  $('bSave').hidden = false;
+  if (mine && user.gray) ['bTag', 'bSave', 'bPfp', 'bShare'].forEach(id => { $(id).hidden = true; });   // 빛깔부터 입히고 나서 저장·보내기·이름표
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
 }
@@ -2431,7 +2458,7 @@ let finding = false;
 let openMode = false;
 function setOpenMode(on) {
   openMode = on;
-  $('lbBirth').hidden = on; $('pnRow').hidden = on; $('pickIntro').hidden = on; $('lbPin').hidden = !on;
+  $('lbBirth').hidden = on; $('lbPin').hidden = !on;
   $('f').querySelector('.primary').textContent = '내 꽃 찾아가기';
   $('bOpen').textContent = on ? '이름과 생일로 찾기' : '이름표를 단 적 있어요 · 비밀번호로 찾기';
   $('inOpenPin').value = '';
@@ -2455,7 +2482,7 @@ async function openByPin(name) {
   if (!rows.length) { toast('이 이름표는 지금 꽃밭에 보이지 않아요', 3600); return; }
   const got = rows.map(tagOf), first = rows[0], t = got[0];
   myTags = myTags.filter(x => !got.some(g => g.id === x.id || g.s === x.s)).concat(got); saveTags();
-  pickedColor = t.c; markPicker($('pickIntro'), t.c);
+  pickedColor = t.c; uncolored = false; markPicker($('pickIntro'), t.c);
   friendFirst = false;
   setUser(String(first.name).slice(0, 12), t.s, !!first.has_birth);
   if (t.w) wardenFromTag();
@@ -2492,6 +2519,12 @@ $('f').addEventListener('submit', async e => {
   } else seed = strHash(nameKey(name) + '|');
   const newWarden = !user && mythFound.size === MYTHS.length;
   friendFirst = false;
+  // 이미 빛깔을 입힌 꽃(이 기기에 기억된 꽃·이름표 단 꽃)이면 그 빛깔로, 처음 만나는 꽃이면 흑백으로 핀다
+  const known = myTags.find(t => t.s === seed), meNow = store.get('me', null);
+  if (known) { pickedColor = known.c; uncolored = false; }
+  else if (meNow && meNow.s === seed.toString(36) && !meNow.u) { pickedColor = meNow.c > 0 && meNow.c < COLORS.length ? meNow.c : 0; uncolored = false; }
+  else if (store.get('colorBy', {})[seed.toString(36)] != null) { const c = store.get('colorBy', {})[seed.toString(36)]; pickedColor = c > 0 && c < COLORS.length ? c : 0; uncolored = false; }
+  else { pickedColor = 0; uncolored = true; }
   setUser(name, seed, !!birth);
   inviteMyth(11000);   // 내 꽃이 다 피어난 뒤, 신화 속 꽃으로 이끈다 (하루에 한 번)
   loadTaken();
@@ -2499,15 +2532,12 @@ $('f').addEventListener('submit', async e => {
   $('inName').blur(); $('inBirth').blur();
   hideHint();
   goMine();
-  // 처음 내 꽃을 만났을 때 한 번만: 꽃은 타고나고, 빛깔은 내가 고른다
-  if (!store.get('colorTip', false)) {
-    store.set('colorTip', true);
+  if (uncolored) {   // 꽃은 타고나고, 빛깔은 내가 고른다
     setTimeout(() => {
-      if (!focus || focus.kind !== 'user') return;
-      if (!takenSet.size) toast('빛깔은 마음에 드는 대로 바꿀 수 있어요', 3800);   // 빛깔 예약 안내가 떠 있으면 가리지 않는다
-      $('cPick').classList.add('tip');
-      setTimeout(() => $('cPick').classList.remove('tip'), 4200);
-    }, 3200);
+      if (!focus || focus.kind !== 'user' || !user.gray) return;
+      toast('아직 빛깔이 없는 꽃이에요. 마음에 드는 빛깔을 입혀 주세요', 5200);
+      $('cPick').classList.add('tip'); setTimeout(() => $('cPick').classList.remove('tip'), 4200);
+    }, 3600);
   }
 });
 buildPicker($('pickIntro'), $('pnIntro'), k => { pickedColor = k; markPicker($('pickIntro'), k); });
@@ -2518,10 +2548,15 @@ buildPicker($('pickCard'), $('pnCard'), async k => {
     const r = await putTag(k);
     if (!r) return;
   }
-  pickedColor = k; markPicker($('pickIntro'), k);
+  const first = user.gray;
+  pickedColor = k; uncolored = false; markPicker($('pickIntro'), k);
   setUser(user.name, user.seed);
   focus.sp = user;
   showCard();
+  if (first) {   // 빛깔을 처음 입혔으면 다음 걸음(이름표)으로 이끈다
+    toast(`${COLORS[k].n === '꽃밭에 맡기기' ? '꽃밭이 고른 빛깔' : COLORS[k].n + ' 빛깔'}을 입혔어요. 다른 빛깔도 얼마든지 골라 볼 수 있어요`, 4600);
+    setTimeout(() => { if (!user || user.gray || curTag() || !focus || focus.kind !== 'user') return; $('bTag').classList.add('glow'); toast('마음에 들면 이름표를 달아 보세요. 누구나 이 꽃을 볼 수 있게 돼요', 5200); setTimeout(() => $('bTag').classList.remove('glow'), 9000); }, 5200);
+  }
   if (cam.ppu > focusPPU(.95) * .35) { user.bloomT = now; playMelody(user.P, .9, .5); } else goMine();
 });
 markPicker($('pickIntro'), 0);
@@ -3221,7 +3256,7 @@ whenSized(function start() {
       // 예전 방식으로 만든 생일 꽃: 씨앗 만드는 법이 바뀌어 생일을 한 번 더 적어야 한다
       store.set('me', null); refind = true;
     } else {
-      pickedColor = me.c > 0 && me.c < COLORS.length ? me.c : 0;
+      pickedColor = me.c > 0 && me.c < COLORS.length ? me.c : 0; uncolored = !!me.u;
       markPicker($('pickIntro'), pickedColor);
       const seed = me.v === 2 ? parseInt(me.s, 36) >>> 0 : strHash(nameKey(nm) + '|');
       user = makePerson('user', nm, seed, pickedColor, mySlot(seed)); user.hasBirth = !!me.b; loadMyth();
