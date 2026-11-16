@@ -166,8 +166,9 @@ body.narrow .note{display:none}
 @media (max-height:560px) and (min-width:560px){body.narrow .colors{grid-template-columns:repeat(14,1fr)}}
 @media (max-height:560px){#vCard.pinning #cPick,#vCard.pinning .motto,#vCard.pinning .traits,#vCard.pinning .loc{display:none}}
 @media (max-height:720px){body.narrow .traits,body.narrow .loc{display:none}}
+body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.narrow #vCard.myth .motto{display:none}}
 @media (max-height:560px){body.narrow #hint{display:none} .btns button{padding-left:6px;padding-right:6px}}
-@media (max-height:420px){#pnRow{display:none} #bOpen{margin:-8px 0 -10px} .traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
+@media (max-height:420px){#vCard.myth .traits{display:block!important} #vCard.myth .motto,#vCard.myth .loc{display:none!important} #pnRow{display:none} #bOpen{margin:-8px 0 -10px} .traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
 @media (max-height:350px){#bOpen{padding:4px 8px;margin:-4px 0 -6px} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
@@ -1264,18 +1265,17 @@ const keyOf = (i, j) => (i + 32768) * 65536 + (j + 32768);
 const focusPPU = size => Math.min(stg.w, stg.h) * .74 / size;
 
 /* ---------- 신화 속 꽃(이공본풀이) ---------- */
-const MYTH_REVIVE = ['제주 무가 「이공본풀이」에서', '꽃감관의 아들 할락궁이는', '서천꽃밭의 꽃으로', '죽은 어머니를 되살렸다.'];
 const MYTHS = [
   { id: 'bone', name: '뼈살이꽃', at: [-163, 88], hue: 44, pal: 5, force: { flat: true, shape: 'point', count: 6, layers: 3, cType: 'stamen' },
-    motto: ['흩어진 뼈를 모아,', '다시 이어 붙이는 꽃'], glow: [45, 70, 88], story: MYTH_REVIVE },
+    motto: ['흩어진 뼈를 모아,', '다시 이어 붙이는 꽃'], glow: [45, 70, 88], story: ['어머니는 천년장자 손에 죽어', '대밭에 버려진 채 뼈만 남았다.', '할락궁이는 흩어진 뼈를 추려', '맨 먼저 뼈살이꽃을 얹었다.'] },
   { id: 'flesh', name: '살살이꽃', at: [214, -57], hue: 14, pal: 3, force: { flat: true, shape: 'round', count: 5, layers: 3, cType: 'bud' },
-    motto: ['뼈 위에', '살을 다시 돋게 하는 꽃'], glow: [18, 85, 80], story: MYTH_REVIVE },
+    motto: ['뼈 위에', '살을 다시 돋게 하는 꽃'], glow: [18, 85, 80], story: ['뼈가 이어지자', '할락궁이는 살살이꽃을 놓았다.', '앙상하던 뼈 위로', '살이 차올라 몸이 되었다.'] },
   { id: 'blood', name: '피살이꽃', at: [-71, -238], hue: 352, pal: 0, force: { flat: true, shape: 'ruffle', count: 8, layers: 2, cType: 'dots' },
-    motto: ['멈춘 몸에', '피를 다시 돌게 하는 꽃'], glow: [355, 85, 66], story: MYTH_REVIVE },
+    motto: ['멈춘 몸에', '피를 다시 돌게 하는 꽃'], glow: [355, 85, 66], story: ['그래도 몸은 차고 하얬다.', '피살이꽃을 얹자', '핏줄마다 붉은 피가 돌아', '볼에 다시 빛이 돌았다.'] },
   { id: 'breath', name: '숨살이꽃', at: [97, 251], hue: 196, pal: 3, force: { flat: true, shape: 'notch', count: 5, layers: 2, cType: 'ring' },
-    motto: ['끊어진 숨을', '다시 쉬게 하는 꽃'], glow: [196, 80, 80], story: MYTH_REVIVE },
+    motto: ['끊어진 숨을', '다시 쉬게 하는 꽃'], glow: [196, 80, 80], story: ['몸은 따뜻해졌지만', '가슴은 아직 고요했다.', '숨살이꽃을 놓자', '어머니가 가만히 숨을 쉬었다.'] },
   { id: 'soul', name: '혼살이꽃', at: [-318, 292], hue: 270, pal: 3, force: { flat: true, shape: 'lance', count: 21, layers: 2, cType: 'ring' },
-    motto: ['떠난 넋을 불러', '몸으로 돌아오게 하는 꽃'], glow: [270, 70, 80], story: MYTH_REVIVE },
+    motto: ['떠난 넋을 불러', '몸으로 돌아오게 하는 꽃'], glow: [270, 70, 80], story: ['마지막으로 혼살이꽃을 얹고', '회초리로 세 번 내리치자', '어머니가 일어나 말했다.', '"봄잠을 너무 오래 잤구나."'] },
   { id: 'laugh', name: '웃음꽃', at: [-286, -129], hue: 48, pal: 0, force: { flat: true, shape: 'fringe', count: 8, layers: 3, cType: 'dots' },
     motto: ['보는 이를', '멈출 수 없이 웃게 하는 꽃'], glow: [48, 95, 70],
     story: ['「이공본풀이」에서 할락궁이는', '이 꽃으로 원수의 집안을', '멈출 수 없는 웃음에 빠뜨렸다.'] }
@@ -2354,6 +2354,7 @@ const goMine = () => { if (!user) return; if (friendFirst) { friendFirst = false
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
   $('cOwner').textContent = k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃';
+  $('vCard').classList.toggle('myth', k === 'myth');
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
   $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
