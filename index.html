@@ -514,6 +514,7 @@ function gen(seed, hue, palO, force) {
   let lHue = (r() - .5) * 36, lL = (r() < .5 ? -1 : 1) * (4 + r() * 9);
   if (force.flat) { lHue *= .15; lL = Math.abs(lL) * .6; }
   if (P.many && !P.many.grad) { lHue *= .15; lL *= .3; }
+  lHue *= .4; lL = Math.sign(lL) * Math.min(7, 2.5 + Math.abs(lL) * .4);   // 겹끼리 빛깔이 이어지게: 안쪽 겹은 같은 빛에서 조금만 밝거나 짙게(따로 끼운 꽃잎처럼 보이지 않게)
   if (P.pal === 8) { lHue = 0; lL = Math.min(2 + Math.abs(lL) * .45, 11 / Math.max(1, P.layers - 1)); }   // 검은 꽃: 안쪽 겹일수록 조금씩 밝아져 꽃잎이 구별되게
   P.L = [];
   for (let k = 0; k < P.layers; k++) {
@@ -1342,8 +1343,13 @@ function drawFlower(g, P, R, o) {
       if (P.net && top && px > 40 && es > .5) {   // 핏줄무늬
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
         const W = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
-        const at = (v, ss) => [ss * len, (v.t + v.wob * Math.sin(ss * 7 + v.ph) * ss) * W(ss) * .9 + P.curl * len * ss * ss];
-        const w0 = lw * Math.max(2.2, px / 70) * (P.netEmboss ? 1.35 : 1);   // 밑동은 굵고 끝으로 갈수록 가늘게
+        // 꽃잎마다 핏줄이 똑같이 찍혀 나오지 않게(도장처럼 보이면 조립품 같다): 자리·물결을 장마다 조금씩, 꽃잎 축이 휜 만큼 함께 휜다
+        const Wn = hand > 0 && !FU ? wobOf(k, SP ? 0 : n % P.count) : null, cvN = P.curl + (Wn ? Wn[6] : 0), pq = SP ? 0 : n % P.count;
+        const jt = new Map(P.net.map((v, i) => { const z = q => (mix((P.seed ^ 0x77e1) >>> 0, pq * 97 + i * 7 + q) % 1000) / 1000 - .5; return [v, [z(1) * .1, z(2) * 1.6, 1 + z(3) * .3]]; }));
+        const at = (v, ss) => { const J = jt.get(v); return [ss * len, (v.t * (1 - Math.abs(J[0])) + J[0] * .5 + v.wob * J[2] * Math.sin(ss * 7 + v.ph + J[1]) * ss) * W(ss) * .9 + cvN * len * ss * ss]; };
+        const nfw = Math.max(.45, Math.min(1, wid / len / .35));   // 가는 꽃잎엔 핏줄이 빽빽해 긁힌 듯 보이니: 가늘고 옅게, 곁가지는 덜
+        g.globalAlpha *= .5 + .5 * nfw;
+        const w0 = lw * Math.max(2.2, px / 70) * (P.netEmboss ? 1.35 : 1) * nfw;   // 밑동은 굵고 끝으로 갈수록 가늘게
         const ribbon = (pts, ws, ox, oy) => {   // 굵기가 변하는 줄을 한 덩어리로 칠한다 (겹친 이음매가 생기지 않게)
           const L = [], R = [];
           for (let i = 0; i < pts.length; i++) {
@@ -1361,8 +1367,8 @@ function drawFlower(g, P, R, o) {
             const pts = [], ws = [];
             for (let ss = .03; ss <= v.end + 1e-6; ss += .03) { pts.push(at(v, ss)); ws.push(wm * w0 * (1 - .82 * ss / v.end) / 2); }
             ribbon(pts, ws, ox, oy);
-            for (const [s0, d, bl] of v.br) {
-              if (s0 > v.end) continue;
+            for (const [bi, [s0, d, bl]] of v.br.entries()) {
+              if (s0 > v.end || bi >= Math.round(v.br.length * nfw * nfw)) continue;
               const [x, y] = at(v, s0), bw = w0 * (1 - .82 * s0 / v.end) * .7;
               const cx = x + bl * len * .5, cy = y + d * bl * len * .25, ex = x + bl * len, ey = y + d * bl * len * .55, bp = [], bws = [];
               for (let z = 0; z <= 8; z++) {
@@ -1376,9 +1382,10 @@ function drawFlower(g, P, R, o) {
         };
         if (P.netEmboss) {   // 돋을 핏줄: 색 대신 빛과 그늘로 도드라져 보인다 (빛은 화면 왼쪽 위에서)
           const m = g.getTransform(), an = -Math.atan2(m.b, m.a), lx = -.6 * Math.cos(an) + .8 * Math.sin(an), ly = -.6 * Math.sin(an) - .8 * Math.cos(an), d = w0 * .42;
-          g.fillStyle = 'rgba(12,6,24,.26)'; veins(-lx * d, -ly * d, 1);
-          g.fillStyle = 'rgba(255,255,255,.22)'; veins(lx * d * .7, ly * d * .7, .7);
-          g.fillStyle = 'rgba(255,255,255,.05)'; veins(0, 0, .9);
+          const T = Ly.th || [0, 0, 70];   // 흰빛·검은빛 대신 꽃잎 제 빛깔의 밝은 결·짙은 결로(잿빛으로 뜨지 않게)
+          g.fillStyle = hsla(T[0], T[1], Math.max(8, T[2] - 38), .3); veins(-lx * d, -ly * d, 1);
+          g.fillStyle = hsla(T[0], Math.max(0, T[1] - 15), Math.min(96, T[2] + 26), .32); veins(lx * d * .7, ly * d * .7, .7);
+          g.fillStyle = hsla(T[0], T[1], Math.min(96, T[2] + 12), .1); veins(0, 0, .9);
         } else { g.fillStyle = P.netCol; veins(0, 0, 1); }
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
