@@ -110,8 +110,10 @@ body.narrow #corner{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
 body.narrow #fsBtn{padding:0}
 body.narrow #fsBtn .lab{display:none}
 .loc{color:var(--faint);font-size:.92em}
-.swatch{display:flex;gap:6px;margin:.1em 0}
-.swatch i{width:1.1em;height:1.1em;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
+.swatch{display:flex;align-items:center;gap:.6em;margin:.1em 0;color:var(--dim);font-size:max(15px,.9em);cursor:default;user-select:none}
+/* 남의 꽃 빛깔은 팔레트(동그라미)와 전혀 다른 모양: 가느다란 비단 띠 한 줄. 누를 수 있는 것처럼 보이지 않게 */
+.swatch .ribbon{flex:0 0 auto;width:4.2em;height:.42em;border-radius:1px;box-shadow:0 0 10px rgba(255,255,255,.08);opacity:.95}
+.swatch .swl{white-space:nowrap}
 .colors{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;justify-items:center}
 .colors button{width:min(34px,100%);aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.18);padding:0;cursor:pointer;
   box-shadow:inset 0 0 0 2px rgba(10,12,28,.55);transition:transform .15s}
@@ -163,7 +165,7 @@ body.narrow .note{display:none}
   .colors{gap:4px} .colors button{width:min(28px,100%)}
   body.wide #panel{width:clamp(340px,47vw,430px)} body.wide .btns{grid-template-columns:repeat(3,1fr)}
   input{min-height:38px} .primary{min-height:42px} .btns button{min-height:40px} .btns{gap:.4em}
-  .fname{font-size:1.4em} .loc,.swatch{display:none} .motto{font-size:max(15px,.88em);line-height:1.45}
+  .fname{font-size:1.4em} .loc{display:none} .motto{font-size:max(15px,.88em);line-height:1.45}
 }
 @media (max-height:560px){.colors{grid-template-columns:repeat(10,1fr)}}
 @media (max-height:560px) and (min-width:560px){body.narrow .colors{grid-template-columns:repeat(20,1fr)}}
@@ -172,7 +174,7 @@ body.narrow .note{display:none}
 body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.narrow #vCard.myth .motto{display:none}}
 @media (max-height:560px){body.narrow #hint{display:none} .btns button{padding-left:6px;padding-right:6px}}
 @media (max-height:420px){#vCard.myth .traits{display:block!important} #vCard.myth .motto,#vCard.myth .loc{display:none!important} #pnRow{display:none} #bOpen{margin:-8px 0 -10px} .traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
-@media (max-height:350px){#bOpen{padding:4px 8px;margin:-4px 0 -6px} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
+@media (max-height:350px){.swatch{display:none} #bOpen{padding:4px 8px;margin:-4px 0 -6px} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
@@ -281,7 +283,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <div class="owner"><span id="cOwner"></span><button id="bReport" type="button" hidden>신고</button></div>
       <div class="fname" id="cName"></div>
       <div class="motto" id="cMotto"></div>
-      <div class="swatch" id="cSw"></div>
+      <div class="swatch" id="cSw" title="이 꽃의 빛깔"></div>
       <div id="cPick"><div class="pickname"><span>빛깔 바꾸기</span><b id="pnCard"></b></div>
         <div class="colors" id="pickCard"></div></div>
       <div class="traits" id="cTraits"></div>
@@ -2421,7 +2423,8 @@ function showCard() {
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
   $('cTraits').innerHTML = k === 'myth' ? sp.story.map(esc).join('<br>') : esc(D.traits);
   $('cLoc').textContent = `서천꽃밭 ${focus.i + 1000}번째 이랑 · ${focus.j + 1000}번째 자리`;
-  $('cSw').innerHTML = D.colors.map(c => `<i style="background:${c}"></i>`).join('');
+  // 빛깔 띠: 이 꽃을 이루는 빛깔을 한 줄 비단처럼 보여 주고, 누가 정한 빛깔인지 적는다 (남의 꽃은 바꿀 수 없다는 넛지)
+  $('cSw').innerHTML = `<i class="ribbon" style="background:linear-gradient(90deg,${D.colors[1]},${D.colors[0]} 45%,${D.colors[2]} 80%,${D.colors[3]})"></i><span class="swl">${k === 'tag' ? '주인이 입힌 빛깔' : k === 'friend' ? `${esc(sp.name)}님이 입힌 빛깔` : '꽃밭이 피운 빛깔'}</span>`;
   const mine = k === 'user', canPair = friendDiffers() && (k === 'user' || k === 'friend');
   $('cPick').hidden = !mine; $('cSw').hidden = mine || k === 'myth';
   if (mine) { markPicker($('pickCard'), user.gray ? -1 : user.color); if (user.gray) $('pnCard').textContent = '빛깔을 골라 주세요'; }
@@ -2578,6 +2581,7 @@ $('bFar').onclick = () => {
 $('bPair').onclick = () => pair ? exitPair() : enterPair();
 $('bSave').onclick = () => savePNG();
 $('bPfp').onclick = () => savePfp();
+$('cSw').onclick = () => toast(user ? '남의 꽃 빛깔은 바꿀 수 없어요. 빛깔은 내 꽃에만 입힐 수 있어요' : '남의 꽃 빛깔은 바꿀 수 없어요. 내 꽃을 찾으면 빛깔을 입힐 수 있어요', 4200);
 $('bShare').onclick = async () => {
   if (!user) return;
   const url = shareURL(), D = describe(user.P);
