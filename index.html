@@ -740,30 +740,40 @@ function corollaPath(len, P, G) {
   return p;
 }
 /* 주름꽃잎: 밑동은 좁고 끝은 넓은 부채꼴, 바깥 가장자리 전체가 들쭉날쭉한 톱니 */
-function frillPath(len, wmax, P) {
-  const F = P.frill, sharp = P.shape === 'serrate', p = new Path2D(), N = 16, M = sharp ? 22 : 34, up = [];
+function frillPath(len, wmax, P, wob) {
+  const F = P.frill, sharp = P.shape === 'serrate', p = new Path2D(), N = wob ? 24 : 16, M = sharp ? 22 : 34, up = [];
+  // 손맛(가까이 볼 때만): 양옆 선이 꽃잎 축을 따라 휘고 떨리며, 톱니는 간격·깊이가 제각각이고 톱니 변도 곧지 않게 살짝 굽는다
+  const rr = z => wob ? (mix(wob[8] + 31, z) % 1000) / 1000 - .5 : 0;
   for (let n = 0; n <= N; n++) {
-    const s = n / N, sm = s * .86, w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
-    up.push([s * len * .86, w * (s > .6 ? 1 + .1 * (F[n] - .5) * ((s - .6) / .4) : 1)]);
+    const s = n / N, sm = s * .86, w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b), fi = Math.round(s * 16);
+    const tr = side => wob ? wmax * wob[7] * Math.sqrt(s) * (.55 * Math.sin(s * Math.PI * (5 + side * 2.3) + wob[3 + side * 2]) + .45 * rr(n * 2 + side)) : 0;
+    up.push([s * len * .86, w * (s > .6 ? 1 + .1 * (F[fi] - .5) * ((s - .6) / .4) : 1), wob ? wob[6] * len * s * s : 0, tr(0), tr(1), fi]);
   }
   const e = up[N];
   p.moveTo(0, 0);
-  for (const q of up) p.lineTo(q[0], q[1]);
+  for (const q of up) p.lineTo(q[0], q[2] + q[1] * (wob ? 1 + wob[0] * Math.sin(q[0] / len * Math.PI * wob[2] + wob[3]) * q[0] / len : 1) + q[3]);
+  let px0 = null, py0 = null;
   for (let j = 1; j < M; j++) {      // 끝 가장자리: 둥근 부채 끝을 따라 톱니
-    const u = 1 - 2 * j / M, ang = u * Math.PI / 2 * .92, depth = sharp ? (j & 1 ? .05 + .06 * F[16 + (j % 30)] : 0) : (j & 1 ? .022 + .04 * F[16 + (j % 30)] : .006 * F[(j * 7) % 48]);   // 패랭이: 깊고 뾰족 / 카네이션: 짧고 뭉툭
-    const rx = len * .14 * (1 - depth * 6), x = e[0] + Math.cos(ang) * rx - len * depth, y = Math.sin(ang) * e[1] * (1 - depth * 1.5);
-    p.lineTo(x, y);
+    const u = 1 - 2 * j / M + rr(100 + j) * .7 / M, ang = u * Math.PI / 2 * .92;
+    let depth = sharp ? (j & 1 ? .05 + .06 * F[16 + (j % 30)] : 0) : (j & 1 ? .022 + .04 * F[16 + (j % 30)] : .006 * F[(j * 7) % 48]);   // 패랭이: 깊고 뾰족 / 카네이션: 짧고 뭉툭
+    if (wob) depth *= 1 + rr(200 + j) * .7;
+    const rx = len * .14 * (1 - depth * 6), x = e[0] + Math.cos(ang) * rx - len * depth, y = Math.sin(ang) * e[1] * (1 - depth * 1.5) + e[2];
+    if (wob && px0 !== null) {
+      const dx = x - px0, dy = y - py0, b = rr(300 + j) * .45;
+      p.quadraticCurveTo((x + px0) / 2 - dy * b, (y + py0) / 2 + dx * b, x, y);
+    } else p.lineTo(x, y);
+    px0 = x; py0 = y;
   }
-  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], -up[n][1] * (n > N * .6 ? 1 + .08 * (F[32 + n % 16] - .5) : 1));
+  for (let n = N; n >= 0; n--) { const q = up[n]; p.lineTo(q[0], q[2] - q[1] * (n > N * .6 ? 1 + .08 * (F[32 + q[5] % 16] - .5) : 1) * (wob ? 1 + wob[1] * Math.sin(q[0] / len * Math.PI * wob[4] + wob[5]) * q[0] / len : 1) - q[4]); }
   p.closePath();
   return p;
 }
 function petalPath(len, wmax, P, wob) {
-  if (P.shape === 'frill' || P.shape === 'serrate') return frillPath(len, wmax, P);
+  if (P.shape === 'frill' || P.shape === 'serrate') return frillPath(len, wmax, P, wob);
   const N = wob ? 40 : 22, p = new Path2D(), up = [];   // 손맛을 줄 때는 점을 촘촘히: 가장자리가 붓처럼 흔들린다
   const notch = P.shape === 'notch';
   for (let n = 0; n <= N; n++) {
-    const s = n / N, sm = notch ? s * .84 : s;
+    const s = notch ? n / N : 1 - Math.pow(1 - n / N, 1.6), sm = notch ? s * .84 : s;   // 끝으로 갈수록 점을 촘촘히: 넓은 꽃잎 끝이 꺾인 다각형처럼 보이지 않게
     let w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
     if (P.shape === 'fringe' && s > .5) { const x = s * P.teeth * 2; w *= 1 + .24 * Math.abs((x % 2) - 1) * ((s - .5) / .5); }
     if (P.shape === 'ruffle') w *= 1 + P.ruffA * Math.sin(s * Math.PI * P.ruffK + P.ruffPh);
@@ -1185,14 +1195,24 @@ function drawFlower(g, P, R, o) {
           g.restore(); g.fillStyle = fill;
         }
       }
-      if (P.frill && px > 40 && es > .5) {   // 주름: 꽃잎이 접혀 생긴 밝고 어두운 결
-        g.save(); g.clip(path); g.lineCap = 'round';
+      if (P.frill && px > 40 && es > .5) {   // 주름: 꽃잎이 접혀 생긴 골(어둠)과 등성이(빛) — 곧은 줄이 아니라 꽃잎 축 따라 휘고, 밑동에서 번져 나와 끝으로 가늘어진다
+        const Wb = hand > 0 ? wobOf(k, SP ? 0 : n % P.count) : null, cv = Wb ? Wb[6] : 0, q = n % P.count;
+        const rz = z => (mix((P.seed ^ 0x3f17) >>> 0, k * 131 + q * 17 + z) % 1000) / 1000 - .5, W = lw * Math.max(1.4, px / 90), NS = px > 90 ? 12 : 7;
+        g.save(); g.clip(path);
         for (let z = 0; z < 6; z++) {
-          const t = -.8 + 1.6 * z / 5 + (P.frill[40 + z] - .5) * .2, dark = z & 1;
-          g.strokeStyle = dark ? 'rgba(25,8,30,.16)' : 'rgba(255,255,255,.14)'; g.lineWidth = lw * Math.max(1.4, px / 90);
-          g.beginPath(); g.moveTo(len * .2, 0); g.quadraticCurveTo(len * .6, t * wid * .5, len * 1.02, t * wid * 1.05); g.stroke();
+          const t = -.8 + 1.6 * z / 5 + (P.frill[40 + z] - .5) * .2 + rz(z) * .12, dark = z & 1, s0 = .16 + (rz(z + 10) + .5) * .1, wob2 = rz(z + 20) * .5, C = [];
+          for (let i = 0; i <= NS; i++) {
+            const u = i / NS, x = len * (s0 + (1.02 - s0) * u), a = 1 - u, y = (2 * a * u * .5 + u * u * 1.05) * t * wid + cv * x * x / len + wid * .04 * wob2 * Math.sin(u * 6 + z) * u;
+            C.push([x, y, W * (dark ? 1.25 : 1) * (.35 + 1.1 * Math.sin(Math.PI * Math.min(1, u * 1.4)) * (1 - .55 * u))]);
+          }
+          const gr = g.createLinearGradient(len * s0, 0, len, 0), c = dark ? '25,8,30' : '255,255,255', al = dark ? .17 : .15;
+          gr.addColorStop(0, `rgba(${c},0)`); gr.addColorStop(.3, `rgba(${c},${al})`); gr.addColorStop(1, `rgba(${c},${al * .6})`);
+          g.fillStyle = gr; g.beginPath();
+          C.forEach(([x, y, w], i) => i ? g.lineTo(x, y + w / 2) : g.moveTo(x, y + w / 2));
+          for (let i = NS; i >= 0; i--) g.lineTo(C[i][0], C[i][1] - C[i][2] / 2);
+          g.fill();
         }
-        g.restore();
+        g.restore(); g.fillStyle = fill;
       }
       if (PETAL_EDGE && px > 40 && (!FU || n === P.count - 1)) g.stroke(path);
       if (P.fuzz && px > 64 && es > .6 && (!FU || n === 0)) {   // 솜털: 은빛 윤기 + 가장자리 잔털 (통꽃은 테두리를 따라)
@@ -1212,19 +1232,23 @@ function drawFlower(g, P, R, o) {
         }
         g.stroke(); g.restore(); g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
-      if (fine) {   // 잔결
-        g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = lw * .7; g.beginPath();
-        for (const side of [-1, 1]) for (const f of [.3, .55]) {
-          g.moveTo(len * .14, P.curl * len * .02);
-          g.quadraticCurveTo(len * .45, side * wid * f * .7 + P.curl * len * .2, len * .74, side * wid * f + P.curl * len * .55);
-        }
-        g.stroke(); g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
-      }
-      if (vein) {
-        g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = lw * .9;
-        g.beginPath(); g.moveTo(len * .1, P.curl * len * .01);
-        g.quadraticCurveTo(len * .45, P.curl * len * .2, len * .8, P.curl * len * .64); g.stroke();
-        g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
+      if (fine || vein) {   // 잔결·가운데 잎맥: 꽃잎 축이 휜 만큼 함께 휘고, 손으로 그은 듯 살짝 흔들리며 끝으로 갈수록 가늘고 흐려진다
+        const Wb = hand > 0 && !FU ? wobOf(k, SP ? 0 : n % P.count) : null, cv = P.curl + (Wb ? Wb[6] : 0), rz = z => Wb ? (mix(Wb[8] + 77, z) % 1000) / 1000 - .5 : 0;
+        const line = (s0, s1, off, wk, col, id) => {     // off: 꽃잎 너비에 대한 비율(가운데 0)
+          const NS = 10, C = [];
+          for (let i = 0; i <= NS; i++) {
+            const t = i / NS, s = s0 + (s1 - s0) * t, ww = wid * Math.pow(Math.sin(Math.PI * Math.pow(Math.min(s, .99), P.a)), P.b);
+            C.push([s * len, cv * len * s * s + off * ww * Math.min(1, t * 1.6) + (Wb ? Wb[7] * wid * .5 * Math.sin(t * 7 + id * 1.9 + Wb[3]) * Math.sin(Math.PI * t) : 0), Math.sin(Math.PI * Math.min(1, t * .9 + .1)) * (1 - .55 * t)]);
+          }
+          const gr = g.createLinearGradient(s0 * len, 0, s1 * len, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.25, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = gr; g.beginPath();
+          C.forEach(([x, y, w], i) => i ? g.lineTo(x, y + w * wk / 2) : g.moveTo(x, y + w * wk / 2));
+          for (let i = NS; i >= 0; i--) g.lineTo(C[i][0], C[i][1] - C[i][2] * wk / 2);
+          g.fill();
+        };
+        if (fine) for (const side of [-1, 1]) for (const f of [.3, .55]) line(.14, .74 + rz(side * 3 + f * 10) * .08, side * (f + rz(side * 5 + f * 20) * .08), lw * 1, 'rgba(255,255,255,.12)', side * 2 + f * 4);
+        if (vein) line(.08, .8 + rz(9) * .06, 0, lw * 1.6, 'rgba(255,255,255,.27)', 0);
+        g.fillStyle = fill;
       }
       g.restore();
     }
