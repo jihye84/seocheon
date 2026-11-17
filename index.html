@@ -813,8 +813,13 @@ function petalPath(len, wmax, P, wob, vr) {
 /* 초록의 결: 한 포기의 잎과 꽃받침은 같은 초록 집안을 나눠 갖는다
    올리브 · 황록 · 연두 · 풀빛 · 짙은 숲빛 · 에메랄드 · 청록 세이지 · 은빛 세이지 */
 const GREENS = [[[76, 36, 29], 3], [[66, 46, 35], 2], [[90, 58, 39], 3], [[108, 46, 30], 4], [[128, 42, 22], 3], [[150, 56, 29], 3], [[166, 30, 32], 2], [[102, 16, 40], 2]];
+const GREENS2 = [[[162, 50, 25], 4], [[158, 40, 18], 2], [[140, 32, 14], 3], [[128, 26, 17], 2], [[118, 9, 29], 2], [[150, 12, 33], 2], [[88, 12, 34], 2]];   // 비리디안 · 짙은 비리디안 · 깊은 밤숲 · 이끼 그늘 · 잿빛 초록 · 잿빛 청록 · 잿빛 올리브
 function greenery(P, r) {
-  const [gh, gs, gl] = pickW(r, GREENS), h = gh + (r() - .5) * 10, sa = gs + (r() - .5) * 8, li = gl + (r() - .5) * 6;
+  let G0 = pickW(r, GREENS);
+  // 비리디안·짙고 어두운 초록·잿빛 초록을 더한다. 이미 뽑힌 빛깔은 흔들지 않게 따로 뽑고, 사랑받는 올리브(앞의 두 집안)는 그대로 둔다
+  const r2 = mulberry32((P.seed ^ 0x2545f491) >>> 0);
+  if (G0 !== GREENS[0][0] && G0 !== GREENS[1][0] && r2() < .42) G0 = pickW(r2, GREENS2);
+  const [gh, gs, gl] = G0, h = gh + (r() - .5) * 10, sa = gs + (r() - .5) * 8, li = gl + (r() - .5) * 6;
   const LEAFK = [['lance', 4], ['ellipse', 3], ['ovate', 2], ['obovate', 1], ['linear', 1]], kind = pickW(r, LEAFK);   // 한 포기 안에서는 잎꼴이 같다
   const edge = pickW(r, [['smooth', 5], ['serrate', 2], ['wavy', 2]]), teeth = 9 + ((r() * 9) | 0), td = .1 + r() * .12;
   P.leaves.forEach((L, i) => {
