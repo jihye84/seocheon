@@ -216,7 +216,7 @@ body.tour #invite{display:none}
 #storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #storySkip:hover{color:#a4abc6}
 .btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
-.btns button.story.glow,#bTag.glow,#bPair.glow{animation:storyTip 1.4s ease-in-out infinite}
+.btns button.story.glow,#bTag.glow,#bPair.glow,#bMine.glow{animation:storyTip 1.4s ease-in-out infinite}
 @keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
@@ -2994,6 +2994,11 @@ function togglePal(sp) {
     if (Object.keys(pals).length >= 60) { toast('지인의 꽃은 60송이까지 담을 수 있어요', 3200); return; }
     pals[k] = { s: (sp.seed >>> 0).toString(36), n: sp.kind === 'tag' ? tagNames(sp) : sp.name };
     toast('지인의 꽃으로 담았어요. 이 기기에서는 늘 따로 빛나요', 3800);
+    if (!user) setTimeout(() => {   // 내 꽃이 아직 없으면: 다음 걸음은 내 꽃 찾기
+      if (user || !focus || !focus.sp || focus.sp !== sp) return;
+      $('bMine').classList.add('glow'); toast('이제 내 꽃도 찾아볼까요? 이 꽃밭 어딘가에 내 꽃도 피어 있어요', 4600);
+      setTimeout(() => $('bMine').classList.remove('glow'), 9000);
+    }, 4200);
   }
   store.set('pals', pals); showCard();
 }
