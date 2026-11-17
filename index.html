@@ -1748,6 +1748,14 @@ function pullTags() {
     const key = bi * 10 + bj, at = tagBlocks.get(key);
     if (at != null && now - at < 90) continue;
     if (++n > 4) return;
+    pullBlock(bi, bj);
+  }
+}
+// 꽃 감상 때는 꽃밭 전체의 이름표를 미리 받아 둔다 (아는 꽃을 멀리서도 골라 찾아가도록)
+function pullAllTags() { for (let bi = 0; bi < 5; bi++) for (let bj = 0; bj < 5; bj++) { const at = tagBlocks.get(bi * 10 + bj); if (at == null || now - at > 90) pullBlock(bi, bj); } }
+function pullBlock(bi, bj) {
+  {
+    const key = bi * 10 + bj;
     tagBlocks.set(key, now);
     const i0 = bi * 200 - 400, j0 = bj * 200 - 400, i1 = i0 + (bi === 4 ? 200 : 199), j1 = j0 + (bj === 4 ? 200 : 199);
     rpc('tags_in', { p_i0: i0, p_i1: i1, p_j0: j0, p_j1: j1 }).then(rows => {
@@ -2382,15 +2390,39 @@ function tourGo() {
   const prev = tourSp; tourPrev = tourSp; tourSp = null;   // 떠나는 꽃은 화면 밖으로 나갈 때까지 핀 모습 그대로 둔다
   // 이름표 꽃: 지금 보고 있는 자리나 방금 본 꽃, 내 꽃·신화 속 꽃이 차지한 자리는 빼고 고른다
   // (예전엔 이름표가 내 것 하나뿐일 때 같은 자리를 또 골라, 카메라가 움직이지 않고 서른 숨 동안 멈춰 있었다)
-  const here = focus ? keyOf(focus.i, focus.j) : '', tags = [...tagSp.entries()].filter(([k, t]) => k !== here && t !== prev && specials.get(k) === t).map(([, t]) => t);
-  const useTag = tags.length && Math.random() < .3;
-  let sp;
-  if (useTag) { sp = tags[(Math.random() * tags.length) | 0]; sp.bloomT = null; sp.spr = null; refreshSpecials(); }
-  else {
-    // 지금 자리에서 너무 멀지 않은 이름 모를 꽃 한 송이
-    let i, j, tries = 0;
-    do { i = Math.round(cam.x + (Math.random() - .5) * 90); j = Math.round(cam.y + (Math.random() - .5) * 90); i = Math.max(-380, Math.min(380, i)); j = Math.max(-380, Math.min(380, j)); refreshSpecials(); }
-    while ((specials.has(keyOf(i, j)) || keyOf(i, j) === here) && ++tries < 20);
+  const here = focus ? keyOf(focus.i, focus.j) : '';
+  let sp = null;
+  // 아는 꽃(지인의 꽃·내 꽃·링크로 받은 꽃·이름표 꽃·찾은 신화 속 꽃)은 스무 번에 한 번쯤: 간격을 그때그때 12~27번 사이로 흔들어 박자가 보이지 않게
+  tourSinceKnown++;
+  if (tourSinceKnown >= tourKnownGap) {
+    const ok = x => x && keyOf(x.i, x.j) !== here && x !== prev;
+    const pool = [];
+    for (const t of tagSp.values()) if (ok(t) && specials.get(keyOf(t.i, t.j)) === t) pool.push([t, isPal(t) ? 6 : 2]);
+    if (ok(user) && !user.gray) pool.push([user, 4]);
+    if (ok(friend) && friendDiffers()) pool.push([friend, 4]);
+    const myths = MYTHS.filter(m => mythFound.has(m.id) && ok(m)); for (const m of myths) pool.push([m, 1.5 / myths.length]);   // 신화 속 꽃은 모두 합쳐 한 몫쯤
+    if (pool.length) {
+      let w = Math.random() * pool.reduce((a, b) => a + b[1], 0); for (const [x, wt] of pool) { if ((w -= wt) <= 0) { sp = x; break; } } sp = sp || pool[0][0];
+      if (sp.kind === 'tag') { sp.bloomT = null; sp.spr = null; } else sp.bloomT = null;
+      refreshSpecials();
+      tourSinceKnown = 0; tourKnownGap = 12 + ((Math.random() * 16) | 0);
+    }
+  }
+  if (!sp) {
+    // 이름 모를 꽃: 가까이·멀리 섞어 후보 열넷을 뽑고, 방금 본 꽃들과 모양·빛깔·잎 수·결이 가장 다른 꽃으로 (같은 방향으로만 가지 않게)
+    let best = null, bestScore = -1e9;
+    for (let c = 0; c < 14; c++) {
+      const u = Math.random(), r = u < .5 ? 15 + Math.random() * 45 : u < .85 ? 60 + Math.random() * 100 : 160 + Math.random() * 160, an = Math.random() * TAU;
+      const i = Math.max(-380, Math.min(380, Math.round(cam.x + Math.cos(an) * r))), j = Math.max(-380, Math.min(380, Math.round(cam.y + Math.sin(an) * r)));
+      const k = keyOf(i, j); if (specials.has(k) || k === here) continue;
+      const P = cellP(i, j, h2(i, j)), d = [P.shape, hueFamily(P.tipHSL), P.count, P.layers, P.pal, !!P.fused];
+      let sc = Math.random() * 1.5;
+      tourSeen.forEach((q, n) => { const wgt = 1 - n / (tourSeen.length + 1); sc -= wgt * ((q[0] === d[0]) * 3 + (q[1] === d[1]) * 2.5 + (q[2] === d[2]) * 1 + (q[3] === d[3]) * .8 + (q[4] === d[4]) * .8 + (q[5] === d[5]) * 1); });
+      if (tourDir != null) { const dd = Math.abs(((an - tourDir + Math.PI * 3) % TAU) - Math.PI); if (dd < .7) sc -= 1.5; }
+      if (sc > bestScore) { bestScore = sc; best = [i, j, an, d]; }
+    }
+    if (!best) { const i = Math.round(cam.x + 30), j = Math.round(cam.y); best = [i, j, 0, []]; }
+    const [i, j, an, d] = best; tourDir = an; tourSeen.unshift(d); if (tourSeen.length > 7) tourSeen.pop();
     const [cx, cy, size, seed] = cellCenter(i, j);   // 그 칸의 꽃이 원래 피어 있던 바로 그 자리·크기 그대로 (칸 한가운데가 아니다)
     sp = tourSp = { kind: 'tour', name: '', seed, i, j, cx, cy, size, P: cellP(i, j, seed), bloomT: null };
     refreshSpecials();
@@ -2400,11 +2432,12 @@ function tourGo() {
   focusCell(sp.i, sp.j, { minDur: prev ? 4.2 : 2.6 });
   tourTarget = sp; tourCapOn = false;
 }
-let tourTarget = null, tourCapOn = false;
+let tourTarget = null, tourCapOn = false, tourSinceKnown = 0, tourKnownGap = 20, tourSeen = [], tourDir = null;
 function tourCaption(sp) {
   const D = describe(sp.P), c = $('tourCap'); c.replaceChildren();
-  const b = document.createElement('b'); b.textContent = D.name; c.append(b);
-  if (sp.kind === 'tag') { const o = document.createElement('i'); o.textContent = `${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃`; c.append(o); }
+  const b = document.createElement('b'); b.textContent = sp.kind === 'myth' ? sp.name : D.name; c.append(b);
+  const who = sp.kind === 'tag' ? `${isPal(sp) ? '♡ ' : ''}${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : sp.kind === 'user' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃 · 내 꽃` : sp.kind === 'friend' ? `${sp.name}의 꽃` : sp.kind === 'myth' ? '신화 속 꽃 · 이공본풀이' : '';
+  if (who) { const o = document.createElement('i'); o.textContent = who; c.append(o); }
   D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
   const sm = document.createElement('small'); sm.textContent = '화면을 누르면 멈춰요'; c.append(sm);
   c.classList.add('on');
@@ -2430,6 +2463,7 @@ function startTour() {
   if (tourOn) return;
   hideInvite();
   tourLeft = isWarden(user) ? Infinity : 5;
+  tourSinceKnown = 0; tourKnownGap = 12 + ((Math.random() * 16) | 0); tourSeen = []; tourDir = null; pullAllTags();
   tourOn = true; document.body.classList.add('tour'); if (pair) exitPair(); guideUntil = 0;
   measureStage(); audio();
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; if (!tourOn) l.release(); }).catch(() => { }); } catch (e) { }
