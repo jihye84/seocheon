@@ -917,11 +917,11 @@ function drawFlower(g, P, R, o) {
   const jit = (k, q) => {
     if (hand <= 0 || P.fused) return null;
     const r = z => (mix((P.seed ^ Math.imul(k + 1, 0x9e37)) >>> 0, q * 7 + z) % 1000) / 1000 - .5;
-    return new DOMMatrix().rotateSelf(r(1) * step * .2 * hand * 180 / Math.PI)
-      .multiplySelf(new DOMMatrix([1, r(2) * .2 * hand, 0, 1, 0, 0]))          // 꽃잎 축이 한쪽으로 살짝 휜다(비대칭)
-      .scaleSelf(1 + r(3) * .16 * hand, 1 + r(4) * .2 * hand);                   // 길이·너비가 장마다 조금씩 다르다
+    return new DOMMatrix().rotateSelf(r(1) * step * .1 * hand * 180 / Math.PI)
+      .multiplySelf(new DOMMatrix([1, r(2) * .1 * hand, 0, 1, 0, 0]))          // 꽃잎 축이 한쪽으로 살짝 휜다(비대칭)
+      .scaleSelf(1 + r(3) * .08 * hand, 1 + r(4) * .1 * hand);                   // 길이·너비가 장마다 조금씩 다르다
   };
-  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.05 + r(1) * .09) * hand, (.05 + r(2) * .09) * hand, 1.4 + r(3) * 1.6, r(4) * TAU, 1.4 + r(5) * 1.6, r(6) * TAU]; };
+  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.025 + r(1) * .045) * hand, (.025 + r(2) * .045) * hand, 1.4 + r(3) * 1.6, r(4) * TAU, 1.4 + r(5) * 1.6, r(6) * TAU]; };
   // 겹꽃(3겹 이상)과 겹겹 꽃: 꽃잎을 겹마다 고리로 두르지 않고, 장미·동백·국화처럼 137.5°(황금각)씩 돌며 나선으로 한 장씩 붙인다
   const SP = !P.fused && (P.many || P.layers >= 3), NT = P.count * P.layers;
   let lastBand = 0;
@@ -949,7 +949,7 @@ function drawFlower(g, P, R, o) {
     const pathOf = hand > 0 && !FU ? q => petalPath(len, wid, P, wobOf(k, q)) : () => path0;
     // 통꽃은 한 장이라 꽃잎마다 어긋낼 수 없으므로, 통꽃 전체를 아주 살짝 찌그러뜨린다(한쪽이 조금 넓고, 축이 조금 기운다)
     let GF = null;
-    if (hand > 0 && FU) { const r = z => (mix((P.seed ^ 0x2c1b) >>> 0, k * 31 + z) % 1000) / 1000 - .5; GF = [1 + r(1) * .1 * hand, r(2) * .08 * hand, r(3) * .08 * hand, 1 + r(4) * .1 * hand]; }
+    if (hand > 0 && FU) { const r = z => (mix((P.seed ^ 0x2c1b) >>> 0, k * 31 + z) % 1000) / 1000 - .5; GF = [1 + r(1) * .05 * hand, r(2) * .04 * hand, r(3) * .04 * hand, 1 + r(4) * .05 * hand]; }
     let path = path0;
     const fill = g.createRadialGradient(0, 0, 0, 0, 0, len);
     if (FU) { fill.addColorStop(0, P.throat); fill.addColorStop(Math.min(.45, FU.f * .6), Ly.base); fill.addColorStop(1, Ly.tip); }   // 가운데 목구멍이 깊어 보이게
