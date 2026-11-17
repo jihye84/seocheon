@@ -411,7 +411,7 @@ const FIELD_MIX = [   // [몫, 빛깔 시작°, 빛깔 끝°, 쓸 수 있는 팔
   [.1484, 250, 295, [0, 1, 2, 3, 4]], // 보라 15%
   [.0692, 42, 52, [0, 1]],            // 진노랑 7%
   [.0610, 165, 200, [0, 1, 2, 3]],    // 옥빛 7%
-  [.0648, 348, 372, [0, 1, 4]],       // 빨강 · 다홍 8%
+  [.0648, 348, 372, [0, 1, 3, 4]],    // 빨강 · 다홍 8% (파스텔이면 산호빛 분홍)
   [.0336, 62, 90, [3, 2, 0]],         // 연두 4%
   [.1241, 298, 345, [0, 1, 2, 3, 4]], // 자주 · 분홍 14%
   [.0641, 50, 58, [3, 2]],            // 연노랑 7%
@@ -429,7 +429,7 @@ function cellPH(i, j, s) {
 const cellHue = (i, j, s) => cellPH(i, j, s)[0];
 
 /* 멀리서 본 점 색: 색상 24칸 × 팔레트 6가지 */
-const DOT_HSL = [[78, 64], [80, 66], [62, 76], [66, 74], [80, 52], [28, 90]];
+const DOT_HSL = [[78, 64], [80, 66], [62, 76], [52, 82], [80, 52], [28, 90]];
 const DOT_RGB = [], DOT_CSS = [];
 for (let hb = 0; hb < 24; hb++) for (let p = 0; p < 6; p++) {
   const [s, l] = DOT_HSL[p], rgb = hslRgb(hb * 15 + 7.5, s, l);
@@ -499,7 +499,7 @@ function gen(seed, hue, palO, force) {
     case 0: tip = [h, 60 + r() * 30, 55 + r() * 15]; base = [h + (r() - .5) * 16, tip[1], tip[2] - 12 - r() * 12]; break;
     case 1: tip = [h, 65 + r() * 25, 58 + r() * 12]; base = [h + (r() < .5 ? -1 : 1) * (25 + r() * 25), 70, 50]; break;
     case 2: tip = [h, 35 + r() * 20, 86 + r() * 8]; base = [h, 65 + r() * 25, 48 + r() * 12]; break;
-    case 3: tip = [h, 45 + r() * 25, 78 + r() * 8]; base = [h + (r() - .5) * 30, 50 + r() * 20, 68 + r() * 8]; break;
+    case 3: tip = [h, 40 + r() * 22, 83 + r() * 6]; base = [h + (r() - .5) * 30, 45 + r() * 20, 75 + r() * 6]; break;   // 파스텔: 맑고 옅게(분필빛이 아니라 우윳빛 물감처럼)
     case 4: tip = [h, 65 + r() * 25, 38 + r() * 12]; base = [h + (r() - .5) * 20, 70, 22 + r() * 10]; break;
     case 7: tip = [h, 62 + r() * 12, 27 + r() * 7]; base = [h - 6 + (r() - .5) * 8, 72, 14 + r() * 5]; break;   // 진한 빛깔(진자주)
     case 8: tip = [h, 10 + r() * 6, 15 + r() * 4]; base = [h, 14, 5 + r() * 3]; P.glow = [228, 30, 66]; break;   // 검정: 밤하늘에 묻히지 않게 둘레 빛은 은빛
@@ -507,7 +507,7 @@ function gen(seed, hue, palO, force) {
     default: tip = [h, 10 + r() * 15, 92 + r() * 5]; base = [h, 35 + r() * 30, 76 + r() * 8];
   }
   if (P.many) {   // 가운데부터 물듦: 밑동을 짙고 다른 빛으로 / 한 빛깔: 밑동도 끝과 같게
-    if (P.many.grad) base = P.pal === 6 ? [0, 0, Math.max(62, tip[2] - 22)] : [tip[0] + P.many.gh, Math.min(95, tip[1] + 10), Math.max(14, tip[2] - 38)];
+    if (P.many.grad) base = P.pal === 6 ? [0, 0, Math.max(62, tip[2] - 22)] : P.pal === 3 ? [tip[0] + P.many.gh, Math.min(80, tip[1] + 8), tip[2] - 16] : [tip[0] + P.many.gh, Math.min(95, tip[1] + 10), Math.max(14, tip[2] - 38)];
     else base = tip.slice();
   }
   P.tipHSL = tip; P.baseHSL = base;
