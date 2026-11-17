@@ -570,6 +570,17 @@ function gen(seed, hue, palO, force) {
     for (let q = 0; q < n; q++) S.push([.16 + Math.pow(r2(), 1.2) * .52, (r2() - .5) * 1.4, (.015 + r2() * .02) * big]);
     const sl = P.pal === 5 ? 34 : Math.max(14, base[2] - 34);
     P.spots = S; P.spotCol = hsla(P.pal === 5 ? h : base[0] - 22, Math.min(88, (P.pal === 5 ? 55 : base[1]) + 10), sl - 2, .85);   // 갈색 얼룩이 아니라 꽃잎 제 빛이 짙어진 자줏빛 기운
+    // 점박이 빛깔: 칙칙한 얼룩이 아니라 고운 빛으로 — 따로 뽑아 다른 생김새는 그대로
+    //  진주(흰·크림빛 점) · 은은(꽃잎과 거의 같은 빛, 조금만 밝거나 짙게) · 보석(꽃잎과 어울리는 맑은 빛) · 형광(어둠 속에 빛나는 초현실 빛) · 금가루
+    const rS2 = mulberry32((seed ^ 0x7f4a7c15) >>> 0), sk = pickW(rS2, [['pearl', 3], ['tone', 3], ['jewel', 2], ['glow', 2], ['gold', 1]]);
+    const tl = tip[2], bl = base[2], hb = base[0];
+    P.spotKind = sk;
+    if (sk === 'pearl') P.spotCol = hsla(hb + 20, 30 + rS2() * 25, 92 + rS2() * 5, .8);
+    else if (sk === 'tone') P.spotCol = hsla(hb + (rS2() - .5) * 16, Math.min(90, base[1] + 8), bl > 55 ? bl - 11 - rS2() * 5 : bl + 13 + rS2() * 6, .7);
+    else if (sk === 'jewel') { const jh = [330, 280, 350, 200, 300, 15][(rS2() * 6) | 0] + (rS2() - .5) * 16; P.spotCol = hsla(jh, 62 + rS2() * 18, tl > 62 ? 44 + rS2() * 10 : 74 + rS2() * 8, .8); }
+    else if (sk === 'glow') { const gh = [62, 72, 180, 320, 48][(rS2() * 5) | 0]; P.spotCol = hsla(gh, 100, 62 + rS2() * 8, .92); }
+    else P.spotCol = hsla(44 + rS2() * 8, 85, 66 + rS2() * 8, .9);
+    if (P.pal === 8) P.spotCol = hsla(sk === 'glow' ? 62 : 45, 90, 70, .9);
   }
   // 솜털(할미꽃·솜다리처럼 꽃잎 가장자리에 보송한 털): 이것도 따로 뽑는다
   const r3 = mulberry32(seed ^ 0x51ed27a3);
@@ -1525,8 +1536,11 @@ function drawFlower(g, P, R, o) {
           if (fade <= .02 || rd <= 0) return;
           g.save(); g.translate(x, y); g.rotate(Math.atan2(y, x) * .8); g.scale(1.45, 1);   // 결을 따라 살짝 길쭉하게
           if (soft) {
-            const hg = g.createRadialGradient(0, 0, rd * .9, 0, 0, rd * 1.7); hg.addColorStop(0, `rgba(255,252,235,${.09 * fade * A0})`); hg.addColorStop(1, 'rgba(255,252,235,0)');
-            g.fillStyle = hg; g.beginPath(); g.arc(0, 0, rd * 1.7, 0, TAU); g.fill();   // 점 둘레의 옅은 테
+            const SK = P.spotKind, hr = SK === 'glow' ? 2.6 : 1.7, hc = SK === 'glow' ? alphaOf(P.spotCol, .3 * fade * A0) : SK === 'gold' ? alphaOf(P.spotCol, .16 * fade * A0) : SK === 'pearl' ? null : `rgba(255,252,235,${.08 * fade * A0})`;
+            if (hc) {   // 점 둘레: 형광은 번지는 빛무리, 금가루는 은은한 반짝임, 나머지는 옅은 테
+              const hg = g.createRadialGradient(0, 0, rd * (SK === 'glow' ? .3 : .9), 0, 0, rd * hr); hg.addColorStop(0, hc); hg.addColorStop(1, alphaOf(hc, 0));
+              g.fillStyle = hg; g.beginPath(); g.arc(0, 0, rd * hr, 0, TAU); g.fill();
+            }
             const sg = g.createRadialGradient(0, 0, 0, 0, 0, rd); sg.addColorStop(0, P.spotCol); sg.addColorStop(.6, P.spotCol); sg.addColorStop(1, alphaOf(P.spotCol, 0));
             g.globalAlpha = fade * A0; g.fillStyle = sg;
           } else { g.globalAlpha = fade * A0 * .85; g.fillStyle = P.spotCol; }
