@@ -1336,6 +1336,29 @@ function drawFlower(g, P, R, o) {
           g.restore(); g.fillStyle = fill;
         }
       }
+      if ((P.cTone === 'dark' || P.cTone === 'same') && top && px > 30 && es > .45 && P.cType !== 'bud' && P.pal !== 6) {
+        // 짙은 꽃심 둘레: 원을 오려 붙인 듯한 경계 대신, 양귀비·아네모네·루드베키아처럼 꽃잎 밑동이 꽃심 빛으로 물들어 번지고
+        // 그 끝이 꽃잎 결을 따라 짧은 붓질처럼 흩어진다(꽃잎마다 번진 길이가 조금씩 다르게)
+        const q0 = SP ? 0 : n % P.count, rz = z => (mix((P.seed ^ 0x5a5a) >>> 0, k * 97 + q0 * 31 + z) % 1000) / 1000 - .5;
+        const B = Ly.bh || [0, 0, 30], Lb = P.cR * (2 + (rz(1) + .5) * .7), al = Math.min(1, (es - .45) / .35) * (P.cTone === 'dark' ? 1 : .75);
+        const sc = a => hsla(B[0] - 8, Math.min(85, B[1] + 5), P.cTone === 'dark' ? 11 : Math.max(10, B[2] - 34), a * al);
+        g.save(); g.clip(path); g.save(); g.scale(1, .62);
+        const bg = g.createRadialGradient(P.cR * .55, 0, 0, P.cR * .55, 0, Lb);
+        bg.addColorStop(0, sc(.78)); bg.addColorStop(.4, sc(.42)); bg.addColorStop(.75, sc(.12)); bg.addColorStop(1, sc(0));
+        g.fillStyle = bg; g.fillRect(-Lb, -Lb * 1.7, Lb * 2.7, Lb * 3.4); g.restore();
+        if (px > 70) {   // 번진 끝: 결 따라 흩어지는 짧은 붓질
+          const ns = 3 + ((rz(2) + .5) * 3 | 0);
+          for (let i = 0; i < ns; i++) {
+            const t = (i + .5) / ns * 2 - 1, y0 = t * Math.min(wid, len * .3) * .38 + rz(10 + i) * wid * .06, x0 = P.cR * .8, x1 = Lb * (1 + .35 * (rz(20 + i) + .5)), bw = Math.max(lw * 1.2, wid * .05) * (1 - .5 * Math.abs(t));
+            const gr = g.createLinearGradient(x0, 0, x1, 0); gr.addColorStop(0, sc(.5)); gr.addColorStop(1, sc(0));
+            g.fillStyle = gr; g.beginPath();
+            const yb = x => y0 * (x / x0) ** .5 + P.curl * x * x / len;
+            g.moveTo(x0, yb(x0) - bw); g.quadraticCurveTo((x0 + x1) / 2, yb((x0 + x1) / 2) - bw * .6, x1, yb(x1)); g.quadraticCurveTo((x0 + x1) / 2, yb((x0 + x1) / 2) + bw * .6, x0, yb(x0) + bw);
+            g.fill();
+          }
+        }
+        g.restore(); g.fillStyle = fill;
+      }
       if (P.eye && top && px > 20 && es > .4) {   // 단심
         const E = P.eye, re = E.se * len;
         g.save(); g.clip(path); g.globalAlpha = Math.min(1, (es - .4) / .4);
