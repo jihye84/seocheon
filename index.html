@@ -92,7 +92,16 @@ input:focus{border-color:rgba(241,214,160,.6)}
 input[type=date]{color-scheme:dark}
 .primary{min-height:50px;border-radius:999px;border:0;cursor:pointer;margin-top:.25em;
   background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700;font-size:1.05em}
-.owner{color:var(--dim);font-size:.95em}
+.owner{color:var(--dim);font-size:.95em;display:flex;align-items:center;flex-wrap:wrap;gap:.2em .55em}
+/* 꽃감관 표식: 금빛·자개빛이 천천히 흐르는 띠, 꽃 이름도 같은 빛으로 물든다 */
+.wbadge{display:inline-flex;align-items:center;padding:.1em .75em;border-radius:999px;border:1px solid rgba(246,222,170,.65);
+  background:linear-gradient(90deg,rgba(246,214,150,.22),rgba(214,180,255,.22),rgba(170,230,255,.22),rgba(246,214,150,.22));background-size:300% 100%;
+  color:#f8e6bd;font-family:'Gowun Batang',serif;font-weight:700;letter-spacing:.08em;white-space:nowrap;box-shadow:0 0 14px rgba(246,214,150,.25);animation:wshine 7s linear infinite}
+.wbadge[hidden]{display:none}
+#vCard.warden .fname{background:linear-gradient(90deg,#f7dca2,#ecc9ff,#c4ecff,#fff0c8,#f7dca2);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wshine 9s linear infinite}
+@keyframes wshine{to{background-position:300% 0}}
+.fname,.traits,.loc,.motto{text-wrap:balance;word-break:keep-all}   /* 끝 한두 글자만 다음 줄로 넘어가지 않게 */
+@media (prefers-reduced-motion:reduce){.wbadge,#vCard.warden .fname{animation:none}}
 #bOpen{align-self:center;margin:-4px 0 -6px}
 #bReport,#bOpen{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
@@ -280,7 +289,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.</p>
     </section>
     <section class="view off" id="vCard" aria-live="polite">
-      <div class="owner"><span id="cOwner"></span><button id="bReport" type="button" hidden>신고</button></div>
+      <div class="owner"><span id="cOwner"></span><span id="cWarden" class="wbadge" hidden></span><button id="bReport" type="button" hidden>신고</button></div>
       <div class="fname" id="cName"></div>
       <div class="motto" id="cMotto"></div>
       <div class="swatch" id="cSw" title="이 꽃의 빛깔"></div>
@@ -2417,7 +2426,10 @@ const goMine = () => { if (!user) return; if (friendFirst) { friendFirst = false
 
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
-  $('cOwner').textContent = k === 'tag' ? `${isWarden(sp) ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃';
+  const wd = k !== 'myth' && k !== 'other' && isWarden(sp);
+  $('cWarden').hidden = !wd; $('cWarden').textContent = k === 'user' ? '✧ 서천꽃밭의 꽃감관' : '✧ 꽃감관';
+  $('vCard').classList.toggle('warden', wd);
+  $('cOwner').textContent = k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃';
   $('vCard').classList.toggle('myth', k === 'myth');
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
@@ -2854,6 +2866,58 @@ function bloomOf(sp, t) {
   if (sp.kind === 'myth' && mythFound.has(sp.id) && sp.bloomT == null) return 1;
   return sp.bloomT == null ? 0 : RM ? 1 : clamp01((t - sp.bloomT) / 7.5);
 }
+/* 꽃감관의 꽃: 뒤에는 자개처럼 빛깔이 흐르는 둥근 빛무리, 앞에는 기울어진 두 궤도를 도는 오팔빛 구슬과 반짝임 */
+const wOc = document.createElement('canvas'), wG = wOc.getContext('2d');
+function wardenBack(sx, sy, R, t) {
+  const S = Math.min(1400, Math.ceil(R * 4.2)), h = S / 2; if (S < 8) return;
+  if (wOc.width !== S) { wOc.width = wOc.height = S; }
+  const g = wG; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
+  if (g.createConicGradient) {
+    const cg = g.createConicGradient(t * .22, h, h);
+    for (let k = 0; k <= 6; k++) cg.addColorStop(k / 6, hsla((k * 60 + t * 18) % 360, 85, 76, 1));
+    g.fillStyle = cg;
+  } else g.fillStyle = hsla((t * 18) % 360, 80, 76, 1);
+  g.fillRect(0, 0, S, S);
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createRadialGradient(h, h, 0, h, h, h), br = .5 + .5 * Math.sin(t * .9);
+  m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(.4, 'rgba(0,0,0,0)'); m.addColorStop(.52, `rgba(0,0,0,${.75 + .2 * br})`);
+  m.addColorStop(.66, 'rgba(0,0,0,.32)'); m.addColorStop(.85, 'rgba(0,0,0,.08)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, S, S);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .46 + .12 * br;
+  ctx.drawImage(wOc, sx - h, sy - h, S, S);
+  const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, R * 1.5);   // 금빛 속빛
+  core.addColorStop(0, 'rgba(255,236,190,.22)'); core.addColorStop(1, 'rgba(255,236,190,0)');
+  ctx.globalAlpha = 1; ctx.fillStyle = core; ctx.beginPath(); ctx.arc(sx, sy, R * 1.5, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+function wardenFront(sx, sy, R, t) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let e = 0; e < 2; e++) {
+    const tilt = e ? .55 : -.7, ct = Math.cos(tilt), st = Math.sin(tilt), rx = R * (1.32 + e * .14), ry = R * (.42 + e * .06), n = 5 + e;
+    for (let k = 0; k < n; k++) {
+      for (let tr = 4; tr >= 0; tr--) {   // 꼬리: 지나온 자리에 옅게 남는 빛
+        const a = (t - tr * .045) * (.42 + e * .12) * (e ? -1 : 1) + k * TAU / n, ex = Math.cos(a) * rx, ey = Math.sin(a) * ry;
+        const x = sx + ex * ct - ey * st, y = sy + ex * st + ey * ct, depth = (Math.sin(a) + 1) / 2;
+        const s = Math.max(2.2, Math.min(18, R * .05)) * (.65 + .55 * depth) * (1 - tr * .16);
+        const hue = (200 + k * 47 + e * 90 + t * 26) % 360;
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, s * 2.4);
+        gr.addColorStop(0, hsla(hue, 70, 92, (.75 + .25 * depth) * (1 - tr * .2))); gr.addColorStop(.35, hsla(hue, 85, 72, .35 * (1 - tr * .2))); gr.addColorStop(1, hsla(hue, 85, 70, 0));
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, s * 2.4, 0, TAU); ctx.fill();
+      }
+    }
+  }
+  for (let k = 0; k < 5; k++) {   // 반짝임: 짧은 십자 빛이 잠깐 피었다 사라진다
+    const ph = t * .5 + k * 1.37, cyc = Math.floor(ph), f = ph - cyc, tw = Math.pow(Math.sin(f * Math.PI), 6);
+    if (tw < .02) continue;
+    const ang = (mix(cyc * 7 + k, 0x77) % 628) / 100, rr = R * (.55 + (mix(cyc * 13 + k, 0x99) % 100) / 100 * .9);
+    const x = sx + Math.cos(ang) * rr, y = sy + Math.sin(ang) * rr, L = Math.max(4, R * .09) * tw;
+    ctx.strokeStyle = `rgba(255,248,228,${.85 * tw})`; ctx.lineWidth = Math.max(1, R * .006); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.moveTo(x, y - L); ctx.lineTo(x, y + L); ctx.stroke();
+    const d = ctx.createRadialGradient(x, y, 0, x, y, L * .6); d.addColorStop(0, `rgba(255,250,235,${tw})`); d.addColorStop(1, 'rgba(255,250,235,0)');
+    ctx.fillStyle = d; ctx.beginPath(); ctx.arc(x, y, L * .6, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
 function drawOrbit(sx, sy, R, t) {
   ctx.globalCompositeOperation = 'lighter';
   for (let k = 0; k < 7; k++) {
@@ -2876,18 +2940,21 @@ function drawSpecial(sp, t) {
     if (!c) { c = sp.spr = document.createElement('canvas'); c.width = c.height = 100; const g = c.getContext('2d'); g.translate(50, 50); drawFlower(g, P, 40, { g: 1, px: 40 }); }
     const d = R * 1.25;
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(P.rot0 + wr); ctx.drawImage(c, -d, -d, d * 2, d * 2); ctx.restore();
-    if (sp.warden && R > 6) drawOrbit(sx, sy, R, t);
+    if (sp.warden && R > 6) wardenFront(sx, sy, R, t);
   } else if (R > 2) {
     const gNow = bloomOf(sp, t), pulse = (sp.kind === 'myth' ? .2 + .07 * Math.sin(t * 2.1) : .22) * (.3 + .7 * gNow);
     const halo = ctx.createRadialGradient(sx, sy, R * .2, sx, sy, R * (sp.kind === 'myth' ? 2.4 : 1.9));
     halo.addColorStop(0, hsla(th[0], th[1], th[2] - 10, pulse)); halo.addColorStop(1, hsla(th[0], th[1], th[2], 0));
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, R * 2.4, 0, TAU); ctx.fill();
+    const wd = sp.kind !== 'myth' && isWarden(sp) && R > 6;
+    if (wd) wardenBack(sx, sy, R, t);
     ctx.save(); ctx.translate(sx, sy);
     ctx.rotate(P.rot0 + .035 * Math.sin(t * .55) + wr); const br = 1 + .012 * Math.sin(t * 1.3); ctx.scale(br, br);
     if (gNow >= 1 && P.count > 21 && R * DPR < 900) drawBigCached(ctx, P, R);   // 꽃잎이 아주 많은 꽃은 다 핀 뒤 한 번 그려 두고 다시 쓴다
     else drawFlower(ctx, P, R, { g: gNow, px: R * DPR, dew: true });
     ctx.restore();
-    if ((sp.kind === 'myth' || isWarden(sp)) && R > 6) drawOrbit(sx, sy, R, t);   // 신화 속 꽃과 꽃감관의 꽃 둘레를 도는 작은 빛
+    if (sp.kind === 'myth' && R > 6) drawOrbit(sx, sy, R, t);   // 신화 속 꽃 둘레를 도는 작은 빛
+    else if (wd) wardenFront(sx, sy, R, t);   // 꽃감관의 꽃: 오팔빛 궤도와 반짝임
   }
   // 멀리서도 자리가 보이게
   const ma = sp.kind === 'tour' ? 0 : 1 - smooth(18, 60, ppu);
