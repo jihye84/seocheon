@@ -334,7 +334,9 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
    꽃밭은 끝없는 격자. 칸 (i,j)마다 해시로 정해진 꽃이 핀다.
    ======================================================== */
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// 운영체제의 '애니메이션 줄이기'(학교·회사 PC는 흔히 꺼 둔다)를 따르면 꽃이 피지 않고 화면이 순간이동만 해서 이 작품의 핵심이 사라진다.
+// 그래서 카메라 비행·꽃 피기·오프닝은 늘 움직이고, 반짝임·바람·떠다니는 빛 같은 곁들임만 줄인다
+const RM_SYS = matchMedia('(prefers-reduced-motion: reduce)').matches, RM = false;
 let W = 0, H = 0, DPR = 1, wide = true;
 const TAU = Math.PI * 2;
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -2715,7 +2717,7 @@ function playMelody(P, vol = 1, delay = 0) {
 /* ---------- 바람 ---------- */
 const winds = []; let lastWind = null;
 function addWind(sx, sy) {
-  if (RM) return;
+  if (RM_SYS) return;
   if (lastWind) {
     const dx = sx - lastWind.x, dy = sy - lastWind.y, d = Math.hypot(dx, dy), dt = now - lastWind.t;
     if (d < 10 || dt < .035) return;
@@ -3078,7 +3080,7 @@ function frame(ms) {
   } else if (!drag && !pinch && (vel[0] || vel[1])) {
     cam.x += vel[0] * dt; cam.y += vel[1] * dt; const k = Math.pow(.04, dt); vel[0] *= k; vel[1] *= k;
     if (Math.abs(vel[0]) + Math.abs(vel[1]) < 1e-3 / cam.ppu) vel = [0, 0];
-  } else if (!RM && !drag && !pair && now - lastInput > 6 && !(focus && cam.ppu > 60)) {
+  } else if (!RM_SYS && !drag && !pair && now - lastInput > 6 && !(focus && cam.ppu > 60)) {
     cam.x += dt * 4 / cam.ppu; cam.y += dt * 1.5 / cam.ppu;   // 아무도 만지지 않으면 천천히 흘러감
   }
   while (winds.length && now - winds[0].t > WLIFE) winds.shift();
@@ -3122,7 +3124,7 @@ function frame(ms) {
   // 빛 티끌
   ctx.globalCompositeOperation = 'lighter';
   for (const m of motes) {
-    if (!RM) { m.y -= m.v * dt; m.x += Math.sin(now * .3 + m.p) * .0004; if (m.y < -.05) { m.y = 1.05; m.x = Math.random(); } }
+    if (!RM_SYS) { m.y -= m.v * dt; m.x += Math.sin(now * .3 + m.p) * .0004; if (m.y < -.05) { m.y = 1.05; m.x = Math.random(); } }
     ctx.globalAlpha = .25 + .25 * Math.sin(now * 1.3 + m.p);
     ctx.drawImage(mote, m.x * W - m.s / 2, m.y * H - m.s / 2, m.s, m.s);
   }
@@ -3304,10 +3306,10 @@ function runIntro(mode, onEnd) {
       const a = clamp01(t / 1.5) * (1 - clamp01((t - 4) / 2.5));
       if (a > 0) { const sg = g.createRadialGradient(-w * .1, h * .78, 0, -w * .1, h * .78, Math.max(w, h) * .75); sg.addColorStop(0, `rgba(240,150,110,${(.32 * a).toFixed(3)})`); sg.addColorStop(.4, `rgba(150,80,120,${(.12 * a).toFixed(3)})`); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(0, 0, w, h); }
     }
-    for (const [x, y, r, ph] of stars) { g.globalAlpha = .25 + .35 * (RM ? .5 : .5 + .5 * Math.sin(t * 1.3 + ph)); g.fillStyle = '#cfd6ff'; g.beginPath(); g.arc(x * w, y * h, r, 0, TAU); g.fill(); }
+    for (const [x, y, r, ph] of stars) { g.globalAlpha = .25 + .35 * (RM_SYS ? .5 : .5 + .5 * Math.sin(t * 1.3 + ph)); g.fillStyle = '#cfd6ff'; g.beginPath(); g.arc(x * w, y * h, r, 0, TAU); g.fill(); }
     g.globalAlpha = 1;
     // 꽃은 글자 아래 남은 자리에: 가로 화면에서도 글자와 겹치지 않게
-    const yTop = h * .36, yBot = h * .95, cx = w / 2, cy = (yTop + yBot) / 2, m = Math.min(w, yBot - yTop), drift = RM ? 0 : t * .03;
+    const yTop = h * .36, yBot = h * .95, cx = w / 2, cy = (yTop + yBot) / 2, m = Math.min(w, yBot - yTop), drift = RM_SYS ? 0 : t * .03;
     if (center.dot != null && t > center.dot && t < center.b0 + .8) {   // 한 점의 빛으로 먼저 온다
       const a = clamp01((t - center.dot) / 1.2) * (1 - clamp01((t - center.b0) / .8)), rr = m * .06 * (1 + .15 * Math.sin(t * 3));
       const dg = g.createRadialGradient(cx, cy, 0, cx, cy, rr); dg.addColorStop(0, `rgba(255,240,210,${a})`); dg.addColorStop(1, 'rgba(255,240,210,0)');
