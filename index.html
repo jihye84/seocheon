@@ -81,8 +81,8 @@ button,input{font:inherit;color:inherit}
 .pbody{display:grid;margin-top:1em}
 .view{grid-area:1/1;display:flex;flex-direction:column;gap:.85em;transition:opacity .35s}
 .view.off{visibility:hidden;opacity:0;pointer-events:none}
-.lead{margin:0;line-height:1.75;color:var(--ink)}
-.note{margin:0;color:var(--faint);font-size:max(15px,.9em);line-height:1.6}
+.lead{margin:0;line-height:1.75;color:var(--ink);font-family:'Gowun Batang','Nanum Myeongjo',serif;font-size:1.04em}   /* 옛이야기 말투: 명조 */
+.note{margin:0;padding-top:.7em;border-top:1px solid rgba(255,255,255,.1);color:var(--faint);font-size:max(15px,.9em);line-height:1.6}   /* 안내 말투: 고딕·해요체, 가는 줄로 이야기와 나눈다 */
 form{display:flex;flex-direction:column;gap:.6em;margin:0}
 label{display:flex;flex-direction:column;gap:.3em;color:var(--dim);font-size:.92em}
 label small{color:var(--faint);font-size:1em}
@@ -283,7 +283,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
         <div class="colors" id="pickIntro" hidden></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
       </form>
-      <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.<br>생일은 어디에도 남지 않는다.</p>
+      <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어요.<br>생일은 꽃을 고르는 데만 쓰고,<br>어디에도 남기지 않아요.</p>
     </section>
     <section class="view off" id="vCard" aria-live="polite">
       <div class="owner"><span id="cOwner"></span><span id="cWarden" class="wbadge" hidden></span><button id="bReport" type="button" hidden>신고</button></div>
