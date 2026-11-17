@@ -148,6 +148,10 @@ body.narrow #fsBtn .lab{display:none}
 .pinbtns button{min-height:48px;border-radius:14px}
 #pinNo{border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:inherit;cursor:pointer}
 #bPal.on{border-color:rgba(255,180,160,.55);color:#ffd9cc}
+#pairSave{position:fixed;z-index:6;transform:translate(-50%,0);padding:.7em 1.4em;border-radius:999px;border:1px solid rgba(241,214,160,.55);
+  background:rgba(20,16,36,.72);color:#f6e2b6;font:inherit;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);white-space:nowrap}
+#pairSave[hidden]{display:none}
+#hud.hide{opacity:0;pointer-events:none}   /* 두 꽃 나란히 볼 때는 오른쪽 아래 안내를 감춘다 */
 .btns button.armed,.btns button.armed:hover{border-color:#ffd9a0;background:linear-gradient(180deg,#ff9a6b,#e8553f);color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(90,20,10,.5);animation:armPulse .9s ease-in-out infinite}
 @keyframes armPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,140,100,0)}50%{box-shadow:0 0 0 7px rgba(255,140,100,.3),0 0 24px rgba(255,120,90,.65)}}
 @media (prefers-reduced-motion:reduce){.btns button.armed{animation:none;box-shadow:0 0 0 5px rgba(255,140,100,.3)}}
@@ -317,6 +321,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
+<button id="pairSave" type="button" hidden>두 꽃 이미지 저장</button>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
 <div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
@@ -2650,6 +2655,7 @@ $('bSave').onclick = () => savePNG();
 $('bPfp').onclick = () => savePfp();
 $('cSw').onclick = () => toast(user ? '남의 꽃 빛깔은 바꿀 수 없어요. 빛깔은 내 꽃에만 입힐 수 있어요' : '남의 꽃 빛깔은 바꿀 수 없어요. 내 꽃을 찾으면 빛깔을 입힐 수 있어요', 4200);
 $('bPal').onclick = () => { if (focus && focus.sp) togglePal(focus.sp); };
+$('pairSave').onclick = () => savePNG();
 $('bShare').onclick = async () => {
   if (!user) return;
   const url = shareURL(), D = describe(user.P);
@@ -2670,10 +2676,10 @@ else if (innerWidth < 560) $('hint').innerHTML = '끌어서 둘러보고,<br>휠
 function enterPair() {
   if (!user || !friend) return;
   pair = { t0: now }; anim = null;
-  $('bPair').textContent = '꽃밭으로 돌아가기';
+  $('bPair').textContent = '꽃밭으로 돌아가기'; $('bSave').textContent = '두 꽃 저장'; $('hud').classList.add('hide');
   playMelody(friend.P, .9, .6); playMelody(user.P, .9, 3.2);
 }
-function exitPair() { pair = null; if (focus) $('bPair').textContent = '두 꽃 나란히 보기'; }
+function exitPair() { pair = null; $('pairSave').hidden = true; $('hud').classList.remove('hide'); $('bSave').textContent = '이미지 저장'; if (focus) $('bPair').textContent = '두 꽃 나란히 보기'; }
 
 /* ---------- 소리: 꽃마다 다른 선율 ---------- */
 let AC = null, master = null, soundOn = store.get('sound', true);
@@ -3125,6 +3131,9 @@ function drawPair(t) {
     ctx.fillText(describe(sp.P).name, cx, cy + R * 1.3 + fs * 1.4);
   });
   ctx.globalAlpha = 1;
+  // 두 꽃 아래 '이미지 저장' 단추 (서랍을 열지 않아도 바로 저장)
+  const ps = $('pairSave'); if (ps.hidden && a > .9) ps.hidden = false;
+  ps.style.left = stg.x + 'px'; ps.style.top = Math.round(Math.min(H - 70, cy + R * 1.3 + fs * 3)) + 'px';
 }
 
 function fmtCount(n) {
