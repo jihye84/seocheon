@@ -279,14 +279,14 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <p class="lead">서쪽 하늘 끝 서천꽃밭에는<br>세상 사람마다<br>자기 꽃이 한 송이씩 피어 있다.<br>그 꽃들은<br>하나하나 서로 다르다.</p>
       <form id="f" autocomplete="off">
         <label><span>이름 <small>(별명으로 적어도 괜찮아요)</small></span><input id="inName" maxlength="12" placeholder="12자까지 적을 수 있어요" required></label>
-        <label id="lbBirth"><span>생일 <small>(적지 않아도 돼요)</small></span><input id="inBirth" inputmode="numeric" maxlength="10" placeholder="예: 1984.03.15"></label>
+        <label id="lbBirth"><span>생일 <small>(기념일도 괜찮아요)</small></span><input id="inBirth" inputmode="numeric" maxlength="10" placeholder="예: 1984.03.15"></label>
         <label id="lbPin" hidden><span>비밀번호 <small>(이름표를 달 때 정한 숫자 4자리)</small></span><input id="inOpenPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리"></label>
         <div class="pickname" id="pnRow" hidden><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
         <div class="colors" id="pickIntro" hidden></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
         <button id="bOpen" type="button">이름표를 단 적 있어요 · 비밀번호로 찾기</button>
       </form>
-      <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.</p>
+      <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.<br>생일은 어디에도 남지 않는다.</p>
     </section>
     <section class="view off" id="vCard" aria-live="polite">
       <div class="owner"><span id="cOwner"></span><span id="cWarden" class="wbadge" hidden></span><button id="bReport" type="button" hidden>신고</button></div>
@@ -1566,6 +1566,7 @@ async function putTag(color, pin) {
     }
     if (r.reason === 'color_taken') { toast('이 빛깔은 같은 꽃을 가진 분이 먼저 골랐어요', 3200); loadTaken(); }
     else if (r.reason === 'bad_name') toast('이 이름으로는 이름표를 달 수 없어요');
+    else if (r.reason === 'need_birth') toast('이름표는 이름과 생일로 찾은 꽃에만 달 수 있어요. 생일을 적어 다시 찾아 주세요', 4800);
     else if (r.reason === 'too_many') toast('한 기기에서는 이름표를 10개까지 달 수 있어요', 3600);
     else if (r.reason === 'need_pin' || r.reason === 'bad_pin') { toast('비밀번호 숫자 4자리를 정해 주세요', 3200); openPin('new'); }
     else if (r.reason === 'slow') toast('이름표를 너무 자주 달았어요. 조금 뒤에 다시 해 주세요', 3600);
@@ -2507,6 +2508,7 @@ function setOpenMode(on) {
   requestAnimationFrame(measureStage);
 }
 $('bOpen').onclick = () => setOpenMode(!openMode);
+$('inBirth').addEventListener('focus', () => { if (store.get('birthNote', false)) return; store.set('birthNote', true); toast('생일은 꽃을 고르는 데만 쓰이고, 어디에도 남지 않아요', 4200); });
 async function openByPin(name) {
   const pin = $('inOpenPin').value;
   if (!/^\d{4}$/.test(pin)) { toast('비밀번호 숫자 4자리를 적어 주세요', 2800); $('inOpenPin').focus(); return; }
@@ -2541,6 +2543,7 @@ $('f').addEventListener('submit', async e => {
   if (openMode) { await openByPin(name); return; }
   const bd = $('inBirth').value.replace(/\D/g, '');
   let birth = '';
+  if (!bd) { store.set('birthNote', true); toast('생일(또는 기념일)을 숫자 8자리로 적어 주세요. 생일은 어디에도 남지 않아요', 4200); $('inBirth').focus(); return; }   // 이름과 생일이 함께 있어야 언제나 같은 '내 꽃'이 핀다
   if (bd) {
     const y = +bd.slice(0, 4), m = +bd.slice(4, 6), d = +bd.slice(6, 8);
     const ok = bd.length === 8 && y >= 1900 && m >= 1 && m <= 12 && d >= 1 && d <= new Date(y, m, 0).getDate() && new Date(y, m - 1, d) <= new Date();
