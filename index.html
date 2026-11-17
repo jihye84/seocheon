@@ -1303,7 +1303,7 @@ function drawFlower(g, P, R, o) {
   const hand = smooth(140, 320, px) * (P.shape === 'round' || P.shape === 'spoon' || P.shape === 'notch' ? .3 : 1);
   const jit = (k, q) => {
     if (hand <= 0 || P.fused) return null;
-    const hand0 = hand; { const hand = hand0 * (P.L[0] ? Math.max(.45, Math.min(1, 1.35 - 1.8 * P.L[0].wmax / Math.max(.01, P.L[0].len))) : 1);
+    const hand0 = hand; { const hand = hand0 * (P.L[0] ? Math.max(.15, Math.min(1, 1.7 - 2.9 * P.L[0].wmax / Math.max(.01, P.L[0].len))) : 1);
     const r = z => (mix((P.seed ^ Math.imul(k + 1, 0x9e37)) >>> 0, q * 7 + z) % 1000) / 1000 - .5;
     return new DOMMatrix().rotateSelf(r(1) * step * .1 * hand * 180 / Math.PI)
       .multiplySelf(new DOMMatrix([1, r(2) * .1 * hand, 0, 1, 0, 0]))          // 꽃잎 축이 한쪽으로 살짝 휜다(비대칭)
@@ -1312,8 +1312,8 @@ function drawFlower(g, P, R, o) {
   // 가장자리 손맛은 꽃 전체 찌그러짐(hand)과 따로: 둥근 꽃잎도 선은 손으로 그린 듯 흔들리게
   const handE = smooth(140, 320, px) * (P.shape === 'round' || P.shape === 'spoon' || P.shape === 'notch' ? .75 : 1);
   // 넓은 꽃잎(둥근·오목·세 장 꽃처럼 한 장이 크게 보이는 꽃)은 같은 비율로 일그러져도 훨씬 찌그러져 보이니, 넓을수록·장수가 적을수록 손맛을 덜어 낸다
-  const wR = P.L[0] ? P.L[0].wmax / Math.max(.01, P.L[0].len) : .3, kW = Math.max(.38, Math.min(1, 1.35 - 1.8 * wR)) * (P.count <= 4 ? .8 : 1) * (P.layers >= 3 || P.many ? .85 : 1);
-  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.04 + r(1) * .06) * handE * kW, (.04 + r(2) * .06) * handE * kW, 1.4 + r(3) * (kW < .7 ? .8 : 1.6), r(4) * TAU, 1.4 + r(5) * (kW < .7 ? .8 : 1.6), r(6) * TAU, (r(7) - .5) * .16 * handE * (.4 + .6 * kW), .04 * handE * kW, (mix(P.seed, k * 131 + q) >>> 0)]; };
+  const wR = P.L[0] ? P.L[0].wmax / Math.max(.01, P.L[0].len) : .3, kW = Math.max(.14, Math.min(1, 1.7 - 2.9 * wR)) * (P.count <= 4 ? .8 : 1) * (P.layers >= 3 || P.many ? .85 : 1);
+  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.04 + r(1) * .06) * handE * kW, (.04 + r(2) * .06) * handE * kW, 1.4 + r(3) * (kW < .7 ? .8 : 1.6), r(4) * TAU, 1.4 + r(5) * (kW < .7 ? .8 : 1.6), r(6) * TAU, (r(7) - .5) * .16 * handE * kW, .04 * handE * kW, (mix(P.seed, k * 131 + q) >>> 0)]; };
   // 겹꽃(3겹 이상)과 겹겹 꽃: 꽃잎을 겹마다 고리로 두르지 않고, 장미·동백·국화처럼 137.5°(황금각)씩 돌며 나선으로 한 장씩 붙인다
   const SP = !P.fused && (P.many || P.layers >= 3), NT = P.count * P.layers;
   let lastBand = 0;
