@@ -580,7 +580,8 @@ function gen(seed, hue, palO, force) {
     // 노랑·금빛 꽃잎은 흰 점도 짙은 갈색 점도 병든 잎처럼 보인다 — 물꽈리아재비(미물루스)처럼 붉은 자줏빛 점이 곱다
     const warmBright = hbn >= 35 && hbn <= 75 && bl >= 46;
     P.spotKind = warmBright ? (rS2() < .78 ? 'ruby' : 'tone') : dull ? (sk === 'pearl' && bl >= 55 ? 'jewel' : sk) : 'ink';   // 밝은 바탕에 진주 점은 곰팡이처럼 보여 보석 빛으로
-    if (P.spotKind === 'ruby') P.spotCol = hsla(345 + rS2() * 22, 62 + rS2() * 18, 34 + rS2() * 8, .86);
+    if (warmBright) { P.spots = null; P.spotKind = null; }   // 노랑·금빛 꽃잎에는 점박이를 넣지 않는다(어떤 빛깔이든 병든 잎처럼 보임)
+    else if (P.spotKind === 'ruby') P.spotCol = hsla(345 + rS2() * 22, 62 + rS2() * 18, 34 + rS2() * 8, .86);
     else if (P.spotKind === 'ink') { /* 위에서 정한 짙은 점 빛깔 그대로 */ }
     else if (P.spotKind === 'jewel' && sk === 'pearl') { const jh = [330, 280, 350, 15][(rS2() * 4) | 0]; P.spotCol = hsla(jh, 62 + rS2() * 18, tl > 62 ? 44 + rS2() * 10 : 74 + rS2() * 8, .8); }
     else if (P.spotKind === 'tone') P.spotCol = hsla(hb + (rS2() - .5) * 16, Math.min(90, base[1] + 8), bl > 55 ? bl - 13 - rS2() * 5 : bl + 13 + rS2() * 6, .72);
