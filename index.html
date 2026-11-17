@@ -540,6 +540,9 @@ function gen(seed, hue, palO, force) {
   if (force.cType) P.cType = force.cType;
   const inner = P.L[P.layers - 1].len;
   P.cR = Math.min(inner * .55, P.cType === 'bud' ? .2 + r() * .12 : .1 + r() * .14);
+  // 작은 꽃심(물망초·별꽃·꽃마리처럼 소박하게): 다섯에 하나 꼴, 따로 뽑아서 다른 생김새는 그대로 둔다
+  const rS = mulberry32(seed ^ 0x6b1d55), smallC = P.cType !== 'bud' && !force.cType && !force.flat && rS() < .22;
+  if (smallC) P.cR = Math.min(inner * .3, .042 + rS() * .04);
   const ct = pickW(r, [['gold', 4], ['dark', 3], ['same', 2], ['pale', 2]]);
   if (ct === 'gold') { P.c1 = hsla(40 + r() * 10, 85, 46); P.c1d = hsla(35, 80, 30); P.c2 = hsla(50, 95, 72); }
   else if (ct === 'dark') { P.c1 = hsla(h + 160 + r() * 40, 35, 16); P.c1d = hsla(h, 30, 8); P.c2 = hsla(45 + r() * 15, 85, 64); }
@@ -548,6 +551,7 @@ function gen(seed, hue, palO, force) {
   if (P.pal === 6) { P.c1 = hsla(0, 0, 90); P.c1d = hsla(0, 0, 68); P.c2 = hsla(0, 0, 100); }   // 순백은 꽃술까지 희게
   P.cTone = ct;
   P.cN = P.cType === 'dots' ? 40 + ((r() * 90) | 0) : 10 + ((r() * 18) | 0);
+  if (smallC) P.cN = P.cType === 'dots' ? 9 + ((rS() * 14) | 0) : 5 + ((rS() * 5) | 0);   // 작은 꽃심은 알갱이·수술도 성글게
   P.budCol = hsla(bh0(base), base[1], Math.min(92, base[2] + 10));
   // 잎
   P.leaves = [];
@@ -862,7 +866,7 @@ function drawCenter(g, P, cs, lw, px) {
       const th = i / P.cN * TAU + (r() - .5) * .4, L = cR * (1 + .7 * r()), bend = (r() - .5) * .6;
       const ex = Math.cos(th) * L, ey = Math.sin(th) * L;
       g.moveTo(0, 0); g.quadraticCurveTo(Math.cos(th + bend) * L * .55, Math.sin(th + bend) * L * .55, ex, ey);
-      tips.push(ex, ey, .022 + r() * .014);
+      tips.push(ex, ey, (.022 + r() * .014) * Math.min(1, .45 + P.cR * 3.6));   // 작은 꽃심은 꽃밥도 작게
     }
     g.stroke();
     g.fillStyle = P.c2; g.beginPath();
