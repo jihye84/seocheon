@@ -1349,7 +1349,8 @@ function loadMyth() {
   mythFound = new Set(mythBy[k] || []);
 }
 const saveMyth = () => { mythBy[user.seed.toString(36)] = [...mythFound]; store.set('mythBy', mythBy); };
-const isWarden = sp => !!sp && (sp.kind === 'user' ? mythFound.size === MYTHS.length : !!sp.warden);
+// 내 꽃: 이 기기에서 여섯 송이를 모았거나, 이 기기가 연 내 이름표에 꽃감관이라 적혀 있으면 꽃감관
+const isWarden = sp => !!sp && (sp.kind === 'user' ? mythFound.size === MYTHS.length || (typeof myTags !== 'undefined' && myTags.some(t => t.s === sp.seed && t.w)) : !!sp.warden);
 // 꽃감관 칭호는 이름표에 적혀 있다: 내 이름표를 연 기기에서는 그 꽃이 곧 꽃감관의 꽃이다
 function wardenFromTag() {
   if (!user || isWarden(user)) return;
@@ -2571,7 +2572,7 @@ $('f').addEventListener('submit', async e => {
   else { pickedColor = 0; uncolored = true; }
   setUser(name, seed, !!birth);
   if (!uncolored) inviteMyth(11000);   // 내 꽃이 다 피어난 뒤, 신화 속 꽃으로 이끈다 (하루에 한 번). 빛깔을 아직 안 입혔으면 입힌 뒤에
-  tagHere = null; checkTagHere();   // 다른 기기에서 단 내 이름표가 이 꽃에 있으면 '이름표 열기'
+  tagHere = null; checkTagHere(); syncMyTags();   // 이 기기가 연 이름표가 있으면 빛깔·꽃감관을 장부와 맞춘다   // 다른 기기에서 단 내 이름표가 이 꽃에 있으면 '이름표 열기'
   loadTaken();
   if (newWarden) setTimeout(() => toast(`꽃감관 ${name}님, 화첩과 합동 사진에 이름을 새겼어요`, 4600), 8200);
   $('inName').blur(); $('inBirth').blur();
