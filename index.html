@@ -707,12 +707,33 @@ function describe(P) {
 
 /* ---------- 꽃 그리기 ---------- */
 /* 통꽃 테두리: 가운데는 하나로 붙고 바깥만 갈래로 나뉜다 (갈래 가운데가 0°) */
-function corollaPath(len, P) {
-  const F = P.fused, rf = len * F.f, n = P.count, p = new Path2D(), M = n * 28;
+/* 통꽃의 갈래 모양: 손그림일 때(G.h>0)는 갈래마다 길이·갈림 자리·좌우 기울기가 조금씩 다르고 테두리가 살짝 떨린다 */
+function corollaGeo(P, k, h) {
+  const n = P.count, r = z => (mix((P.seed ^ 0x6a3d) >>> 0, k * 53 + z) % 1000) / 1000 - .5, st = TAU / n;
+  const dA = [], sc = [], sk = [], cb = [];
+  for (let i = 0; i < n; i++) { dA.push(r(i * 4 + 1) * .22 * h * st); sc.push(1 + r(i * 4 + 2) * .08 * h); sk.push(r(i * 4 + 3) * .5 * h); cb.push(r(i * 4 + 4) * .12); }
+  return { h, dA, sc, sk, cb, sw: (P.seed & 1 ? 1 : -1) * (.1 + (r(97) + .5) * .12), tp: (r(98) + .5) * TAU, tf: 17 + ((P.seed >>> 5) % 9) };
+}
+function corollaRho(th, len, P, G) {
+  const F = P.fused, rf = len * F.f, n = P.count, st = TAU / n;
+  let ph, sc = 1;
+  if (G && G.h > 0) {
+    const N = c => (c % n + n) % n, nt = c => (c - .5) * st + G.dA[N(c)];   // c번째 갈림 자리(갈래 c-1과 c 사이)
+    let c = Math.round(th / st);
+    if (th < nt(c)) c--; else if (th > nt(c + 1)) c++;
+    const lo = nt(c), hi = nt(c + 1);
+    ph = (th - lo) / (hi - lo) * 2 - 1; ph = ph + G.sk[N(c)] * (1 - ph * ph); sc = G.sc[N(c)];
+  } else ph = ((th / st + .5) % 1) * 2 - 1;
+  const a = Math.min(1, Math.abs(ph));
+  const gl = F.pointy ? Math.max(0, 1 - Math.pow(a, 1.3)) : Math.sqrt(Math.max(0, 1 - a * a));
+  let rho = rf + (len * sc - rf) * gl;
+  if (G && G.h > 0) rho *= 1 + G.h * (.007 * Math.sin(th * G.tf + G.tp) + .004 * Math.sin(th * 41 + G.tp * 2)) * gl;   // 붓끝 떨림(갈림 자리는 그대로)
+  return rho;
+}
+function corollaPath(len, P, G) {
+  const n = P.count, p = new Path2D(), M = n * (G && G.h > 0 ? 48 : 28);
   for (let i = 0; i <= M; i++) {
-    const th = i / M * TAU, ph = ((th / (TAU / n) + .5) % 1) * 2 - 1, a = Math.abs(ph);
-    const gl = F.pointy ? Math.max(0, 1 - Math.pow(a, 1.3)) : Math.sqrt(Math.max(0, 1 - a * a));
-    const rho = rf + (len - rf) * gl;
+    const th = i / M * TAU, rho = corollaRho(th, len, P, G);
     i ? p.lineTo(Math.cos(th) * rho, Math.sin(th) * rho) : p.moveTo(Math.cos(th) * rho, Math.sin(th) * rho);
   }
   p.closePath();
@@ -982,7 +1003,7 @@ function drawFlower(g, P, R, o) {
       sh.addColorStop(0, 'rgba(0,0,0,.34)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh; g.beginPath(); g.arc(0, 0, len * 1.14, 0, TAU); g.fill();
     }
-    const FU = P.fused, path0 = FU ? corollaPath(len, P) : petalPath(len, wid, P);
+    const FU = P.fused, G = FU ? corollaGeo(P, k, hand) : null, path0 = FU ? corollaPath(len, P, G) : petalPath(len, wid, P);
     const pathOf = hand > 0 && !FU ? q => petalPath(len, wid, P, wobOf(k, q)) : () => path0;
     // 통꽃은 한 장이라 꽃잎마다 어긋낼 수 없으므로, 통꽃 전체를 아주 살짝 찌그러뜨린다(한쪽이 조금 넓고, 축이 조금 기운다)
     let GF = null;
@@ -1012,20 +1033,46 @@ function drawFlower(g, P, R, o) {
         g.clip(cp);
       }
       const Jn = jit(k, SP ? 0 : n % P.count); if (Jn) { g.transform(Jn.a, Jn.b, Jn.c, Jn.d, Jn.e, Jn.f); path = pathOf(SP ? 0 : n % P.count); }
+      if (FU && G.h > 0) { path = n ? new Path2D() : path0; if (n) path.addPath(path0, new DOMMatrix().rotateSelf(-n * step * 180 / Math.PI)); }   // 갈래가 제각각이니 돌린 자리에서도 같은 테두리로 오린다
       if (!FU) {
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
       } else {
         if (n === 0) g.fill(path);
-        if (FU.star && px > 24) {      // 나팔꽃·도라지처럼 갈래 가운데로 뻗는 밝은 띠
-          g.save(); g.clip(path); g.fillStyle = P.starCol; g.beginPath();
-          const bw = Math.sin(Math.PI / P.count) * len * .42;
-          g.moveTo(len * .06, 0); g.quadraticCurveTo(len * .45, bw, len * 1.02, bw * .12); g.lineTo(len * 1.02, -bw * .12); g.quadraticCurveTo(len * .45, -bw, len * .06, 0);
-          g.fill(); g.restore(); g.fillStyle = fill;
+        if (FU.star && px > 24) {      // 나팔꽃·도라지처럼 갈래 가운데로 뻗는 밝은 띠: 주름과 같은 결로 살짝 휘고, 가장자리는 번지듯
+          const A0 = (G.dA[n % P.count] + G.dA[(n + 1) % P.count]) / 2, bw = Math.sin(Math.PI / P.count) * len * .42, NS = px > 60 ? 14 : 8, C = [];
+          for (let i = 0; i <= NS; i++) {
+            const t = i / NS, r = len * (.06 + .96 * t), an = A0 + G.sw * .8 * Math.pow(1 - t, 1.7) + G.h * .012 * Math.sin(t * 9 + n * 1.7);
+            C.push([Math.cos(an) * r, Math.sin(an) * r, -Math.sin(an), Math.cos(an), bw * (.5 * Math.pow(Math.sin(Math.PI * Math.min(t, .97)), .8) + .12 * t)]);
+          }
+          g.save(); g.clip(path); g.fillStyle = P.starCol;
+          for (const [wk, al] of px > 60 ? [[1.3, .3], [1, .4], [.7, .5]] : [[1, 1]]) {
+            g.globalAlpha = al; g.beginPath();
+            C.forEach(([x, y, nx, ny, w], i) => i ? g.lineTo(x + nx * w * wk, y + ny * w * wk) : g.moveTo(x + nx * w * wk, y + ny * w * wk));
+            for (let i = NS; i >= 0; i--) { const [x, y, nx, ny, w] = C[i]; g.lineTo(x - nx * w * wk, y - ny * w * wk); }
+            g.fill();
+          }
+          g.restore(); g.fillStyle = fill;
         }
-        if (px > 40) {                 // 갈래 사이로 접힌 주름
-          g.save(); g.rotate(step / 2); g.clip(path); g.strokeStyle = 'rgba(20,10,30,.22)'; g.lineWidth = lw * Math.max(1, px / 160);
-          g.beginPath(); g.moveTo(len * .05, 0); g.lineTo(len * (FU.f + .02), 0); g.stroke(); g.restore();
+        if (px > 40) {                 // 갈래 사이로 접힌 주름: 곧은 금이 아니라, 목구멍에서 휘돌아 나오며 가늘어지는 골과 그 옆의 밝은 등성이
+          const m = (n + 1) % P.count, A = step / 2 + G.dA[m], r0 = len * .05, r1 = len * (FU.f + .03), W = lw * Math.max(1, px / 160);
+          const NS = 16, C = [];
+          for (let i = 0; i <= NS; i++) {
+            const t = i / NS, r = r0 + (r1 - r0) * t;
+            const an = A + G.sw * Math.pow(1 - t, 1.7) + G.cb[m] * Math.sin(Math.PI * t) + G.h * .018 * Math.sin(t * 11 + m * 2.3);
+            C.push([Math.cos(an) * r, Math.sin(an) * r, -Math.sin(an), Math.cos(an), 1.7 - 1.35 * t]);
+          }
+          const rib = (off, wk, c0, c1) => {
+            const gr = g.createRadialGradient(0, 0, r0, 0, 0, r1); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.beginPath();
+            C.forEach(([x, y, nx, ny, w], i) => { const o = W * (off * w + wk * w / 2); i ? g.lineTo(x + nx * o, y + ny * o) : g.moveTo(x + nx * o, y + ny * o); });
+            for (let i = NS; i >= 0; i--) { const [x, y, nx, ny, w] = C[i], o = W * (off * w - wk * w / 2); g.lineTo(x + nx * o, y + ny * o); }
+            g.fill();
+          };
+          g.save(); g.clip(path);
+          rib(0, 2.6, 'rgba(20,10,30,.10)', 'rgba(20,10,30,0)');            // 골 언저리의 옅은 그늘
+          rib(0, 1, 'rgba(20,10,30,.30)', 'rgba(20,10,30,.03)');            // 접힌 골
+          rib(-Math.sign(G.sw) * 1.3, .9, 'rgba(255,255,255,.16)', 'rgba(255,255,255,0)');   // 볕 받는 등성이
+          g.restore(); g.fillStyle = fill;
         }
       }
       if (P.eye && top && px > 20 && es > .4) {   // 단심
@@ -1155,8 +1202,7 @@ function drawFlower(g, P, R, o) {
         g.restore(); g.fillStyle = fill;
         g.save(); g.globalAlpha = (es - .6) / .4; g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = lw * .6; g.lineCap = 'round'; g.beginPath();
         if (FU) for (let q = 0; q < P.fuzz.length * P.count; q++) {   // 통꽃 테두리 둘레에 잔털
-          const th = (q + .5) / (P.fuzz.length * P.count) * TAU, ph = ((th / step + .5) % 1) * 2 - 1, a = Math.abs(ph);
-          const gl = FU.pointy ? Math.max(0, 1 - Math.pow(a, 1.3)) : Math.sqrt(Math.max(0, 1 - a * a)), rho = len * (FU.f + (1 - FU.f) * gl) * .985;
+          const th = (q + .5) / (P.fuzz.length * P.count) * TAU, rho = corollaRho(th, len, P, G) * .985;
           const hh = P.fuzz[q % P.fuzz.length][2] * len, x = Math.cos(th) * rho, y = Math.sin(th) * rho;
           g.moveTo(x, y); g.lineTo(x + Math.cos(th + .35) * hh, y + Math.sin(th + .35) * hh);
         }
