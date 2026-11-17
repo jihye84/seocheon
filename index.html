@@ -102,7 +102,8 @@ input[type=date]{color-scheme:dark}
 @keyframes wshine{to{background-position:300% 0}}
 .fname,.traits,.loc,.motto{text-wrap:balance;word-break:keep-all}   /* 끝 한두 글자만 다음 줄로 넘어가지 않게 */
 @media (prefers-reduced-motion:reduce){.wbadge,#vCard.warden .fname{animation:none}}
-#bReport{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
+#bBack{align-self:center;margin:-4px 0 -6px}
+#bReport,#bBack{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .traits{line-height:1.6}
@@ -187,7 +188,7 @@ body.narrow .note{display:none}
 body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.narrow #vCard.myth .motto{display:none}}
 @media (max-height:560px){body.narrow #hint{display:none} .btns button{padding-left:6px;padding-right:6px}}
 @media (max-height:420px){#vCard.myth .traits{display:block!important} #vCard.myth .motto,#vCard.myth .loc{display:none!important} #pnRow{display:none} #bOpen{margin:-8px 0 -10px} .traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
-@media (max-height:350px){.swatch{display:none} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
+@media (max-height:350px){.swatch{display:none} #bBack{padding:4px 8px} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
@@ -244,7 +245,7 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
 #albumBar{position:absolute;left:0;right:0;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:.6em;justify-content:center;padding:0 16px}
 #albumBar button{min-height:46px;padding:0 20px;border-radius:14px;border:1px solid var(--line);background:rgba(20,24,52,.82);color:var(--ink);font:inherit;cursor:pointer}
 #albumBar button:hover{background:rgba(40,46,90,.9)}
-#albumBar{flex-wrap:wrap} #albumBar #albumName{border-color:var(--gold);color:var(--gold)}
+#albumBar{flex-wrap:wrap} #albumBar #albumName,#albumBar #albumRuin{border-color:var(--gold);color:var(--gold)}
 @media (max-width:480px){#albumBar button{padding:0 13px;min-height:42px;font-size:.92em}}
 #guide i{display:block;width:0;height:0;margin:0 auto 8px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:30px solid var(--gold);
   filter:drop-shadow(0 0 8px rgba(241,214,160,.7))}
@@ -287,6 +288,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
         <div class="pickname" id="pnRow" hidden><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
         <div class="colors" id="pickIntro" hidden></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
+        <button id="bBack" type="button" hidden></button>
       </form>
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어요.<br>생일은 꽃을 고르는 데만 쓰고,<br>어디에도 남기지 않아요.</p>
     </section>
@@ -323,7 +325,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <button id="pairSave" type="button" hidden>두 꽃 이미지 저장</button>
 <div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumRuin" type="button" hidden>금단의 꽃 찾기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
 <div id="corner"><button id="fsBtn" type="button" aria-label="전체 화면" hidden><span class="ic">⛶</span><span class="lab"> 전체 화면</span></button><button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button></div>
 <div id="toast"></div>
@@ -1755,11 +1757,8 @@ $('mythBtn').onclick = () => {
   if (!user) { toast('내 꽃을 먼저 찾으면 신화 속 꽃을 모을 수 있어요', 4200); showIntro(); return; }
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) {
-    if (isWarden(user) && !ruinFound()) {   // 꽃감관: 일곱째 꽃(금단의 꽃)으로 길잡이
-      if (guideM === RUIN && now < guideUntil) { guideUntil = 0; return; }
-      guideM = RUIN; guideUntil = Infinity; hideHint(); toast('꽃감관만 아는 일곱째 꽃을 찾아가요', 3200); return;
-    }
-    openAlbum(); return;
+    if (guideM === RUIN && now < guideUntil) { guideUntil = 0; return; }   // 금단의 꽃 길잡이가 켜져 있으면 끈다
+    openAlbum(); return;   // 화첩: 이야기·꽃 감상·통계·합동 사진, 그리고 아직이면 금단의 꽃 찾기
   }
   if (guideM && now < guideUntil && !mythFound.has(guideM.id)) { guideUntil = 0; return; }   // 길잡이가 켜져 있으면 끈다
   guideM = nextMyth();
@@ -1821,7 +1820,8 @@ let albumOn = false, albumBg = null;
 function openAlbum() {
   const box = $('album'), cv = $('albumCv');
   albumOn = true; box.classList.add('on'); box.setAttribute('aria-hidden', 'false'); albumBg = null;
-  $('albumName').hidden = !!user;   // 아직 이름이 없는 꽃감관: 내 꽃을 찾으면 화첩과 사진에 이름이 들어간다
+  $('albumName').hidden = !!user;
+  $('albumRuin').hidden = !(user && isWarden(user) && !ruinFound());   // 꽃감관만 아는 일곱째 꽃   // 아직 이름이 없는 꽃감관: 내 꽃을 찾으면 화첩과 사진에 이름이 들어간다
   (function tick() {
     if (!albumOn) return;
     const dpr = Math.min(devicePixelRatio || 1, 2), w = innerWidth, h = innerHeight;
@@ -2422,6 +2422,7 @@ addEventListener('keydown', e => { if (tourOn) { e.stopPropagation(); stopTour()
 document.addEventListener('visibilitychange', () => { if (tourOn && !document.hidden && !tourLock) { try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { tourLock = l; }).catch(() => { }); } catch (e) { } } else if (document.hidden) tourLock = null; });
 $('albumTour').onclick = () => { closeAlbum(); startTour(); };
 $('albumStory').onclick = () => playStory();
+$('albumRuin').onclick = () => { closeAlbum(); guideM = RUIN; guideUntil = Infinity; hideHint(); toast('꽃감관만 아는 일곱째 꽃을 찾아가요', 3200); };
 $('bStory').onclick = () => playStory();
 $('tourBtn').onclick = () => { if (albumOn) closeAlbum(); if (!wide && !panel.classList.contains('collapsed') && !$('intro')) setSheet(false); startTour(); };
 
@@ -2507,7 +2508,7 @@ function focusCell(i, j, opts = {}) {
           if (user && !curTag() && user.hasBirth) {   // 이름표가 없으면 칭호가 이 기기에만 남는다: 이름표로 이끈다
             setTimeout(() => { if (!storyOn && !tourOn && !albumOn) showInvite(['이름표를 달면', ['꽃감관', ' 칭호가 꽃밭에 남아'], '누구나 볼 수 있어요.'], '이름표 달러 가기', () => { goMine(); setTimeout(() => { refreshTagUI(); toast("반짝이는 '이름표 달기'를 눌러 보세요", 4200); }, 2600); }); }, 14800);
           } else {
-            setTimeout(() => toast("'꽃감관 · 신화 속 꽃 6/7'을 누르면 꽃감관만 아는 일곱째 꽃으로 안내해요", 5200), 14600);
+            setTimeout(() => toast("'꽃감관 · 신화 속 꽃 6/7'을 누르면 화첩이 열리고, 꽃감관만 아는 일곱째 꽃도 찾아갈 수 있어요", 5200), 14600);
             setTimeout(() => { if (!storyOn && !tourOn && !albumOn) showInvite(['여섯 송이를 모두 찾았어요.', ['꽃감관', '이 된 이야기를'], '볼까요?'], '이야기 보기', playStory); }, 20500);
           }
         } else { setTimeout(() => toast(`신화 속 꽃을 찾았어요 · ${mythFound.size}/${MYTHS.length}`), 900); const nx = nextMyth(); if (nx) setTimeout(() => toast(`다음 차례는 ${nx.name}이에요`, 3400), mythFound.size === 1 ? 9200 : 4200); }
@@ -2531,7 +2532,7 @@ function showCard() {
   $('cLoc').textContent = `서천꽃밭 ${focus.i + 1000}번째 이랑 · ${focus.j + 1000}번째 자리`;
   // 빛깔 띠: 이 꽃을 이루는 빛깔을 한 줄 비단처럼 보여 주고, 누가 정한 빛깔인지 적는다 (남의 꽃은 바꿀 수 없다는 넛지)
   $('cSw').innerHTML = `<i class="ribbon" style="background:linear-gradient(90deg,${D.colors[1]},${D.colors[0]} 45%,${D.colors[2]} 80%,${D.colors[3]})"></i><span class="swl">${k === 'tag' ? '주인이 입힌 빛깔' : k === 'friend' ? `${esc(sp.name)}님이 입힌 빛깔` : '꽃밭이 피운 빛깔'}</span>`;
-  const mine = k === 'user', canPair = friendDiffers() && (k === 'user' || k === 'friend');
+  const mine = k === 'user', canPair = friendDiffers() && (k === 'user' || k === 'friend') && !(user && user.gray);
   $('cPick').hidden = !mine; $('cSw').hidden = mine || k === 'myth';
   if (mine) { markPicker($('pickCard'), user.gray ? -1 : user.color); if (user.gray) $('pnCard').textContent = '빛깔을 골라 주세요'; }
   $('bFar').hidden = !mine;
@@ -2558,6 +2559,7 @@ function showCard() {
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function showIntro() {
   $('vCard').classList.add('off'); $('vIntro').classList.remove('off');
+  $('bBack').hidden = !user; if (user) $('bBack').textContent = `${user.name}의 꽃으로 돌아가기`;   // 잘못 눌렀을 때 이름·생일을 다시 적지 않고 돌아간다
   setSheet(true);
   setTimeout(() => $('inName').focus({ preventScroll: true }), 50);
 }
@@ -2648,6 +2650,7 @@ $('inBirth').addEventListener('input', e => {
   el.value = d.length > 6 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}.${d.slice(4)}` : d;
 });
 $('bNew').onclick = () => showIntro();
+$('bBack').onclick = () => { if (user) goMine(); };
 $('bMine').onclick = () => user ? goMine() : showIntro();
 $('bFar').onclick = () => {
   if (!user) return;
