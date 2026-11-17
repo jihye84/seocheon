@@ -591,8 +591,13 @@ function gen(seed, hue, palO, force) {
     else if (sk === 'glow') { const gh = [62, 72, 180, 320, 48][(rS2() * 5) | 0]; P.spotCol = hsla(gh, 100, 62 + rS2() * 8, .92); }
     else P.spotCol = hsla(44 + rS2() * 8, 85, 66 + rS2() * 8, .9);
     if (P.pal === 8) P.spotCol = hsla(sk === 'glow' ? 62 : 45, 90, 70, .9);
-    // 옥빛·물빛 꽃잎: 형광 옥빛 점이 신비롭다 — 셋에 하나 꼴로(먹점이 예쁜 꽃도 남도록), 따로 뽑아 다른 꽃은 그대로
-    if (P.spots && hbn >= 158 && hbn <= 205 && P.pal !== 5 && mulberry32((seed ^ 0x1b873593) >>> 0)() < .36) { P.spotKind = 'glow'; P.spotCol = hsla(176 + (hbn - 158) * .25, 100, 64 + (bl > 60 ? -6 : 4), .92); }
+    // 같은 색 형광 점: 짙은 점이 찍힐 꽃의 절반을 꽃잎과 같은 빛깔의 형광 점으로(빨강은 제외, 흰 꽃은 형광 옥빛) — 따로 뽑아 다른 꽃은 그대로
+    const red = hbn <= 15 || hbn >= 340;
+    if (P.spots && P.spotKind === 'ink' && !(red && P.pal !== 5) && mulberry32((seed ^ 0x1b873593) >>> 0)() < .5) P.spotKind = 'glow';
+    if (P.spots && P.spotKind === 'glow' && red && P.pal !== 5) { P.spotKind = 'tone'; P.spotCol = hsla(hb, Math.min(90, base[1] + 8), bl > 55 ? bl - 13 : bl + 15, .72); }   // 빨강엔 형광 점 없이
+    else if (P.spots && P.spotKind === 'glow') {   // 형광 점은 모두 꽃잎과 같은 빛깔로
+      P.spotCol = hsla(P.pal === 5 ? 185 : hbn >= 158 && hbn <= 205 ? 176 + (hbn - 158) * .25 : h, 100, Math.min(86, Math.max(66, tl + 18)), .95);
+    }
   }
   // 솜털(할미꽃·솜다리처럼 꽃잎 가장자리에 보송한 털): 이것도 따로 뽑는다
   const r3 = mulberry32(seed ^ 0x51ed27a3);
