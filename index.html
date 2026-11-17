@@ -1347,6 +1347,7 @@ function loadMyth() {
     store.set('mythBy', mythBy); store.set('mythMoved', { k, done: !!user.hasBirth });
   }
   mythFound = new Set(mythBy[k] || []);
+  if (typeof myTags !== 'undefined' && myTags.some(t => t.s === user.seed && t.w)) mythFound = new Set(MYTHS.map(m => m.id));   // 이름표에 꽃감관이라 적힌 꽃은 여섯 송이를 다 모은 꽃
 }
 const saveMyth = () => { mythBy[user.seed.toString(36)] = [...mythFound]; store.set('mythBy', mythBy); };
 // 내 꽃: 이 기기에서 여섯 송이를 모았거나, 이 기기가 연 내 이름표에 꽃감관이라 적혀 있으면 꽃감관
@@ -1732,7 +1733,13 @@ $('mythBtn').onclick = () => {
   hideInvite();
   if (!user) { toast('내 꽃을 먼저 찾으면 신화 속 꽃을 모을 수 있어요', 4200); showIntro(); return; }
   const left = MYTHS.filter(m => !mythFound.has(m.id));
-  if (!left.length) { openAlbum(); return; }
+  if (!left.length) {
+    if (isWarden(user) && !store.get('ruinSeen', false)) {   // 꽃감관: 일곱째 꽃(금단의 꽃)으로 길잡이
+      if (guideM === RUIN && now < guideUntil) { guideUntil = 0; return; }
+      guideM = RUIN; guideUntil = Infinity; hideHint(); toast('꽃감관만 아는 일곱째 꽃을 찾아가요', 3200); return;
+    }
+    openAlbum(); return;
+  }
   if (guideM && now < guideUntil && !mythFound.has(guideM.id)) { guideUntil = 0; return; }   // 길잡이가 켜져 있으면 끈다
   guideM = nextMyth();
   guideUntil = Infinity; hideHint();   // 그 꽃을 찾을 때까지 화살표를 계속 보여 준다
@@ -3178,9 +3185,11 @@ function frame(ms) {
   }
   if (now - hudT > .25) {
     hudT = now;
-    const allM = mythFound.size === MYTHS.length;
-    const guiding = guideM && now < guideUntil && !mythFound.has(guideM.id);
-    $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${mythFound.size}/${MYTHS.length}${allM ? '' : guiding ? ' · 길잡이 끄기' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
+    const allM = user ? isWarden(user) : mythFound.size === MYTHS.length;
+    const guiding = guideM && now < guideUntil && (guideM === RUIN || !mythFound.has(guideM.id));
+    // 꽃감관에게는 일곱째 꽃(꽃감관만 아는 금단의 꽃)까지 센다
+    const got = allM ? MYTHS.length + (store.get('ruinSeen', false) ? 1 : 0) : mythFound.size, tot = allM ? MYTHS.length + 1 : MYTHS.length;
+    $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${got}/${tot}${allM && got === tot ? '' : guiding ? ' · 길잡이 끄기' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
     $('hudCount').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
