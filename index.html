@@ -1597,6 +1597,7 @@ async function putTag(color, pin) {
 let pinMode = '';
 // 이 기기가 열지 않은 이름표가 내 꽃(이름과 생일로 찾은 씨앗)에 달려 있는지: 있으면 '이름표 열기'
 let tagHere = null;   // { seed, n }
+let lastFind = null;   // 방금 이름과 생일로 찾은 꽃 { seed, name, birth } — 이름표를 열 때 서버가 생일까지 다시 확인한다 (기기에 남기지 않는다)
 async function checkTagHere() {
   if (!user || curTag() || !user.hasBirth) { tagHere = null; return; }
   const seed = user.seed;
@@ -1648,8 +1649,9 @@ $('pinOk').onclick = async () => {
   } else inviteMyth(9000);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다 (오늘 아직 안 보였으면)
 };
 async function openTagHere(pin) {
+  if (!lastFind || lastFind.seed !== user.seed) { closePin(); toast('이름과 생일로 내 꽃을 다시 찾은 뒤 열어 주세요', 4200); showIntro(); return; }
   tagBusy = true; let r;
-  try { r = await rpc('open_tag', { p_token: tagToken(), p_seed: user.seed, p_pin: pin }); }
+  try { r = await rpc('open_tag', { p_token: tagToken(), p_name: lastFind.name, p_birth: lastFind.birth, p_pin: pin }); }
   catch (e) { toast('꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요', 3200); return; }
   finally { tagBusy = false; }
   if (!r || !r.ok) {
@@ -2593,7 +2595,7 @@ $('f').addEventListener('submit', async e => {
     try {
       const r = await rpc('seed_of', { p_name: name, p_birth: birth });
       if (!r.ok) { toast(r.reason === 'slow' ? '지금은 꽃을 찾는 이가 많아요. 조금 뒤에 다시 해 주세요' : '생일을 숫자 8자리로 적어 주세요 (예: 19840315)', 3800); return; }
-      seed = Number(r.seed) >>> 0;
+      seed = Number(r.seed) >>> 0; lastFind = { seed, name, birth };
     } catch (err) { toast('꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요', 3800); return; }
     finally { finding = false; sb.textContent = sbText; }
   } else seed = strHash(nameKey(name) + '|');
@@ -3466,6 +3468,10 @@ whenSized(function start() {
     const c = parseInt(q.get('c') || '0', 10);
     friend = makePerson('friend', n.slice(0, 12), parseInt(s, 36) >>> 0, c > 0 && c < COLORS.length ? c : 0, parseInt(q.get('p') || '0', 10));
     friend.warden = q.get('w') === '1';
+    if (friend.warden) {   // 링크의 꽃감관 표시는 누구나 붙일 수 있으니, 꽃밭 장부의 이름표로 확인되지 않으면 뗀다
+      const fs = friend.seed;
+      rpc('tags_of', { p_seed: fs }).then(rows => { if (friend && friend.seed === fs && Array.isArray(rows) && !rows.some(r => r.warden)) { friend.warden = false; if (focus && focus.kind === 'friend') showCard(); } }).catch(() => { });
+    }
     refreshSpecials();
     cam.x = friend.i + 40; cam.y = friend.j - 25; cam.ppu = 2;
     hideHint();
