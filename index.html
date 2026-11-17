@@ -102,8 +102,7 @@ input[type=date]{color-scheme:dark}
 @keyframes wshine{to{background-position:300% 0}}
 .fname,.traits,.loc,.motto{text-wrap:balance;word-break:keep-all}   /* 끝 한두 글자만 다음 줄로 넘어가지 않게 */
 @media (prefers-reduced-motion:reduce){.wbadge,#vCard.warden .fname{animation:none}}
-#bOpen{align-self:center;margin:-4px 0 -6px}
-#bReport,#bOpen{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
+#bReport{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .traits{line-height:1.6}
@@ -144,7 +143,7 @@ body.narrow #fsBtn .lab{display:none}
 .btns button.wide{grid-column:1/-1}
 #pinRow{display:flex;flex-direction:column;gap:.55em;margin-top:.2em}
 #pinRow[hidden],#lbPin[hidden],#lbBirth[hidden],#cBtns[hidden],#pnRow[hidden],#pickIntro[hidden]{display:none}
-#pinRow input,#inOpenPin{letter-spacing:.3em}
+#pinRow input{letter-spacing:.3em}
 .pinbtns{display:grid;grid-template-columns:2fr 1fr;gap:.5em}
 .pinbtns button{min-height:48px;border-radius:14px}
 #pinNo{border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:inherit;cursor:pointer}
@@ -183,7 +182,7 @@ body.narrow .note{display:none}
 body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.narrow #vCard.myth .motto{display:none}}
 @media (max-height:560px){body.narrow #hint{display:none} .btns button{padding-left:6px;padding-right:6px}}
 @media (max-height:420px){#vCard.myth .traits{display:block!important} #vCard.myth .motto,#vCard.myth .loc{display:none!important} #pnRow{display:none} #bOpen{margin:-8px 0 -10px} .traits{display:none} .ptitle{font-size:1.35em} body.wide #panel{padding-top:12px;padding-bottom:12px} .btns button{line-height:1.25}}
-@media (max-height:350px){.swatch{display:none} #bOpen{padding:4px 8px;margin:-4px 0 -6px} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
+@media (max-height:350px){.swatch{display:none} .ptitle{font-size:1.2em} label small{display:none} input{min-height:34px} .primary{min-height:38px} form{gap:.3em} #pinRow{gap:.35em} .pinbtns button{min-height:38px} .motto,.traits{display:none} body.wide #panel{padding:10px 16px} .pbody{margin-top:.3em} .btns button{min-height:36px}}
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
@@ -280,11 +279,9 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <form id="f" autocomplete="off">
         <label><span>이름 <small>(별명으로 적어도 괜찮아요)</small></span><input id="inName" maxlength="12" placeholder="12자까지 적을 수 있어요" required></label>
         <label id="lbBirth"><span>생일 <small>(기념일도 괜찮아요)</small></span><input id="inBirth" inputmode="numeric" maxlength="10" placeholder="예: 1984.03.15"></label>
-        <label id="lbPin" hidden><span>비밀번호 <small>(이름표를 달 때 정한 숫자 4자리)</small></span><input id="inOpenPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리"></label>
         <div class="pickname" id="pnRow" hidden><span>꽃 빛깔</span><b id="pnIntro">꽃밭에 맡기기</b></div>
         <div class="colors" id="pickIntro" hidden></div>
         <button class="primary" type="submit">내 꽃 찾아가기</button>
-        <button id="bOpen" type="button">이름표를 단 적 있어요 · 비밀번호로 찾기</button>
       </form>
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어 있다.<br>생일은 어디에도 남지 않는다.</p>
     </section>
@@ -298,7 +295,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <div class="traits" id="cTraits"></div>
       <div class="loc" id="cLoc"></div>
       <div id="pinRow" hidden>
-        <label><span>비밀번호 숫자 4자리 <small>(다른 기기에서 불러올 때 써요)</small></span><input id="inPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="예: 0815"></label>
+        <label><span><span id="pinLab">비밀번호 숫자 4자리</span> <small id="pinSub">(다른 기기에서 열 때 써요)</small></span><input id="inPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="예: 0815"></label>
         <div class="pinbtns"><button id="pinOk" class="primary" type="button">이름표 달기</button><button id="pinNo" type="button">그만두기</button></div>
       </div>
       <div class="btns" id="cBtns">
@@ -1534,7 +1531,7 @@ function refreshTagUI() {
   const b = $('bTag'); if (!user) return;
   const t = curTag();
   b.classList.toggle('armed', !!tagArmed);
-  b.textContent = tagArmed ? '한 번 더 누르면 떼어져요' : t && !t.p ? '비밀번호 정하기' : t ? '이름표 떼기' : '이름표 달기';
+  b.textContent = tagArmed ? '한 번 더 누르면 떼어져요' : t && !t.p ? '비밀번호 정하기' : t ? '이름표 떼기' : tagHere && tagHere.seed === user.seed ? '이름표 열기' : '이름표 달기';
   [...$('pickCard').children].forEach(el => el.classList.toggle('taken', takenSet.has(+el.dataset.k)));
 }
 // 생일까지 적은 사람끼리는 같은 꽃에 같은 빛깔을 겹쳐 고를 수 없다: 이미 고른 빛깔을 받아 온다
@@ -1577,16 +1574,34 @@ async function putTag(color, pin) {
 }
 // 이름표를 달 때 비밀번호 4자리를 정한다: 다른 기기에서는 이름과 이 번호로 이름표를 불러온다
 let pinMode = '';
+// 이 기기가 열지 않은 이름표가 내 꽃(이름과 생일로 찾은 씨앗)에 달려 있는지: 있으면 '이름표 열기'
+let tagHere = null;   // { seed, n }
+async function checkTagHere() {
+  if (!user || curTag() || !user.hasBirth) { tagHere = null; return; }
+  const seed = user.seed;
+  try {
+    const rows = await rpc('tags_of', { p_seed: seed });
+    if (!user || user.seed !== seed) return;
+    const n = Array.isArray(rows) ? rows.filter(r => r.has_birth).length : 0;
+    tagHere = n ? { seed, n } : null;
+    if (tagHere && focus && focus.kind === 'user') {
+      showCard();
+      toast('이 꽃에는 이름표가 달려 있어요. 주인이시면 비밀번호로 열어 주세요', 5200);
+    }
+  } catch (e) { }
+}
 function openPin(mode) {
   pinMode = mode;
-  $('pinOk').textContent = mode === 'set' ? '비밀번호 정하기' : '이름표 달기';
+  $('pinOk').textContent = mode === 'set' ? '비밀번호 정하기' : mode === 'open' ? '이름표 열기' : '이름표 달기';
+  $('pinLab').textContent = mode === 'open' ? '이름표를 달 때 정한 비밀번호 4자리' : '비밀번호 숫자 4자리';
+  $('pinSub').textContent = mode === 'open' ? '' : '(다른 기기에서 열 때 써요)';
   $('pinRow').hidden = false; $('cBtns').hidden = true; $('vCard').classList.add('pinning'); $('inPin').value = '';
   setTimeout(() => $('inPin').focus({ preventScroll: true }), 60);
   requestAnimationFrame(measureStage);
 }
 function closePin() { pinMode = ''; $('vCard').classList.remove('pinning'); $('pinRow').hidden = true; $('cBtns').hidden = false; $('inPin').blur(); requestAnimationFrame(measureStage); }
 const digits4 = el => el.addEventListener('input', () => { el.value = el.value.replace(/\D/g, '').slice(0, 4); });
-digits4($('inPin')); digits4($('inOpenPin'));
+digits4($('inPin'));
 $('inPin').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('pinOk').click(); } });
 $('pinNo').onclick = () => { if (pinMode === 'new') toast('이름표를 달지 않았어요', 2400); closePin(); };
 $('pinOk').onclick = async () => {
@@ -1594,6 +1609,7 @@ $('pinOk').onclick = async () => {
   const pin = $('inPin').value;
   if (!/^\d{4}$/.test(pin)) { toast('숫자 4자리를 적어 주세요', 2600); $('inPin').focus(); return; }
   const mode = pinMode, t = curTag();
+  if (mode === 'open') { await openTagHere(pin); return; }
   const ok = await putTag(t ? t.c : user.color, pin);
   if (!ok) return;
   closePin(); refreshTagUI();
@@ -1603,9 +1619,28 @@ $('pinOk').onclick = async () => {
   setTimeout(() => toast(`다른 기기에서는 이름과 비밀번호로 불러올 수 있어요`, 5200), user.slot ? 5600 : 2600);
   inviteMyth(9000);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다 (오늘 아직 안 보였으면)
 };
+async function openTagHere(pin) {
+  tagBusy = true; let r;
+  try { r = await rpc('open_tag', { p_token: tagToken(), p_seed: user.seed, p_pin: pin }); }
+  catch (e) { toast('꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요', 3200); return; }
+  finally { tagBusy = false; }
+  if (!r || !r.ok) {
+    toast(r && r.reason === 'locked' ? '오늘은 더 시도할 수 없어요. 내일 다시 해 주세요' : r && r.reason === 'slow' ? '조금 뒤에 다시 해 주세요' : '비밀번호가 맞지 않아요', 3600);
+    $('inPin').value = ''; $('inPin').focus(); return;
+  }
+  const got = (r.tags || []).filter(x => !x.hidden).map(tagOf); if (!got.length) return;
+  myTags = myTags.filter(x => !got.some(g => g.id === x.id || g.s === x.s)).concat(got); saveTags();
+  const t = got[0]; tagHere = null; closePin();
+  pickedColor = t.c; uncolored = false; markPicker($('pickIntro'), t.c);
+  setUser(user.name, user.seed, user.hasBirth);
+  if (t.w) wardenFromTag();
+  if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
+  toast('이름표를 열었어요. 이 기기에서도 빛깔을 바꾸거나 이름표를 뗄 수 있어요', 4600);
+}
 $('bTag').onclick = async () => {
   if (!user || tagBusy) return;
   const t = curTag();
+  if (!t && tagHere && tagHere.seed === user.seed) { openPin('open'); return; }   // 다른 기기에서 단 내 이름표
   if (t && !t.p) { openPin('set'); toast('비밀번호를 정해 두면 다른 기기에서도 이 이름표를 불러올 수 있어요', 4600); return; }
   if (t) {                                       // 떼기: 모든 기기에서 사라지니 한 번 더 묻는다
     if (!tagArmed || now - tagArmed > 8) {
@@ -2477,7 +2512,7 @@ function showCard() {
   $('bReport').hidden = k !== 'tag'; reportArmed = 0; $('bReport').textContent = '신고';
   $('bTag').hidden = !mine; if (mine) { tagArmed = 0; refreshTagUI(); } if (pinMode) closePin();
   $('bSave').hidden = false;
-  if (mine && user.gray) ['bTag', 'bSave', 'bPfp', 'bShare'].forEach(id => { $(id).hidden = true; });   // 빛깔부터 입히고 나서 저장·보내기·이름표
+  if (mine && user.gray) ['bTag', 'bSave', 'bPfp', 'bShare'].forEach(id => { $(id).hidden = id !== 'bTag' || !(tagHere && tagHere.seed === user.seed); });   // 빛깔부터 입히고 나서 저장·보내기·이름표
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
 }
@@ -2495,52 +2530,12 @@ function setSheet(open) {
 }
 $('toggle').onclick = () => setSheet(panel.classList.contains('collapsed'));
 
-let finding = false;
-// 이름표 불러오기: 다른 기기에서 단 이름표를 이름과 비밀번호 4자리로 연다 (생일은 다시 적지 않아도 된다)
-let openMode = false;
-function setOpenMode(on) {
-  openMode = on;
-  $('lbBirth').hidden = on; $('lbPin').hidden = !on;
-  $('f').querySelector('.primary').textContent = '내 꽃 찾아가기';
-  $('bOpen').textContent = on ? '이름과 생일로 찾기' : '이름표를 단 적 있어요 · 비밀번호로 찾기';
-  $('inOpenPin').value = '';
-  setTimeout(() => (on && $('inName').value.trim() ? $('inOpenPin') : $('inName')).focus({ preventScroll: true }), 50);
-  requestAnimationFrame(measureStage);
-}
-$('bOpen').onclick = () => setOpenMode(!openMode);
+let finding = false;   // 꽃을 찾는 중(서버에 묻는 중)에는 다시 누르지 않게
 $('inBirth').addEventListener('focus', () => { if (store.get('birthNote', false)) return; store.set('birthNote', true); toast('생일은 꽃을 고르는 데만 쓰이고, 어디에도 남지 않아요', 4200); });
-async function openByPin(name) {
-  const pin = $('inOpenPin').value;
-  if (!/^\d{4}$/.test(pin)) { toast('비밀번호 숫자 4자리를 적어 주세요', 2800); $('inOpenPin').focus(); return; }
-  finding = true; const sb = $('f').querySelector('.primary'), sbText = sb.textContent; sb.textContent = '꽃밭을 살피는 중…';
-  let r;
-  try { r = await rpc('open_tag', { p_token: tagToken(), p_name: name, p_pin: pin }); }
-  catch (err) { toast('꽃밭 장부에 닿지 못했어요. 잠시 뒤 다시 해 주세요', 3800); return; }
-  finally { finding = false; sb.textContent = sbText; }
-  if (!r || !r.ok) {
-    toast(r && r.reason === 'locked' ? '오늘은 이 이름으로 더 시도할 수 없어요. 내일 다시 해 주세요' : r && r.reason === 'slow' ? '조금 뒤에 다시 해 주세요' : '이름이나 비밀번호가 맞지 않아요', 3800);
-    return;
-  }
-  const rows = (r.tags || []).filter(x => !x.hidden);
-  if (!rows.length) { toast('이 이름표는 지금 꽃밭에 보이지 않아요', 3600); return; }
-  const got = rows.map(tagOf), first = rows[0], t = got[0];
-  myTags = myTags.filter(x => !got.some(g => g.id === x.id || g.s === x.s)).concat(got); saveTags();
-  pickedColor = t.c; uncolored = false; markPicker($('pickIntro'), t.c);
-  friendFirst = false;
-  setUser(String(first.name).slice(0, 12), t.s, !!first.has_birth);
-  if (t.w) wardenFromTag();
-  setOpenMode(false);
-  $('inName').value = user.name;
-  $('inName').blur(); $('inOpenPin').blur(); hideHint();
-  loadTaken(); goMine();
-  setTimeout(() => toast(rows.length > 1 ? `이름표 단 꽃 ${rows.length}송이를 찾았어요` : '이름표 단 내 꽃을 찾았어요', 3600), 600);
-  inviteMyth(11000);
-}
 $('f').addEventListener('submit', async e => {
   e.preventDefault(); audio();
   if (finding) return;
   const name = $('inName').value.trim().slice(0, 12); if (!name) { $('inName').focus(); return; }
-  if (openMode) { await openByPin(name); return; }
   const bd = $('inBirth').value.replace(/\D/g, '');
   let birth = '';
   if (!bd) { store.set('birthNote', true); toast('생일(또는 기념일)을 숫자 8자리로 적어 주세요. 생일은 어디에도 남지 않아요', 4200); $('inBirth').focus(); return; }   // 이름과 생일이 함께 있어야 언제나 같은 '내 꽃'이 핀다
@@ -2570,7 +2565,8 @@ $('f').addEventListener('submit', async e => {
   else if (store.get('colorBy', {})[seed.toString(36)] != null) { const c = store.get('colorBy', {})[seed.toString(36)]; pickedColor = c > 0 && c < COLORS.length ? c : 0; uncolored = false; }
   else { pickedColor = 0; uncolored = true; }
   setUser(name, seed, !!birth);
-  inviteMyth(11000);   // 내 꽃이 다 피어난 뒤, 신화 속 꽃으로 이끈다 (하루에 한 번)
+  if (!uncolored) inviteMyth(11000);   // 내 꽃이 다 피어난 뒤, 신화 속 꽃으로 이끈다 (하루에 한 번). 빛깔을 아직 안 입혔으면 입힌 뒤에
+  tagHere = null; checkTagHere();   // 다른 기기에서 단 내 이름표가 이 꽃에 있으면 '이름표 열기'
   loadTaken();
   if (newWarden) setTimeout(() => toast(`꽃감관 ${name}님, 화첩과 합동 사진에 이름을 새겼어요`, 4600), 8200);
   $('inName').blur(); $('inBirth').blur();
@@ -2578,7 +2574,7 @@ $('f').addEventListener('submit', async e => {
   goMine();
   if (uncolored) {   // 꽃은 타고나고, 빛깔은 내가 고른다
     setTimeout(() => {
-      if (!focus || focus.kind !== 'user' || !user.gray) return;
+      if (!focus || focus.kind !== 'user' || !user.gray || (tagHere && tagHere.seed === user.seed)) return;   // 이름표가 있는 꽃이면 '열기' 안내를 앞세운다
       toast('아직 빛깔이 없는 꽃이에요. 마음에 드는 빛깔을 입혀 주세요', 5200);
       $('cPick').classList.add('tip'); setTimeout(() => $('cPick').classList.remove('tip'), 4200);
     }, 3600);
@@ -2600,6 +2596,7 @@ buildPicker($('pickCard'), $('pnCard'), async k => {
   if (first) {   // 빛깔을 처음 입혔으면 다음 걸음(이름표)으로 이끈다
     toast(`${COLORS[k].n === '꽃밭에 맡기기' ? '꽃밭이 고른 빛깔' : COLORS[k].n + ' 빛깔'}을 입혔어요. 다른 빛깔도 얼마든지 골라 볼 수 있어요`, 4600);
     setTimeout(() => { if (!user || user.gray || curTag() || !focus || focus.kind !== 'user') return; $('bTag').classList.add('glow'); toast('마음에 들면 이름표를 달아 보세요. 누구나 이 꽃을 볼 수 있게 돼요', 5200); setTimeout(() => $('bTag').classList.remove('glow'), 9000); }, 5200);
+    inviteMyth(22000);
   }
   if (cam.ppu > focusPPU(.95) * .35) { user.bloomT = now; playMelody(user.P, .9, .5); } else goMine();
 });
