@@ -729,7 +729,7 @@ function frillPath(len, wmax, P) {
   p.closePath();
   return p;
 }
-function petalPath(len, wmax, P) {
+function petalPath(len, wmax, P, wob) {
   if (P.shape === 'frill' || P.shape === 'serrate') return frillPath(len, wmax, P);
   const N = 22, p = new Path2D(), up = [];
   const notch = P.shape === 'notch';
@@ -740,8 +740,11 @@ function petalPath(len, wmax, P) {
     if (P.shape === 'ruffle') w *= 1 + P.ruffA * Math.sin(s * Math.PI * P.ruffK + P.ruffPh);
     up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s]);
   }
+  // 손맛(가까이 볼 때만): 꽃잎 양쪽 가장자리가 서로 조금 다르게 부풀고 들어간다 — 붓으로 그은 듯
+  const wl = wob ? up.map(([, w], n) => w * (1 + wob[0] * Math.sin(n / N * Math.PI * wob[2] + wob[3]) * (n / N))) : null;
+  const wr = wob ? up.map(([, w], n) => w * (1 + wob[1] * Math.sin(n / N * Math.PI * wob[4] + wob[5]) * (n / N))) : null;
   p.moveTo(0, 0);
-  for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + up[n][1]);
+  for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + (wl ? wl[n] : up[n][1]));
   const e = up[N];
   if (notch) {
     // 벚꽃잎처럼: 둥근 어깨를 지나 꼭대기 가운데만 얕게 V자로 패인다
@@ -751,7 +754,7 @@ function petalPath(len, wmax, P) {
     p.quadraticCurveTo(len * .99, y0 - w * .05, len * 1.0, y0 - w * .22);
     p.quadraticCurveTo(len * 1.0, y0 - w * .98, cx, y0 - w);
   }
-  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], up[n][2] - up[n][1]);
+  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], up[n][2] - (wr ? wr[n] : up[n][1]));
   p.closePath();
   return p;
 }
@@ -906,6 +909,17 @@ function drawFlower(g, P, R, o) {
     g.globalAlpha = 1;
   }
   const step = TAU / P.count;
+  // 손맛: 가까이 크게 볼 때만(꽃 반지름이 화면에서 140px을 넘을 때부터 서서히) 꽃잎마다 자리·길이·너비·기울기가 조금씩 어긋난다.
+  // 사람 손으로 그린 듯 완벽하지 않은 대칭. 꽃마다·꽃잎마다 정해진 값이라 볼 때마다 같은 모습이다. 멀리 있는 꽃은 셈하지 않는다
+  const hand = smooth(140, 320, px);
+  const jit = (k, q) => {
+    if (hand <= 0 || P.fused) return null;
+    const r = z => (mix((P.seed ^ Math.imul(k + 1, 0x9e37)) >>> 0, q * 7 + z) % 1000) / 1000 - .5;
+    return new DOMMatrix().rotateSelf(r(1) * step * .2 * hand * 180 / Math.PI)
+      .multiplySelf(new DOMMatrix([1, r(2) * .2 * hand, 0, 1, 0, 0]))          // 꽃잎 축이 한쪽으로 살짝 휜다(비대칭)
+      .scaleSelf(1 + r(3) * .16 * hand, 1 + r(4) * .2 * hand);                   // 길이·너비가 장마다 조금씩 다르다
+  };
+  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.05 + r(1) * .09) * hand, (.05 + r(2) * .09) * hand, 1.4 + r(3) * 1.6, r(4) * TAU, 1.4 + r(5) * 1.6, r(6) * TAU]; };
   // 겹꽃(3겹 이상)과 겹겹 꽃: 꽃잎을 겹마다 고리로 두르지 않고, 장미·동백·국화처럼 137.5°(황금각)씩 돌며 나선으로 한 장씩 붙인다
   const SP = !P.fused && (P.many || P.layers >= 3), NT = P.count * P.layers;
   let lastBand = 0;
@@ -929,7 +943,12 @@ function drawFlower(g, P, R, o) {
       sh.addColorStop(0, 'rgba(0,0,0,.34)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh; g.beginPath(); g.arc(0, 0, len * 1.14, 0, TAU); g.fill();
     }
-    const FU = P.fused, path = FU ? corollaPath(len, P) : petalPath(len, wid, P);
+    const FU = P.fused, path0 = FU ? corollaPath(len, P) : petalPath(len, wid, P);
+    const pathOf = hand > 0 && !FU ? q => petalPath(len, wid, P, wobOf(k, q)) : () => path0;
+    // 통꽃은 한 장이라 꽃잎마다 어긋낼 수 없으므로, 통꽃 전체를 아주 살짝 찌그러뜨린다(한쪽이 조금 넓고, 축이 조금 기운다)
+    let GF = null;
+    if (hand > 0 && FU) { const r = z => (mix((P.seed ^ 0x2c1b) >>> 0, k * 31 + z) % 1000) / 1000 - .5; GF = [1 + r(1) * .1 * hand, r(2) * .08 * hand, r(3) * .08 * hand, 1 + r(4) * .1 * hand]; }
+    let path = path0;
     const fill = g.createRadialGradient(0, 0, 0, 0, 0, len);
     if (FU) { fill.addColorStop(0, P.throat); fill.addColorStop(Math.min(.45, FU.f * .6), Ly.base); fill.addColorStop(1, Ly.tip); }   // 가운데 목구멍이 깊어 보이게
     else { fill.addColorStop(0, Ly.base); fill.addColorStop(.3, Ly.base); fill.addColorStop(1, Ly.tip); }
@@ -947,12 +966,13 @@ function drawFlower(g, P, R, o) {
     // (꽃잎이 덜 벌어져 넓게 겹칠 때는 두세 장 건너까지 겹치므로, 반쪽 부채꼴이 아니라 실제로 덮은 꽃잎 모양대로 오린다)
     const seam = !FU && !SP && P.count >= 5, SK = seam ? Math.min(Math.floor((P.count - 1) / 2), 3) : 0;
     for (let n = 0; n < (SP ? 1 : P.count + SK); n++) {
-      g.save(); g.rotate(Ly.rot + n * step + twist);
+      g.save(); if (GF) g.transform(GF[0], GF[1], GF[2], GF[3], 0, 0); g.rotate(Ly.rot + n * step + twist);
       if (n >= P.count) {
         const j = n - P.count, cp = new Path2D();
-        for (let m = P.count - SK + j; m < P.count; m++) cp.addPath(path, new DOMMatrix().rotateSelf((m - n) * step * 180 / Math.PI));
+        for (let m = P.count - SK + j; m < P.count; m++) { const M = new DOMMatrix().rotateSelf((m - n) * step * 180 / Math.PI), Jm = jit(k, m); cp.addPath(pathOf(m), Jm ? M.multiplySelf(Jm) : M); }
         g.clip(cp);
       }
+      const Jn = jit(k, SP ? 0 : n % P.count); if (Jn) { g.transform(Jn.a, Jn.b, Jn.c, Jn.d, Jn.e, Jn.f); path = pathOf(SP ? 0 : n % P.count); }
       if (!FU) {
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
