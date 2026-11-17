@@ -1627,11 +1627,18 @@ $('pinOk').onclick = async () => {
   const ok = await putTag(t ? t.c : user.color, pin);
   if (!ok) return;
   closePin(); refreshTagUI();
-  if (mode === 'set') { toast('비밀번호를 정했어요. 다른 기기에서도 이 이름표를 불러올 수 있어요', 4600); return; }
+  if (mode === 'set') { toast('비밀번호를 정했어요. 다른 기기에서도 이 이름표를 열 수 있어요', 4600); return; }
   if (user.slot) toast('같은 꽃을 가진 분이 먼저 자리를 잡아, 바로 곁 여분 자리에 피었어요', 5200);
   else { toast('이름표를 달았어요'); sameFlowerNote(); }
-  setTimeout(() => toast(`다른 기기에서는 이름과 비밀번호로 불러올 수 있어요`, 5200), user.slot ? 5600 : 2600);
-  inviteMyth(9000);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다 (오늘 아직 안 보였으면)
+  setTimeout(() => toast('다른 기기에서는 이름과 생일로 꽃을 찾은 뒤, 비밀번호로 열 수 있어요', 5200), user.slot ? 5600 : 2600);
+  if (isWarden(user)) {   // 이미 꽃감관: 신화 속 꽃 찾기가 아니라, 칭호가 꽃밭에 새겨졌음을 알리고 다음 걸음(금단의 꽃·이야기)으로
+    setTimeout(() => toast('꽃감관 칭호도 이름표에 새겨졌어요. 이제 누구나 볼 수 있어요', 4800), user.slot ? 11200 : 8200);
+    setTimeout(() => {
+      if (storyOn || tourOn || albumOn || pair) return;
+      if (!ruinFound()) inviteRuin(0);
+      else if (!store.get('storySeen', false)) showInvite(['여섯 송이를 모두 찾았어요.', ['꽃감관', '이 된 이야기를'], '볼까요?'], '이야기 보기', playStory);
+    }, user.slot ? 17000 : 14000);
+  } else inviteMyth(9000);   // '이제 뭐 하지?' 할 때쯤 신화 속 꽃으로 이끈다 (오늘 아직 안 보였으면)
 };
 async function openTagHere(pin) {
   tagBusy = true; let r;
@@ -1655,7 +1662,7 @@ $('bTag').onclick = async () => {
   if (!user || tagBusy) return;
   const t = curTag();
   if (!t && tagHere && tagHere.seed === user.seed) { openPin('open'); return; }   // 다른 기기에서 단 내 이름표
-  if (t && !t.p) { openPin('set'); toast('비밀번호를 정해 두면 다른 기기에서도 이 이름표를 불러올 수 있어요', 4600); return; }
+  if (t && !t.p) { openPin('set'); toast('비밀번호를 정해 두면 다른 기기에서도 이 이름표를 열 수 있어요', 4600); return; }
   if (t) {                                       // 떼기: 모든 기기에서 사라지니 한 번 더 묻는다
     if (!tagArmed || now - tagArmed > 8) {
       tagArmed = now; refreshTagUI();
