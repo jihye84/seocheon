@@ -574,8 +574,12 @@ function gen(seed, hue, palO, force) {
     //  진주(흰·크림빛 점) · 은은(꽃잎과 거의 같은 빛, 조금만 밝거나 짙게) · 보석(꽃잎과 어울리는 맑은 빛) · 형광(어둠 속에 빛나는 초현실 빛) · 금가루
     const rS2 = mulberry32((seed ^ 0x7f4a7c15) >>> 0), sk = pickW(rS2, [['pearl', 3], ['tone', 3], ['jewel', 2], ['glow', 2], ['gold', 1]]);
     const tl = tip[2], bl = base[2], hb = base[0];
-    P.spotKind = sk;
-    if (sk === 'pearl') P.spotCol = hsla(hb + 20, 30 + rS2() * 25, 92 + rS2() * 5, .8);
+    // 맑고 밝은 꽃잎에는 원래의 짙은 점(먹점)이 또렷하고 예쁘다 — 그대로 둔다.
+    // 칙칙한 꽃잎(어둡거나, 잿빛이거나, 올리브·갈색 기운)에서만 짙은 점이 얼룩처럼 보이니 고운 빛 점으로
+    const hbn = ((hb % 360) + 360) % 360, dull = bl < 42 || base[1] < 40 || (hbn >= 20 && hbn <= 95 && base[1] < 65);
+    P.spotKind = dull ? sk : 'ink';
+    if (!dull) { /* 위에서 정한 짙은 점 빛깔 그대로 */ }
+    else if (sk === 'pearl') P.spotCol = hsla(hb + 20, 30 + rS2() * 25, 92 + rS2() * 5, .8);
     else if (sk === 'tone') P.spotCol = hsla(hb + (rS2() - .5) * 16, Math.min(90, base[1] + 8), bl > 55 ? bl - 11 - rS2() * 5 : bl + 13 + rS2() * 6, .7);
     else if (sk === 'jewel') { const jh = [330, 280, 350, 200, 300, 15][(rS2() * 6) | 0] + (rS2() - .5) * 16; P.spotCol = hsla(jh, 62 + rS2() * 18, tl > 62 ? 44 + rS2() * 10 : 74 + rS2() * 8, .8); }
     else if (sk === 'glow') { const gh = [62, 72, 180, 320, 48][(rS2() * 5) | 0]; P.spotCol = hsla(gh, 100, 62 + rS2() * 8, .92); }
