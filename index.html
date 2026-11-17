@@ -591,6 +591,8 @@ function gen(seed, hue, palO, force) {
     else if (sk === 'glow') { const gh = [62, 72, 180, 320, 48][(rS2() * 5) | 0]; P.spotCol = hsla(gh, 100, 62 + rS2() * 8, .92); }
     else P.spotCol = hsla(44 + rS2() * 8, 85, 66 + rS2() * 8, .9);
     if (P.pal === 8) P.spotCol = hsla(sk === 'glow' ? 62 : 45, 90, 70, .9);
+    // 옥빛·물빛 꽃잎: 형광 옥빛 점이 신비롭다 — 셋에 하나 꼴로(먹점이 예쁜 꽃도 남도록), 따로 뽑아 다른 꽃은 그대로
+    if (P.spots && hbn >= 158 && hbn <= 205 && P.pal !== 5 && mulberry32((seed ^ 0x1b873593) >>> 0)() < .36) { P.spotKind = 'glow'; P.spotCol = hsla(176 + (hbn - 158) * .25, 100, 64 + (bl > 60 ? -6 : 4), .92); }
   }
   // 솜털(할미꽃·솜다리처럼 꽃잎 가장자리에 보송한 털): 이것도 따로 뽑는다
   const r3 = mulberry32(seed ^ 0x51ed27a3);
