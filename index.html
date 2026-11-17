@@ -216,7 +216,7 @@ body.tour #invite{display:none}
 #storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #storySkip:hover{color:#a4abc6}
 .btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
-.btns button.story.glow,#bTag.glow{animation:storyTip 1.4s ease-in-out infinite}
+.btns button.story.glow,#bTag.glow,#bPair.glow{animation:storyTip 1.4s ease-in-out infinite}
 @keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
@@ -2550,6 +2550,7 @@ function showCard() {
   $('bReport').hidden = k !== 'tag'; reportArmed = 0; $('bReport').textContent = '신고';
   $('bTag').hidden = !mine; if (mine) { tagArmed = 0; refreshTagUI(); } if (pinMode) closePin();
   $('bSave').hidden = false;
+  if (mine && user.gray) $('bPair').hidden = true;   // 흑백 꽃으로는 나란히 보지 않는다: 빛깔을 입힌 뒤에
   if (mine && user.gray) ['bTag', 'bSave', 'bPfp', 'bShare'].forEach(id => { $(id).hidden = id !== 'bTag' || !(tagHere && tagHere.seed === user.seed); });   // 빛깔부터 입히고 나서 저장·보내기·이름표
   $('vIntro').classList.add('off'); $('vCard').classList.remove('off');
   setSheet(true);
@@ -2633,7 +2634,9 @@ buildPicker($('pickCard'), $('pnCard'), async k => {
   showCard();
   if (first) {   // 빛깔을 처음 입혔으면 다음 걸음(이름표)으로 이끈다
     toast(`${COLORS[k].n === '꽃밭에 맡기기' ? '꽃밭이 고른 빛깔' : COLORS[k].n + ' 빛깔'}을 입혔어요. 다른 빛깔도 얼마든지 골라 볼 수 있어요`, 4600);
-    setTimeout(() => { if (!user || user.gray || curTag() || !focus || focus.kind !== 'user') return; $('bTag').classList.add('glow'); toast('마음에 들면 이름표를 달아 보세요. 누구나 이 꽃을 볼 수 있게 돼요', 5200); setTimeout(() => $('bTag').classList.remove('glow'), 9000); }, 5200);
+    const pairFirst = friend && friendDiffers();   // 링크를 받고 와서 내 꽃을 찾았다면: 먼저 두 꽃 나란히 보기로
+    if (pairFirst) setTimeout(() => { if (!user || user.gray || !focus || focus.kind !== 'user' || pair) return; $('bPair').classList.add('glow'); toast(`${friend.name}님의 꽃과 내 꽃을 나란히 볼 수 있어요`, 5000); setTimeout(() => $('bPair').classList.remove('glow'), 9000); }, 5200);
+    setTimeout(() => { if (!user || user.gray || curTag() || !focus || focus.kind !== 'user') return; $('bTag').classList.add('glow'); toast('마음에 들면 이름표를 달아 보세요. 누구나 이 꽃을 볼 수 있게 돼요', 5200); setTimeout(() => $('bTag').classList.remove('glow'), 9000); }, pairFirst ? 11500 : 5200);
     inviteMyth(22000);
   }
   if (cam.ppu > focusPPU(.95) * .35) { user.bloomT = now; playMelody(user.P, .9, .5); } else goMine();
