@@ -1050,21 +1050,59 @@ function drawCalyx(g, P, sc, gr, px, lw) {
   const L = (C.len || .3) * sc * (C.peek ? .45 + .55 * smooth(.15, .8, gr) : 1.3 * (1 - .32 * rf)), Wd = (C.wid || .1) * sc * (C.peek ? 1 : 1.15);   // 내다보는 꽃받침은 꽃이 벌어지며 함께 자란다
   const grad = len => { if (!C.tip) return C.col; const q = g.createLinearGradient(0, 0, len, 0); q.addColorStop(0, C.col); q.addColorStop(.5, C.col); q.addColorStop(1, C.tip); return q; };
   const wOf = (SH, wmax, s) => wmax * Math.pow(Math.sin(Math.PI * Math.pow(s, SH.a)), SH.b);
-  const hairs = (SH, len, wmax) => {   // 솜털: 가장자리를 따라 바깥으로 비스듬히 선 잔털
+  const hairs = (SH, len, wmax, wb) => {   // 솜털: 가장자리를 따라 바깥으로 비스듬히 선 잔털
     if (!C.hair || px < 60) return;
     g.strokeStyle = 'rgba(235,240,230,.3)'; g.lineWidth = lw * .5; g.beginPath();
-    for (let q = 0; q < 34; q++) { const s = .1 + .86 * q / 33, side = q & 1 ? 1 : -1, y = side * wOf(SH, wmax, s) * .9, hl = Math.min(.035, wmax * (.12 + .2 * (rz(q + 300) + .5))); g.moveTo(s * len, y); g.quadraticCurveTo(s * len + hl * .2, y + side * hl * .6, s * len + hl * .8, y + side * hl * .8); }
+    for (let q = 0; q < 34; q++) { const s = .1 + .86 * q / 33, side = q & 1 ? 1 : -1, y = side * wOf(SH, wmax, s) * .9 + (wb ? wb[6] * len * s * s : 0), hl = Math.min(.035, wmax * (.12 + .2 * (rz(q + 300) + .5))); g.moveTo(s * len, y); g.quadraticCurveTo(s * len + hl * .2, y + side * hl * .6, s * len + hl * .8, y + side * hl * .8); }
     g.stroke();
+  };
+  // 꽃받침 잎맥: 가운데 맥은 밑동이 굵고 끝으로 가늘어지며, 옆맥은 꼴에 따라 —
+  //  나란히 맥(밑동에서 갈라져 가장자리를 따라 끝으로 모임: 달걀꼴·피침꼴), 깃꼴 맥(가운데 맥에서 비스듬히 갈라짐: 장미), 외맥(실꼴)
+  //  아주 가까이서는 옆맥 사이를 잇는 잔그물맥까지
+  const veinsS = (len, wmax, SH, i, mode, wb) => {
+    const k0 = smooth(80, 160, px), W0 = Math.max(lw * 1.3, wmax * .09), bend = rz(i + 90) * wmax * .45;
+    const rib = (pts, w0, c, al) => {
+      const q = g.createLinearGradient(pts[0][0], 0, pts[pts.length - 1][0], 0); q.addColorStop(0, `rgba(${c},${al})`); q.addColorStop(.6, `rgba(${c},${al * .7})`); q.addColorStop(1, `rgba(${c},0)`);
+      g.fillStyle = q; g.beginPath(); const n = pts.length - 1;
+      for (let j = 0; j <= n; j++) { const [x, y] = pts[j], w = w0 * (1 - .8 * j / n) / 2; j ? g.lineTo(x, y + w) : g.moveTo(x, y + w); }
+      for (let j = n; j >= 0; j--) { const [x, y] = pts[j], w = w0 * (1 - .8 * j / n) / 2; g.lineTo(x, y - w); }
+      g.fill();
+    };
+    const mid = s => bend * 4 * s * (1 - s) + h * wmax * .04 * Math.sin(s * 9 + i) + (wb ? wb[6] * len * s * s : 0);   // 꽃받침 축이 휜 만큼 맥도 함께
+    const M = []; for (let j = 0; j <= 12; j++) { const s = .04 + .9 * j / 12; M.push([s * len, mid(s)]); }
+    g.save(); g.globalAlpha *= k0;
+    rib(M, W0, '8,22,4', .44);
+    rib(M.map(([x, y]) => [x, y - W0 * .75]), W0 * .5, '255,255,230', .18);    // 맥 옆의 가는 윤기(도드라져 보이게)
+    if (mode === 'parallel') {
+      const ns = wmax / len > .3 ? 2 : 1;
+      for (const sd of [-1, 1]) for (let v = 0; v < ns; v++) {
+        const f = ns === 2 ? (v ? .72 : .4) : .55, e = .78 + .12 * (rz(i * 7 + v * 3 + sd) + .5), P2 = [];
+        for (let j = 0; j <= 10; j++) { const s = .06 + (e - .06) * j / 10; P2.push([s * len, mid(s) + sd * f * wOf(SH, wmax, s) * (1 - .15 * s) + h * wmax * .03 * Math.sin(s * 7 + v + sd)]); }
+        rib(P2, W0 * .6, '8,22,4', .32);
+      }
+      if (px > 260) {   // 잔그물맥: 옆맥 사이를 비스듬히 잇는 가는 맥
+        g.strokeStyle = 'rgba(8,22,4,.13)'; g.lineWidth = lw * .5; g.beginPath();
+        for (let q = 0; q < 10; q++) {
+          const s = .15 + .65 * (q + .5) / 10, sd = q & 1 ? 1 : -1, w = wOf(SH, wmax, s);
+          g.moveTo(s * len, mid(s) + sd * w * .12); g.quadraticCurveTo((s + .04) * len, mid(s) + sd * w * .35, (s + .07) * len, mid(s + .07) + sd * w * (ns === 2 ? .45 : .55));
+        }
+        g.stroke();
+      }
+    } else if (mode === 'pinnate') {
+      for (let q = 0; q < 8; q++) {
+        const s0 = .14 + .62 * (q >> 1) / 3 + rz(i * 11 + q) * .03, sd = q & 1 ? 1 : -1, P2 = [];
+        for (let j = 0; j <= 6; j++) { const t = j / 6, s = s0 + .14 * t; P2.push([s * len, mid(s) + sd * wOf(SH, wmax, s) * .8 * Math.sin(t * Math.PI / 2)]); }
+        rib(P2, W0 * .5, '8,22,4', .3);
+      }
+    }
+    g.restore();
   };
   const one = (i, len, wmax, SH, ang) => {
     g.save(); g.rotate(ang + rz(i + 50) * .12 * (1 + h));
-    const p = petalPath(len, wmax, SH, wobS(i)); g.fillStyle = grad(len); g.fill(p);
+    const wb = wobS(i), p = petalPath(len, wmax, SH, wb); g.fillStyle = grad(len); g.fill(p);
     if (rf > 0) { g.fillStyle = `rgba(255,255,240,${.13 * rf})`; g.fill(p); }
-    if (px > 80) {   // 가운데 맥: 곧은 금이 아니라 살짝 휘며 끝으로 흐려진다
-      const q = g.createLinearGradient(0, 0, len, 0); q.addColorStop(0, 'rgba(10,25,5,.28)'); q.addColorStop(1, 'rgba(10,25,5,0)');
-      g.strokeStyle = q; g.lineWidth = lw * 1.1; g.beginPath(); g.moveTo(len * .08, 0); g.quadraticCurveTo(len * .5, rz(i + 90) * wmax * .5, len * .9, rz(i + 91) * wmax * .4); g.stroke();
-    }
-    hairs(SH, len, wmax);
+    if (px > 80) veinsS(len, wmax, SH, i, C.type === 'rose' ? 'pinnate' : C.type === 'linear' || i >= 100 ? 'single' : 'parallel', wb);
+    hairs(SH, len, wmax, wb);
     g.restore();
   };
   const T = C.type;
@@ -1087,8 +1125,9 @@ function drawCalyx(g, P, sc, gr, px, lw) {
       for (let i = 0; i < C.m; i++) {
         const ang = r0 + (i + (j & 1) * .5) / C.m * TAU + rz(j * 40 + i) * .1, k = j * 40 + i;
         g.save(); g.rotate(ang);
-        const p = petalPath(len * (.9 + .2 * (rz(k + 500) + .5)), wmax, SH, wobS(k)); g.fillStyle = grad(len); g.fill(p);
+        const ll = len * (.9 + .2 * (rz(k + 500) + .5)), wb = wobS(k), p = petalPath(ll, wmax, SH, wb); g.fillStyle = grad(len); g.fill(p);
         if (px > 50) { g.strokeStyle = C.rim; g.lineWidth = lw * Math.max(1, px / 220); g.stroke(p); }
+        if (px > 110) veinsS(ll, wmax, SH, k, 'parallel', wb);
         if (rf > 0) { g.fillStyle = `rgba(255,255,240,${.1 * rf})`; g.fill(p); }
         g.restore();
       }
@@ -1103,7 +1142,7 @@ function drawCalyx(g, P, sc, gr, px, lw) {
     const cr = C.cr * sc;
     for (let i = 0; i < C.n; i++) {
       g.save(); g.rotate(r0 + i / C.n * TAU + rz(i) * .1);
-      const p = petalPath(cr + L * (.85 + .3 * (rz(i + 30) + .5)), Wd, C.SH, wobS(i)); g.fillStyle = grad(cr + L); g.fill(p); g.restore();
+      const tl = cr + L * (.85 + .3 * (rz(i + 30) + .5)), wb = wobS(i), p = petalPath(tl, Wd, C.SH, wb); g.fillStyle = grad(cr + L); g.fill(p); if (px > 80) veinsS(tl, Wd, C.SH, i, 'single', wb); g.restore();
     }
     const q = g.createRadialGradient(0, 0, cr * .3, 0, 0, cr); q.addColorStop(0, C.col); q.addColorStop(.85, C.col); q.addColorStop(1, C.rim);
     g.fillStyle = q; g.beginPath(); g.arc(0, 0, cr, 0, TAU); g.fill();
