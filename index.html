@@ -739,18 +739,21 @@ function frillPath(len, wmax, P) {
 }
 function petalPath(len, wmax, P, wob) {
   if (P.shape === 'frill' || P.shape === 'serrate') return frillPath(len, wmax, P);
-  const N = 22, p = new Path2D(), up = [];
+  const N = wob ? 40 : 22, p = new Path2D(), up = [];   // 손맛을 줄 때는 점을 촘촘히: 가장자리가 붓처럼 흔들린다
   const notch = P.shape === 'notch';
   for (let n = 0; n <= N; n++) {
     const s = n / N, sm = notch ? s * .84 : s;
     let w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
     if (P.shape === 'fringe' && s > .5) { const x = s * P.teeth * 2; w *= 1 + .24 * Math.abs((x % 2) - 1) * ((s - .5) / .5); }
     if (P.shape === 'ruffle') w *= 1 + P.ruffA * Math.sin(s * Math.PI * P.ruffK + P.ruffPh);
-    up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s]);
+    up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s + (wob ? wob[6] * len * s * s : 0)]);   // 꽃잎마다 축이 제멋대로 살짝 휜다(각도 오차)
   }
   // 손맛(가까이 볼 때만): 꽃잎 양쪽 가장자리가 서로 조금 다르게 부풀고 들어간다 — 붓으로 그은 듯
-  const wl = wob ? up.map(([, w], n) => w * (1 + wob[0] * Math.sin(n / N * Math.PI * wob[2] + wob[3]) * (n / N))) : null;
-  const wr = wob ? up.map(([, w], n) => w * (1 + wob[1] * Math.sin(n / N * Math.PI * wob[4] + wob[5]) * (n / N))) : null;
+  // + 손떨림: 가장자리 선이 굵고 느린 물결과 잘고 빠른 떨림을 함께 탄다 (양쪽이 서로 다르게)
+  const trem = (n, side) => { const s = n / N, h = (mix(wob[8] + side * 977, n) % 1000) / 1000 - .5, h2 = (mix(wob[8] + side * 977, n + 1) % 1000) / 1000 - .5;
+    return wmax * wob[7] * Math.sqrt(s) * (.55 * Math.sin(s * Math.PI * (5 + side * 2.3) + wob[3 + side * 2]) + .45 * (h + h2)); };
+  const wl = wob ? up.map(([, w], n) => w * (1 + wob[0] * Math.sin(n / N * Math.PI * wob[2] + wob[3]) * (n / N)) + trem(n, 0)) : null;
+  const wr = wob ? up.map(([, w], n) => w * (1 + wob[1] * Math.sin(n / N * Math.PI * wob[4] + wob[5]) * (n / N)) + trem(n, 1)) : null;
   p.moveTo(0, 0);
   for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + (wl ? wl[n] : up[n][1]));
   const e = up[N];
@@ -953,7 +956,9 @@ function drawFlower(g, P, R, o) {
       .multiplySelf(new DOMMatrix([1, r(2) * .1 * hand, 0, 1, 0, 0]))          // 꽃잎 축이 한쪽으로 살짝 휜다(비대칭)
       .scaleSelf(1 + r(3) * .08 * hand, 1 + r(4) * .1 * hand);                   // 길이·너비가 장마다 조금씩 다르다
   };
-  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.025 + r(1) * .045) * hand, (.025 + r(2) * .045) * hand, 1.4 + r(3) * 1.6, r(4) * TAU, 1.4 + r(5) * 1.6, r(6) * TAU]; };
+  // 가장자리 손맛은 꽃 전체 찌그러짐(hand)과 따로: 둥근 꽃잎도 선은 손으로 그린 듯 흔들리게
+  const handE = smooth(140, 320, px) * (P.shape === 'round' || P.shape === 'spoon' || P.shape === 'notch' ? .75 : 1);
+  const wobOf = (k, q) => { const r = z => (mix((P.seed ^ Math.imul(k + 7, 0x51ed)) >>> 0, q * 11 + z) % 1000) / 1000; return [(.04 + r(1) * .06) * handE, (.04 + r(2) * .06) * handE, 1.4 + r(3) * 1.6, r(4) * TAU, 1.4 + r(5) * 1.6, r(6) * TAU, (r(7) - .5) * .16 * handE, .04 * handE, (mix(P.seed, k * 131 + q) >>> 0)]; };
   // 겹꽃(3겹 이상)과 겹겹 꽃: 꽃잎을 겹마다 고리로 두르지 않고, 장미·동백·국화처럼 137.5°(황금각)씩 돌며 나선으로 한 장씩 붙인다
   const SP = !P.fused && (P.many || P.layers >= 3), NT = P.count * P.layers;
   let lastBand = 0;
