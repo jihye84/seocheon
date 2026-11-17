@@ -641,6 +641,7 @@ function gen(seed, hue, palO, force) {
   const glossOk = (P.shape === 'round' || P.shape === 'spoon' || P.shape === 'notch') && count <= 8 && !P.fused;
   P.gloss = r8() < .35 && glossOk && !force.flat ? { k: .55 + r8() * .45, sharp: r8() < .5 } : null;
   P.cal = calyxOf(P, mulberry32(seed ^ 0x5e9a1c3), force);   // 꽃받침: 따로 뽑아서 다른 생김새는 그대로 둔다
+  greenery(P, mulberry32(seed ^ 0x3c6ef372));   // 잎·꽃받침의 초록: 올리브부터 연두·에메랄드·세이지까지, 잎 모양도 제각각(따로 뽑음)
   if (!custom) genCache.set(ck, P);
   return P;
 }
@@ -809,16 +810,81 @@ function petalPath(len, wmax, P, wob, vr) {
   p.closePath();
   return p;
 }
-function drawLeaf(g, L, lw, len) {
-  len = len || L.len; const w = L.wid;
-  const p = new Path2D();
-  p.moveTo(.15, 0);
-  p.bezierCurveTo(len * .45, w, len * .82, w * .55, len, 0);
-  p.bezierCurveTo(len * .82, -w * .55, len * .45, -w, .15, 0);
+/* 초록의 결: 한 포기의 잎과 꽃받침은 같은 초록 집안을 나눠 갖는다
+   올리브 · 황록 · 연두 · 풀빛 · 짙은 숲빛 · 에메랄드 · 청록 세이지 · 은빛 세이지 */
+const GREENS = [[[76, 36, 29], 3], [[66, 46, 35], 2], [[90, 58, 39], 3], [[108, 46, 30], 4], [[128, 42, 22], 3], [[150, 56, 29], 3], [[166, 30, 32], 2], [[102, 16, 40], 2]];
+function greenery(P, r) {
+  const [gh, gs, gl] = pickW(r, GREENS), h = gh + (r() - .5) * 10, sa = gs + (r() - .5) * 8, li = gl + (r() - .5) * 6;
+  const LEAFK = [['lance', 4], ['ellipse', 3], ['ovate', 2], ['obovate', 1], ['linear', 1]], kind = pickW(r, LEAFK);   // 한 포기 안에서는 잎꼴이 같다
+  const edge = pickW(r, [['smooth', 5], ['serrate', 2], ['wavy', 2]]), teeth = 9 + ((r() * 9) | 0), td = .1 + r() * .12;
+  P.leaves.forEach((L, i) => {
+    const dh = (r() - .5) * 8, dl = (r() - .5) * 5;
+    L.col = hsla(h + dh, sa, li + dl); L.col2 = hsla(h + dh + 8, Math.min(80, sa + 6), li + dl + 13);
+    const pk = { lance: .33, ellipse: .5, ovate: .3, obovate: .66, linear: .5 }[kind];
+    L.sh = { kind, a: shapeA(pk + (r() - .5) * .08), b: kind === 'linear' ? .45 : kind === 'ellipse' ? .7 : .85, edge: kind === 'linear' ? 'smooth' : edge, teeth, td: td * (.8 + r() * .4),
+      wa: .04 + r() * .05, wk: 3 + r() * 3, wp: r() * TAU, bend: (r() - .5) * .3, asym: (r() - .5) * .22, drip: r() < .3 ? .4 + r() * .4 : 0, sd: (P.seed ^ (i * 0x9e37 + 0x11)) >>> 0 };
+    if (kind === 'linear') L.wid *= .5; else if (kind === 'ovate' || kind === 'obovate') L.wid *= 1.12;
+  });
+  const C = P.cal;
+  if (C && C.type !== 'petaloid') {
+    C.col = C.type === 'ruff' ? hsla(h + 5, Math.min(80, sa + 12), li + 12) : hsla(h + (r() - .5) * 6, sa, li - 2);
+    C.rim = hsla(h - 12, Math.max(12, sa - 18), li + 30, .8);
+    if (C.tip && !/hsla\((3[3-6]\d|[0-9]\.)/.test(C.tip)) C.tip = hsla(h + 16, sa - 4, li + 15);   // 끝이 연둣빛으로 옅어지는 꽃받침도 같은 집안 초록으로
+  }
+}
+function drawLeaf(g, L, lw, len, px) {
+  len = len || L.len; const w = L.wid, S = L.sh;
+  if (!S) {
+    const p = new Path2D(); p.moveTo(.15, 0); p.bezierCurveTo(len * .45, w, len * .82, w * .55, len, 0); p.bezierCurveTo(len * .82, -w * .55, len * .45, -w, .15, 0);
+    const gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, L.col); gr.addColorStop(1, L.col2); g.fillStyle = gr; g.fill(p); return;
+  }
+  // 손으로 그린 잎: 잎꼴(피침·타원·달걀·거꿀달걀·줄꼴), 가장자리(매끈·톱니·물결), 가운데 맥이 휘고 좌우가 조금 다르며, 끝이 물방울처럼 빠지기도
+  px = px || 0;
+  const near = px > 60, h = smooth(120, 300, px), N = near ? Math.max(40, S.teeth * 4) : 18, x0 = .15, L0 = len - x0;
+  const rz = z => (mix(S.sd, z) % 1000) / 1000 - .5, ax = s => S.bend * L0 * s * s;
+  const up = [], dn = [];
+  for (let i = 0; i <= N; i++) {
+    const s = i / N, x = x0 + L0 * s;
+    let pr = Math.pow(Math.sin(Math.PI * Math.pow(Math.min(s, .999), S.a)), S.b);
+    if (S.drip && s > .8) pr *= 1 - S.drip * smooth(.8, 1, s) * .5;
+    let eu = 1, ed = 1;
+    if (near && S.edge === 'serrate' && s > .08 && s < .97) { const f1 = (s * S.teeth) % 1, f2 = (s * S.teeth + .37) % 1; eu = 1 - S.td * f1 * (1 - s * .3); ed = 1 - S.td * f2 * (1 - s * .3); }
+    else if (S.edge === 'wavy') { eu = 1 + S.wa * Math.sin(s * Math.PI * S.wk + S.wp); ed = 1 + S.wa * Math.sin(s * Math.PI * S.wk + S.wp + 1.7); }
+    const tr = side => h * w * .035 * Math.sqrt(s) * (Math.sin(s * 23 + side * 2.1 + S.wp) * .6 + rz(i * 2 + side) * .8);
+    up.push([x, ax(s) + w * pr * (1 + S.asym) * eu + tr(0)]); dn.push([x, ax(s) - w * pr * (1 - S.asym) * ed - tr(1)]);
+  }
+  const p = new Path2D(); p.moveTo(x0, 0);
+  for (const q of up) p.lineTo(q[0], q[1]);
+  for (let i = N; i >= 0; i--) p.lineTo(dn[i][0], dn[i][1]);
+  p.closePath();
   const gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, L.col); gr.addColorStop(1, L.col2);
   g.fillStyle = gr; g.fill(p);
-  g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = lw;
-  g.beginPath(); g.moveTo(.2, 0); g.lineTo(len * .92, 0); g.stroke();
+  if (!near) return;
+  g.save(); g.clip(p);
+  // 가운데 맥을 따라 한쪽 반은 살짝 그늘(잎이 가운데로 접혀 있다)
+  g.fillStyle = 'rgba(5,15,5,.1)'; g.beginPath(); g.moveTo(x0, 0); for (let i = 0; i <= 12; i++) { const s = i / 12; g.lineTo(x0 + L0 * s, ax(s)); } g.lineTo(len, -w * 2); g.lineTo(x0, -w * 2); g.fill();
+  // 잎맥: 가운데 맥은 밑동이 굵고 끝으로 가늘게, 곁맥은 비스듬히 갈라져 가장자리 앞에서 휘어 오른다(줄꼴은 나란히맥)
+  const vg = g.createLinearGradient(x0, 0, len, 0); vg.addColorStop(0, 'rgba(235,255,220,.26)'); vg.addColorStop(1, 'rgba(235,255,220,.04)');
+  g.fillStyle = vg; g.beginPath();
+  const mw = Math.max(lw * 1.2, w * .06);
+  for (let i = 0; i <= 12; i++) { const s = i / 12; g.lineTo(x0 + L0 * s, ax(s) + mw * (1 - .85 * s) / 2); }
+  for (let i = 12; i >= 0; i--) { const s = i / 12; g.lineTo(x0 + L0 * s, ax(s) - mw * (1 - .85 * s) / 2); }
+  g.fill();
+  if (px > 90) {
+    g.strokeStyle = 'rgba(235,255,220,.1)'; g.lineWidth = lw * Math.max(.7, px / 400); g.lineCap = 'round'; g.beginPath();
+    if (S.kind === 'linear') {
+      for (const f of [-.5, .5]) { g.moveTo(x0 + L0 * .05, ax(.05) + f * w * .3); g.quadraticCurveTo(x0 + L0 * .5, ax(.5) + f * w * .55, x0 + L0 * .93, ax(.93) + f * w * .1); }
+    } else {
+      const nv = 5 + ((rz(3) + .5) * 4 | 0);
+      for (let v = 0; v < nv; v++) for (const sd of [-1, 1]) {
+        const s0 = .08 + .78 * (v + .5 + (sd > 0 ? .25 : 0)) / nv + rz(v * 2 + sd) * .03, pr = Math.pow(Math.sin(Math.PI * Math.pow(Math.min(s0 + .12, .99), S.a)), S.b);
+        const xa = x0 + L0 * s0, ya = ax(s0), xb = x0 + L0 * Math.min(.97, s0 + .16), yb = ax(Math.min(.97, s0 + .16)) + sd * w * pr * .78 * (1 + sd * S.asym);
+        g.moveTo(xa, ya); g.quadraticCurveTo(xa + L0 * .03, ya + sd * w * pr * .5, xb, yb);
+      }
+    }
+    g.stroke();
+  }
+  g.restore();
 }
 const alphaOf = (col, a) => col.replace(/,\s*[\d.]+\)$/, `,${a})`);
 /* 꽃심 테두리: 완전한 원이 아니라 조금씩 울퉁불퉁한 모양 */
@@ -1185,7 +1251,7 @@ function drawFlower(g, P, R, o) {
   g.save(); g.scale(R, R);
   const lw = 1 / R;
   const leafS = full ? 1 : ease3(clamp01((gr - .06) / .25));
-  if (leafS > 0) for (const L of P.leaves) { g.save(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw); g.restore(); }
+  if (leafS > 0) for (const L of P.leaves) { g.save(); g.rotate(L.ang); g.scale(leafS, leafS); drawLeaf(g, L, lw, 0, px); g.restore(); }
   const pk = P.cal && P.cal.peek && px > 20, sepS = full ? (pk ? 1 : 0) : ease3(clamp01(gr / .14)), sepA = pk ? 1 : 1 - clamp01((gr - .72) / .22);
   if (sepS > 0 && sepA > 0) {     // 꽃받침 (꽃잎 수에 맞춰 바깥 꽃잎 사이사이에)
     g.globalAlpha = sepA; drawCalyx(g, P, sepS, gr, px, lw); g.globalAlpha = 1;
