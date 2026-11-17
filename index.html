@@ -1352,6 +1352,13 @@ function loadMyth() {
 const saveMyth = () => { mythBy[user.seed.toString(36)] = [...mythFound]; store.set('mythBy', mythBy); };
 // 내 꽃: 이 기기에서 여섯 송이를 모았거나, 이 기기가 연 내 이름표에 꽃감관이라 적혀 있으면 꽃감관
 const isWarden = sp => !!sp && (sp.kind === 'user' ? mythFound.size === MYTHS.length || (typeof myTags !== 'undefined' && myTags.some(t => t.s === sp.seed && t.w)) : !!sp.warden);
+// 금단의 꽃(일곱째)을 찾았는지: 꽃마다 기억하고, 이름표가 있으면 장부에도 적어 어느 기기에서나 같게 보인다
+const ruinFound = () => { if (!user) return false; const k = user.seed.toString(36); return !!(store.get('ruinBy', {})[k] || myTags.some(t => t.s === user.seed && t.r)); };
+function markRuin() {
+  if (!user) return;
+  const rb = store.get('ruinBy', {}); rb[user.seed.toString(36)] = 1; store.set('ruinBy', rb);
+  const t = curTag(); if (t && !t.r) putTag(t.c);   // 장부에도
+}
 // 꽃감관 칭호는 이름표에 적혀 있다: 내 이름표를 연 기기에서는 그 꽃이 곧 꽃감관의 꽃이다
 function wardenFromTag() {
   if (!user || isWarden(user)) return;
@@ -1509,7 +1516,7 @@ const tagNames = sp => sp.more ? `${sp.name} 외 ${sp.more}명` : sp.name;
 let myTags = (() => { const t = store.get('tags', []); return Array.isArray(t) ? t.filter(x => x && typeof x.s === 'number' && typeof x.id === 'string') : []; })();   // {id, s: 씨앗, c: 빛깔, slot, w: 꽃감관, p: 비밀번호 있음}
 const curTag = () => user ? myTags.find(t => t.s === user.seed) || null : null;
 const saveTags = () => store.set('tags', myTags);
-const tagOf = r => ({ id: String(r.id), s: Number(r.seed) >>> 0, c: r.color | 0, slot: r.slot | 0, w: !!r.warden, p: !!r.has_pin });
+const tagOf = r => ({ id: String(r.id), s: Number(r.seed) >>> 0, c: r.color | 0, slot: r.slot | 0, w: !!r.warden, p: !!r.has_pin, r: !!r.ruin });
 let takenSet = new Set(), takenFor = null, tagArmed = 0, tagBusy = false;
 
 // 이 기기가 연 이름표들을 장부와 맞춘다 (장부에서 사라졌으면 여기서도 지운다)
@@ -1521,7 +1528,8 @@ async function syncMyTags() {
     myTags = rows.filter(r => !r.hidden).map(tagOf); saveTags(); placeUser();
     const t = curTag();
     if (t && t.w && !isWarden(user)) wardenFromTag();
-    else if (t && !t.w && isWarden(user)) putTag(t.c);   // 이 기기에서 여섯 송이를 마저 찾았으면 이름표에도 적는다
+    else if (t && !t.w && isWarden(user)) putTag(t.c);
+    else if (t && !t.r && store.get('ruinBy', {})[user.seed.toString(36)]) putTag(t.c);   // 이 기기에서 찾은 금단의 꽃을 장부에도   // 이 기기에서 여섯 송이를 마저 찾았으면 이름표에도 적는다
     if (t && (t.c !== user.color || user.gray)) {   // 다른 기기에서 빛깔을 바꿨으면 여기서도 따라간다
       uncolored = false;
       pickedColor = t.c; markPicker($('pickIntro'), pickedColor); setUser(user.name, user.seed);
@@ -1561,9 +1569,9 @@ async function loadTaken() {
 async function putTag(color, pin) {
   if (tagBusy) return false; tagBusy = true;
   try {
-    const r = await rpc('put_tag', { p_token: tagToken(), p_seed: user.seed, p_color: color, p_name: user.name, p_has_birth: !!user.hasBirth, p_i: user.bi, p_j: user.bj, p_warden: isWarden(user), p_pin: pin || null });
+    const r = await rpc('put_tag', { p_token: tagToken(), p_seed: user.seed, p_color: color, p_name: user.name, p_has_birth: !!user.hasBirth, p_i: user.bi, p_j: user.bj, p_warden: isWarden(user), p_pin: pin || null, p_ruin: !!store.get('ruinBy', {})[user.seed.toString(36)] || !!(curTag() && curTag().r) });
     if (r.ok) {
-      const old = curTag(), t = { id: String(r.id), s: user.seed, c: color, slot: r.slot | 0, w: (old && old.w) || isWarden(user), p: (old && old.p) || !!pin };
+      const old = curTag(), t = { id: String(r.id), s: user.seed, c: color, slot: r.slot | 0, w: (old && old.w) || isWarden(user), p: (old && old.p) || !!pin, r: (old && old.r) || !!store.get('ruinBy', {})[user.seed.toString(36)] };
       myTags = myTags.filter(x => x.s !== user.seed).concat(t); saveTags(); placeUser(); return true;
     }
     if (r.reason === 'color_taken') { toast('이 빛깔은 같은 꽃을 가진 분이 먼저 골랐어요', 3200); loadTaken(); }
@@ -1734,7 +1742,7 @@ $('mythBtn').onclick = () => {
   if (!user) { toast('내 꽃을 먼저 찾으면 신화 속 꽃을 모을 수 있어요', 4200); showIntro(); return; }
   const left = MYTHS.filter(m => !mythFound.has(m.id));
   if (!left.length) {
-    if (isWarden(user) && !store.get('ruinSeen', false)) {   // 꽃감관: 일곱째 꽃(금단의 꽃)으로 길잡이
+    if (isWarden(user) && !ruinFound()) {   // 꽃감관: 일곱째 꽃(금단의 꽃)으로 길잡이
       if (guideM === RUIN && now < guideUntil) { guideUntil = 0; return; }
       guideM = RUIN; guideUntil = Infinity; hideHint(); toast('꽃감관만 아는 일곱째 꽃을 찾아가요', 3200); return;
     }
@@ -1848,11 +1856,11 @@ function showInvite(lines, goLabel = '찾으러 가기', act = goGuide) {
   clearTimeout(inviteOffT); inviteOffT = setTimeout(hideInvite, 30000);
 }
 function inviteRuin(delay) {   // 꽃감관에게, 아직 못 본 금단의 꽃을 하루 한 번 알려 준다
-  if (!user || !isWarden(user) || store.get('ruinSeen', false)) return;
+  if (!user || !isWarden(user) || ruinFound()) return;
   const key = 'ruin|' + user.seed.toString(36), day = new Date().toDateString();
   if (store.get('invitedOn', {})[key] === day) return;
   setTimeout(() => {
-    if (!user || !isWarden(user) || store.get('ruinSeen', false) || storyOn || albumOn || pair || tourOn || $('intro') || (guideM === RUIN && now < guideUntil)) return;
+    if (!user || !isWarden(user) || ruinFound() || storyOn || albumOn || pair || tourOn || $('intro') || (guideM === RUIN && now < guideUntil)) return;
     if (anim || now - lastInput < 2.5) { inviteRuin(3000); return; }
     const m = store.get('invitedOn', {}); m[key] = day; store.set('invitedOn', m);
     showInvite(['꽃밭 깊은 곳에', ['꽃감관', '만 볼 수 있는'], '금단의 꽃이 피어 있어요.'], '찾으러 가기', () => { if (!wide) setSheet(false); refreshSpecials(); guideM = RUIN; guideUntil = Infinity; hideHint(); });
@@ -2466,7 +2474,7 @@ function focusCell(i, j, opts = {}) {
       playMelody(sp.P, 1, .8);
       if (sp.secret) {   // 금단의 꽃
         if (guideM === RUIN) guideUntil = 0;
-        if (!store.get('ruinSeen', false)) { store.set('ruinSeen', true); setTimeout(() => toast('금단의 꽃을 찾았어요 · 꽃감관만 아는 꽃이에요', 4600), 900); }
+        if (!ruinFound()) { markRuin(); setTimeout(() => toast('금단의 꽃을 찾았어요 · 꽃감관만 아는 꽃이에요', 4600), 900); }
       }
       else if (sp.kind === 'myth' && !user) setTimeout(() => toast('내 꽃을 먼저 찾으면 이 꽃을 모을 수 있어요', 4200), 900);
       else if (sp.kind === 'myth' && !mythFound.has(sp.id) && nextMyth() && nextMyth().id !== sp.id) {   // 아직 차례가 아닌 꽃
@@ -3188,7 +3196,7 @@ function frame(ms) {
     const allM = user ? isWarden(user) : mythFound.size === MYTHS.length;
     const guiding = guideM && now < guideUntil && (guideM === RUIN || !mythFound.has(guideM.id));
     // 꽃감관에게는 일곱째 꽃(꽃감관만 아는 금단의 꽃)까지 센다
-    const got = allM ? MYTHS.length + (store.get('ruinSeen', false) ? 1 : 0) : mythFound.size, tot = allM ? MYTHS.length + 1 : MYTHS.length;
+    const got = allM ? MYTHS.length + (ruinFound() ? 1 : 0) : mythFound.size, tot = allM ? MYTHS.length + 1 : MYTHS.length;
     $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${got}/${tot}${allM && got === tot ? '' : guiding ? ' · 길잡이 끄기' : ' ›'}`; $('mythBtn').classList.toggle('done', allM);
     $('hudCount').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
@@ -3410,6 +3418,8 @@ whenSized(function start() {
       refreshSpecials();
     }
   }
+  // 예전에는 금단의 꽃을 기기에 하나로 적었다: 지금 내 꽃(꽃감관)으로 옮긴다
+  if (store.get('ruinSeen', false)) { if (user && isWarden(user)) { const rb = store.get('ruinBy', {}); rb[user.seed.toString(36)] = 1; store.set('ruinBy', rb); } store.set('ruinSeen', false); }
   syncMyTags();
   const ri = ((Math.random() * 600) | 0) - 300, rj = ((Math.random() * 600) | 0) - 300;
   let afterIntro = null;
