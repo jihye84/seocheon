@@ -773,7 +773,7 @@ function frillPath(len, wmax, P, wob) {
   p.closePath();
   return p;
 }
-function petalPath(len, wmax, P, wob) {
+function petalPath(len, wmax, P, wob, vr) {
   if (P.shape === 'frill' || P.shape === 'serrate') return frillPath(len, wmax, P, wob);
   const N = wob ? 40 : 22, p = new Path2D(), up = [];   // 손맛을 줄 때는 점을 촘촘히: 가장자리가 붓처럼 흔들린다
   const notch = P.shape === 'notch';
@@ -781,17 +781,21 @@ function petalPath(len, wmax, P, wob) {
     const s = notch ? n / N : 1 - Math.pow(1 - n / N, 1.6), sm = notch ? s * .84 : s;   // 끝으로 갈수록 점을 촘촘히: 넓은 꽃잎 끝이 꺾인 다각형처럼 보이지 않게
     let w = wmax * Math.pow(Math.sin(Math.PI * Math.pow(sm, P.a)), P.b);
     if (P.shape === 'fringe' && s > .5) { const x = s * P.teeth * 2; w *= 1 + .24 * Math.abs((x % 2) - 1) * ((s - .5) / .5); }
-    if (P.shape === 'ruffle') w *= 1 + P.ruffA * Math.sin(s * Math.PI * P.ruffK + P.ruffPh);
-    up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s + (wob ? wob[6] * len * s * s : 0)]);   // 꽃잎마다 축이 제멋대로 살짝 휜다(각도 오차)
+    up.push([s * len * (notch ? .9 : 1), w, P.curl * len * s * s + (wob ? wob[6] * len * s * s : 0), s]);   // 꽃잎마다 축이 제멋대로 살짝 휜다(각도 오차)
   }
+  // 물결꽃: 물결이 꽃잎마다·양쪽마다 다르게 일렁인다(같은 자리에 같은 물결이면 복사해 붙인 듯 보인다)
+  const RV = vr != null ? vr : wob ? wob[8] : null, rq = z => (mix((RV | 0) >>> 0, z) % 1000) / 1000 - .5;
+  const ruf = P.shape !== 'ruffle' ? null : RV == null ? [0, 0].map(() => [P.ruffA, P.ruffK, P.ruffPh])
+    : [0, 1].map(sd => [P.ruffA * (.65 + .7 * (rq(sd * 3 + 1) + .5)), P.ruffK + rq(sd * 3 + 2) * 1.4, P.ruffPh + rq(sd * 3 + 3) * 3.4]);
+  const rw = (n, sd) => ruf ? 1 + ruf[sd][0] * Math.sin(up[n][3] * Math.PI * ruf[sd][1] + ruf[sd][2]) : 1;
   // 손맛(가까이 볼 때만): 꽃잎 양쪽 가장자리가 서로 조금 다르게 부풀고 들어간다 — 붓으로 그은 듯
   // + 손떨림: 가장자리 선이 굵고 느린 물결과 잘고 빠른 떨림을 함께 탄다 (양쪽이 서로 다르게)
   const trem = (n, side) => { const s = n / N, h = (mix(wob[8] + side * 977, n) % 1000) / 1000 - .5, h2 = (mix(wob[8] + side * 977, n + 1) % 1000) / 1000 - .5;
     return wmax * wob[7] * Math.sqrt(s) * (.55 * Math.sin(s * Math.PI * (5 + side * 2.3) + wob[3 + side * 2]) + .45 * (h + h2)); };
-  const wl = wob ? up.map(([, w], n) => w * (1 + wob[0] * Math.sin(n / N * Math.PI * wob[2] + wob[3]) * (n / N)) + trem(n, 0)) : null;
-  const wr = wob ? up.map(([, w], n) => w * (1 + wob[1] * Math.sin(n / N * Math.PI * wob[4] + wob[5]) * (n / N)) + trem(n, 1)) : null;
+  const wl = wob ? up.map(([, w], n) => w * rw(n, 0) * (1 + wob[0] * Math.sin(n / N * Math.PI * wob[2] + wob[3]) * (n / N)) + trem(n, 0)) : null;
+  const wr = wob ? up.map(([, w], n) => w * rw(n, 1) * (1 + wob[1] * Math.sin(n / N * Math.PI * wob[4] + wob[5]) * (n / N)) + trem(n, 1)) : null;
   p.moveTo(0, 0);
-  for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + (wl ? wl[n] : up[n][1]));
+  for (let n = 0; n <= N; n++) p.lineTo(up[n][0], up[n][2] + (wl ? wl[n] : up[n][1] * rw(n, 0)));
   const e = up[N];
   if (notch) {
     // 벚꽃잎처럼: 둥근 어깨를 지나 꼭대기 가운데만 얕게 V자로 패인다
@@ -801,7 +805,7 @@ function petalPath(len, wmax, P, wob) {
     p.quadraticCurveTo(len * .99, y0 - w * .05, len * 1.0, y0 - w * .22);
     p.quadraticCurveTo(len * 1.0, y0 - w * .98, cx, y0 - w);
   }
-  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], up[n][2] - (wr ? wr[n] : up[n][1]));
+  for (let n = N; n >= 0; n--) p.lineTo(up[n][0], up[n][2] - (wr ? wr[n] : up[n][1] * rw(n, 1)));
   p.closePath();
   return p;
 }
@@ -1246,8 +1250,9 @@ function drawFlower(g, P, R, o) {
     let curve = null;
     if (px > 48) {
       curve = g.createLinearGradient(0, -wid, 0, wid);
-      curve.addColorStop(0, 'rgba(20,10,30,.2)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
-      curve.addColorStop(.75, 'rgba(255,255,255,.1)'); curve.addColorStop(1, 'rgba(255,255,255,.2)');
+      // 얇은 꽃잎: 한쪽 가장자리만 살짝 그늘지고 맞은편은 은은히 밝게 — 모서리가 두툼한 판처럼 보이지 않게 폭을 좁고 옅게
+      curve.addColorStop(0, 'rgba(20,10,30,.12)'); curve.addColorStop(.22, 'rgba(20,10,30,.03)'); curve.addColorStop(.45, 'rgba(255,255,255,0)');
+      curve.addColorStop(.8, 'rgba(255,255,255,.05)'); curve.addColorStop(1, 'rgba(255,255,255,.11)');
     }
     // 이음매: 꽃잎은 차례로 앞 꽃잎을 덮는데, 고리의 끝에서는 마지막 꽃잎들이 첫 꽃잎들을 덮어 한 장만 달라 보인다.
     // 그래서 첫 꽃잎 몇 장(SK)을, 마지막 꽃잎들과 겹치는 자리에서만 무늬까지 한 번 더 위에 그린다.
@@ -1261,8 +1266,16 @@ function drawFlower(g, P, R, o) {
         g.clip(cp);
       }
       const Jn = jit(k, SP ? 0 : n % P.count); if (Jn) { g.transform(Jn.a, Jn.b, Jn.c, Jn.d, Jn.e, Jn.f); path = pathOf(SP ? 0 : n % P.count); }
+      else if (!FU && P.shape === 'ruffle' && px > 40) path = petalPath(len, wid, P, null, mix(P.seed, k * 131 + (SP ? 0 : n % P.count)));   // 손맛이 꺼진 거리에서도 물결은 장마다 다르게
       if (FU && G.h > 0) { path = n ? new Path2D() : path0; if (n) path.addPath(path0, new DOMMatrix().rotateSelf(-n * step * 180 / Math.PI)); }   // 갈래가 제각각이니 돌린 자리에서도 같은 테두리로 오린다
       if (!FU) {
+        if (px > 60 && (P.count > 1 || SP)) {   // 얇은 꽃잎이 아래 꽃잎에 드리운 옅은 그늘(앞 꽃잎 쪽으로) — 두께 대신 그늘로 겹을 읽히게
+          const sd = wid * (SP ? .26 : .2);   // 여러 겹 옅게 포개어 가장자리가 번진 그늘로
+          const fine6 = px > 200;   // 가까울수록 곱게(여섯 겹), 아니면 세 겹으로 가볍게
+          g.fillStyle = fine6 ? 'rgba(12,6,24,.022)' : 'rgba(12,6,24,.04)';
+          for (const f of fine6 ? [1, .78, .58, .4, .24, .1] : [.9, .55, .2]) { g.translate(0, -sd * f); g.fill(path); g.translate(0, sd * f); }
+          g.fillStyle = fill;
+        }
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
         if (px > 56) {   // 살아 있는 꽃잎: 가운데로 살짝 접힌 골(한쪽 반은 그늘, 골 위로 가는 윤기)과, 빛이 비쳐 드는 얇은 가장자리
