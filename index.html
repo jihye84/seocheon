@@ -869,9 +869,16 @@ function drawCenter(g, P, cs, lw, px) {
       tips.push(ex, ey, (.022 + r() * .014) * Math.min(1, .45 + P.cR * 3.6));   // 작은 꽃심은 꽃밥도 작게
     }
     g.stroke();
-    g.fillStyle = P.c2; g.beginPath();
-    for (let k = 0; k < tips.length; k += 3) { const ar = tips[k + 2] * cs; g.moveTo(tips[k] + ar, tips[k + 1]); g.ellipse(tips[k], tips[k + 1], ar, ar * .75, k, 0, TAU); }
-    g.fill();
+    if (px * P.cR > 60) {   // 아주 가까이: 꽃실에 가는 윤기
+      g.save(); g.translate(-g.lineWidth * .25, -g.lineWidth * .25); g.strokeStyle = 'rgba(255,255,240,.22)'; g.lineWidth *= .35; g.stroke(); g.restore();
+    }
+    const arPx = tips[2] * cs * px;
+    if (arPx > 3.2) drawAnthers(g, P, tips, cs, lw, px, Math.min(1, (arPx - 3.2) / 2));   // 가까이: 꽃밥(두 쪽 꽃가루주머니·가운데 골·흩날린 꽃가루)
+    else {
+      g.fillStyle = P.c2; g.beginPath();
+      for (let k = 0; k < tips.length; k += 3) { const ar = tips[k + 2] * cs; g.moveTo(tips[k] + ar, tips[k + 1]); g.ellipse(tips[k], tips[k + 1], ar, ar * .75, k, 0, TAU); }
+      g.fill();
+    }
   } else if (P.cType === 'bud') {
     feather(g, cR, P.c1d, .35);
     for (let m = 0; m < 3; m++) {
@@ -950,6 +957,50 @@ function drawDew(g, P, a, t, grow = 1) {
       const fwd = .06 * e, fall = 1.1 * e * e;
       dewBead(g, x0 + Math.cos(th) * fwd + gx * fall, y0 + Math.sin(th) * fwd + gy * fall, dr * (1 - .45 * e), a * (1 - e) * .95, 1 + .3 * (1 - e));
     }
+  }
+}
+/* 꽃밥: 꽃실 끝에 달린 꽃가루주머니. 두 쪽(약실)이 나란히 붙고 가운데로 골이 지며, 터진 틈으로 꽃가루가 묻어난다.
+   꽃마다 붙는 꼴이 다르다 — T자로 가로 걸려 흔들리는 꽃밥(백합·원추리), 꽃실 끝에 곧게 선 꽃밥(튤립·양귀비) */
+function drawAnthers(g, P, tips, cs, lw, px, k0) {
+  const rz = z => (mix((P.seed ^ 0x2a7f) >>> 0, z) % 1000) / 1000 - .5;
+  const versatile = rz(1) > -.1, long = 1.7 + (rz(2) + .5) * .9, dust = rz(3) + .5;
+  for (let k = 0, i = 0; k < tips.length; k += 3, i++) {
+    const x = tips[k], y = tips[k + 1], ar = tips[k + 2] * cs, th = Math.atan2(y, x);
+    const ang = versatile ? th + Math.PI / 2 + rz(10 + i) * 1.1 : th + rz(10 + i) * .35;
+    const L = ar * long * (.85 + .3 * (rz(40 + i) + .5)), W = ar * (1 + .25 * (rz(70 + i) + .5));
+    g.save(); g.translate(x, y); g.rotate(ang);
+    if (!versatile) g.translate(L * .42, 0);
+    // 약실 두 쪽: 살짝 어긋나고 길이도 조금 다르게
+    const lobes = new Path2D(), sk = rz(100 + i) * .12;
+    lobes.ellipse(sk * L, -W * .27, L * .5, W * .36, rz(130 + i) * .08, 0, TAU);
+    lobes.ellipse(-sk * L, W * .27, L * .48 * (1 + rz(160 + i) * .08), W * .36, rz(190 + i) * .08, 0, TAU);
+    g.fillStyle = P.c2; g.fill(lobes, 'nonzero');
+    const sh = g.createLinearGradient(-L * .2, -W * .6, L * .2, W * .6);
+    sh.addColorStop(0, `rgba(255,255,235,${.32 * k0})`); sh.addColorStop(.45, 'rgba(255,255,235,0)'); sh.addColorStop(1, `rgba(70,35,0,${.32 * k0})`);
+    g.fillStyle = sh; g.fill(lobes, 'nonzero');
+    if (k0 > 0) {
+      g.globalAlpha *= k0;
+      // 가운데 골(두 약실이 맞붙은 자리)과 각 약실의 터진 금
+      g.strokeStyle = 'rgba(70,35,5,.45)'; g.lineWidth = Math.max(lw * .6, ar * .09); g.lineCap = 'round'; g.beginPath();
+      g.moveTo(-L * .44, 0); g.quadraticCurveTo(0, rz(220 + i) * W * .2, L * .44, 0);
+      g.stroke();
+      g.strokeStyle = 'rgba(255,250,220,.35)'; g.lineWidth = Math.max(lw * .4, ar * .05); g.beginPath();
+      for (const sd of [-1, 1]) { g.moveTo(-L * .3, sd * W * .3); g.quadraticCurveTo(0, sd * W * .4, L * .3, sd * W * .3); }
+      g.stroke();
+      // 꽃실이 붙은 자리(약격)
+      g.fillStyle = 'rgba(60,30,5,.35)'; g.beginPath(); g.arc(versatile ? 0 : -L * .42, 0, ar * .16, 0, TAU); g.fill();
+      // 묻어난 꽃가루: 약실 둘레에 잔알갱이
+      if (dust > .25) {
+        g.fillStyle = P.c2; g.beginPath();
+        const nd = 3 + ((dust * 6) | 0);
+        for (let q = 0; q < nd; q++) {
+          const a = rz(300 + i * 13 + q) * TAU, rr = (.55 + (rz(500 + i * 13 + q) + .5) * .5), dx = Math.cos(a) * L * .5 * rr, dy = Math.sin(a) * W * .75 * rr, d = ar * (.07 + .07 * (rz(700 + i * 13 + q) + .5));
+          g.moveTo(dx + d, dy); g.arc(dx, dy, d, 0, TAU);
+        }
+        g.fill();
+      }
+    }
+    g.restore();
   }
 }
 /* 꽃받침 — 자연의 꽃받침 여러 갈래
