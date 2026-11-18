@@ -2077,6 +2077,7 @@ async function syncMyTags() {
       if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
     }
     if (focus && focus.kind === 'user') refreshTagUI();
+    syncHearts(300);
   } catch (e) { }
 }
 const reported = new Set(store.get('reported', []));
@@ -2114,7 +2115,7 @@ async function putTag(color, pin) {
     const r = await rpc('put_tag', { p_token: tagToken(), p_seed: user.seed, p_color: color, p_name: user.name, p_has_birth: !!user.hasBirth, p_i: user.bi, p_j: user.bj, p_warden: isWarden(user), p_pin: pin || null, p_ruin: !!store.get('ruinBy', {})[user.seed.toString(36)] || !!(curTag() && curTag().r) });
     if (r.ok) {
       const old = curTag(), t = { id: String(r.id), s: user.seed, c: color, slot: r.slot | 0, w: (old && old.w) || isWarden(user), p: (old && old.p) || !!pin, r: (old && old.r) || !!store.get('ruinBy', {})[user.seed.toString(36)] };
-      myTags = myTags.filter(x => x.s !== user.seed).concat(t); saveTags(); placeUser(); return true;
+      myTags = myTags.filter(x => x.s !== user.seed).concat(t); saveTags(); placeUser(); syncHearts(500); return true;
     }
     if (r.reason === 'color_taken') { toast('이 빛깔은 같은 꽃을 가진 분이 먼저 골랐어요', 3200); loadTaken(); }
     else if (r.reason === 'bad_name') toast('이 이름으로는 이름표를 달 수 없어요');
@@ -2200,6 +2201,7 @@ async function openTagHere(pin) {
   if (t.w) wardenFromTag();
   if (focus && focus.kind === 'user') { focus.sp = user; showCard(); }
   toast('이름표를 열었어요. 이 기기에서도 빛깔을 바꾸거나 이름표를 뗄 수 있어요', 4600);
+  syncHearts(200);   // 그 이름표에 담아 둔 꽃이 이 기기의 서랍에도
 }
 $('bTag').onclick = async () => {
   if (!user || tagBusy) return;
@@ -2956,7 +2958,7 @@ function tourCaption(sp) {
   const who = sp.kind === 'tag' ? `${isPal(sp) ? '♡ ' : ''}${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : sp.kind === 'user' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃 · 내 꽃` : sp.kind === 'friend' ? `${sp.name}의 꽃` : sp.kind === 'myth' ? '신화 속 꽃 · 이공본풀이' : '';
   if (who) { const o = document.createElement('i'); o.textContent = who; c.append(o); }
   D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
-  const sm = document.createElement('small'); sm.textContent = (hearts()[heartKey(sp)] ? '♥ 마음에 담은 꽃 · ' : '') + '화면을 누르면 잠시 멈춰요'; c.append(sm);
+  const sm = document.createElement('small'); sm.textContent = (hearted(heartKey(sp)) ? '♥ 마음에 담은 꽃 · ' : '') + '화면을 누르면 잠시 멈춰요'; c.append(sm);
   c.classList.add('on');
 }
 function tourTick() {
@@ -2999,8 +3001,28 @@ function stopTour() {
 // 꽃구경 중 화면을 누르면 끝나지 않고 잠시 멈춘다: 마음에 담기 · 내 꽃 찾기 · 이어가기 · 멈추고 둘러보기
 let tourPaused = false, pauseAt = 0;
 const hearts = () => store.get('hearts', {}), heartKey = sp => sp && (sp.seed >>> 0).toString(36);
+const hearted = k => { const v = k && hearts()[k]; return !!(v && !v.d); };   // d=1은 뺀 꽃의 기록(다른 기기에서도 빠지게 남겨 둔다)
+// 이름표를 단(또는 연) 기기끼리 담은 꽃을 잇는다: 같은 꽃은 나중에 손댄 쪽이 이긴다
+let heartsSyncT = 0, heartsSyncing = false;
+function mergeHearts(a, b) { const m = Object.assign({}, a); for (const k in b) { const x = b[k]; if (!x || x.i == null) continue; if (!m[k] || !m[k].t || (x.t || 0) >= (m[k].t || 0)) m[k] = x; } return m; }
+function syncHearts(delay = 1500) {
+  clearTimeout(heartsSyncT);
+  heartsSyncT = setTimeout(async () => {
+    const t = curTag(); if (!t || heartsSyncing) return;
+    heartsSyncing = true;
+    try {
+      const sent = hearts(), r = await rpc('sync_hearts', { p_token: tagToken(), p_tag: t.id, p_hearts: sent });
+      if (r && r.ok && r.hearts) {
+        const now2 = hearts(), changed = {}; for (const k in now2) if (JSON.stringify(now2[k]) !== JSON.stringify(sent[k])) changed[k] = now2[k];   // 보내는 사이 새로 담은 것은 지킨다
+        store.set('hearts', mergeHearts(mergeHearts(Object.fromEntries(Object.entries(now2).filter(([, v]) => v && v.i == null)), r.hearts), changed));
+        if ($('hearts').classList.contains('on')) renderHearts();
+        if (tourOn) tmSync();
+      }
+    } catch (e) { } finally { heartsSyncing = false; }
+  }, delay);
+}
 function tmSync() {
-  const on = !!hearts()[heartKey(tourTarget)];
+  const on = hearted(heartKey(tourTarget));
   $('tmHeart').textContent = on ? '♥ 마음에 담은 꽃' : '♡ 마음에 담기'; $('tmHeart').classList.toggle('on', on);
   $('tmMine').textContent = user ? '내 꽃 보러 가기' : '내 꽃 찾기';
 }
@@ -3019,13 +3041,13 @@ addEventListener('keydown', e => { if (!tourOn) return; e.stopPropagation(); if 
 $('tmGo').onclick = () => resumeTour();
 $('tmHeart').onclick = () => {
   const k = heartKey(tourTarget); if (!k) return;
-  const h = hearts(), sp = tourTarget; if (h[k]) delete h[k]; else h[k] = { i: sp.i, j: sp.j, t: Date.now() }; store.set('hearts', h); tmSync();
-  if (h[k]) toast('마음에 담았어요', 1800);
+  const h = hearts(), sp = tourTarget, on = hearted(k); h[k] = on ? { i: sp.i, j: sp.j, t: Date.now(), d: 1 } : { i: sp.i, j: sp.j, t: Date.now() }; store.set('hearts', h); tmSync(); syncHearts();
+  if (!on) toast('마음에 담았어요', 1800);
 };
 $('tmMine').onclick = () => { stopTour(); if (user) setTimeout(goMine, 200); else setTimeout(showIntro, 200); };
 $('tmStop').onclick = () => stopTour();
 /* ---------- 마음에 담은 꽃 서랍: 쪽마다 화면에 들어가는 만큼만 (스크롤 없이) ---------- */
-const heartList = () => Object.entries(hearts()).filter(([, v]) => v && v.i != null).sort((a, b) => a[1].t - b[1].t);
+const heartList = () => Object.entries(hearts()).filter(([, v]) => v && v.i != null && !v.d).sort((a, b) => a[1].t - b[1].t);
 let heartsPage = 0;
 function heartP(i, j) { const sp = specials.get(keyOf(i, j)); return sp && sp.kind !== 'tour' ? sp : { kind: 'field', i, j, P: cellP(i, j, cellSeed(i, j)) }; }
 function renderHearts() {
@@ -3045,7 +3067,7 @@ function renderHearts() {
     const g = cv.getContext('2d'); g.scale(dpr, dpr); g.translate(S / 2, S / 2); g.rotate(sp.P.rot0 || 0); drawFlower(g, sp.P, S * .4, { g: 1, px: S * .4 * dpr });
     const nm = document.createElement('span'); nm.textContent = sp.kind === 'myth' ? sp.name : sp.kind === 'tag' ? `${tagNames(sp)}의 꽃` : sp.kind === 'user' ? '내 꽃' : describe(sp.P).name;
     const x = document.createElement('button'); x.type = 'button'; x.className = 'hx'; x.textContent = '✕'; x.setAttribute('aria-label', '담은 꽃에서 빼기');
-    x.onclick = e => { e.stopPropagation(); const h = hearts(); delete h[k]; store.set('hearts', h); renderHearts(); };
+    x.onclick = e => { e.stopPropagation(); const h = hearts(); h[k] = { i: v.i, j: v.j, t: Date.now(), d: 1 }; store.set('hearts', h); renderHearts(); syncHearts(); };
     b.append(cv, nm, x); b.onclick = () => { closeHearts(); focusCell(v.i, v.j); };
     G.append(b);
   }
