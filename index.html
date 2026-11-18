@@ -2958,7 +2958,7 @@ let tourTarget = null, tourCapOn = false, tourSinceKnown = 0, tourKnownGap = 20,
 function tourCaption(sp) {
   const D = describe(sp.P), c = $('tourCap'); c.replaceChildren();
   const b = document.createElement('b'); b.textContent = sp.kind === 'myth' ? sp.name : D.name; c.append(b);
-  const who = sp.kind === 'tag' ? `${isPal(sp) ? '♡ ' : ''}${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : sp.kind === 'user' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃 · 내 꽃` : sp.kind === 'friend' ? `${sp.name}의 꽃` : sp.kind === 'myth' ? '신화 속 꽃 · 이공본풀이' : '';
+  const who = sp.kind === 'tag' ? `${isPal(sp) ? '✿ ' : ''}${sp.warden ? '꽃감관 ' : ''}${tagNames(sp)}의 꽃` : sp.kind === 'user' ? `${isWarden(sp) ? '꽃감관 ' : ''}${sp.name}의 꽃 · 내 꽃` : sp.kind === 'friend' ? `${sp.name}의 꽃` : sp.kind === 'myth' ? '신화 속 꽃 · 이공본풀이' : '';
   if (who) { const o = document.createElement('i'); o.textContent = who; c.append(o); }
   D.motto.forEach(l => { const d = document.createElement('div'); d.textContent = l; c.append(d); });
   const sm = document.createElement('small'); sm.textContent = (hearted(heartKey(sp)) ? '♥ 마음에 담은 꽃 · ' : '') + '화면을 누르면 잠시 멈춰요'; c.append(sm);
@@ -3231,7 +3231,7 @@ function showCard() {
   const wd = k !== 'myth' && k !== 'other' && isWarden(sp);
   $('cWarden').hidden = !wd; $('cWarden').textContent = k === 'user' ? '✧ 서천꽃밭의 꽃감관' : '✧ 꽃감관';
   $('vCard').classList.toggle('warden', wd);
-  $('cOwner').textContent = (isPal(sp) ? '♡ ' : '') + (k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃');
+  $('cOwner').textContent = (isPal(sp) ? '✿ ' : '') + (k === 'tag' ? `${tagNames(sp)}의 꽃` : k === 'user' || k === 'friend' ? `${sp.name}의 꽃` : k === 'myth' ? (sp.secret ? '꽃감관만 아는 금단의 꽃' : '신화 속 꽃 · 이공본풀이') : '이름 모를 이의 꽃');
   $('vCard').classList.toggle('myth', k === 'myth');
   $('cName').textContent = k === 'myth' ? sp.name : D.name;
   $('cMotto').innerHTML = D.motto.map(esc).join('<br>');
