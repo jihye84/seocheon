@@ -242,6 +242,7 @@ body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hi
 #hearts.on{display:flex}
 #heartsBox{width:min(94vw,44em);max-height:94vh;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:clamp(12px,2.4vh,22px) clamp(12px,3.6vw,24px);display:flex;flex-direction:column}
 #heartsBox h2{margin:0 0 .2em;color:#ffc6d2;font-family:'Gowun Batang',serif;font-size:1.25em;letter-spacing:.1em;text-align:center}
+#heartsBox #heartsNote{margin-top:-.4em;color:var(--faint);font-size:.88em}
 #heartsBox .sub{margin:0 0 .6em;color:var(--dim);text-align:center}
 #heartsGrid{display:grid;gap:clamp(6px,1.4vh,10px);justify-content:center}
 #heartsGrid .hc{position:relative;display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:6px 4px 5px;cursor:pointer;color:var(--ink);font:inherit}
@@ -355,7 +356,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="toast"></div>
 <div id="invite" role="status"><p id="inviteText"></p><div><button id="inviteGo" type="button">찾으러 가기</button><button id="inviteNo" type="button">나중에</button></div></div>
 <div id="tourCap" aria-live="off"></div><div id="tourMenu" role="dialog" aria-label="꽃구경 잠시 멈춤"><p>잠시 멈췄어요</p><div><button id="tmGo" type="button">꽃구경 이어가기</button><button id="tmHeart" type="button">♡ 마음에 담기</button><button id="tmMine" type="button">내 꽃 찾기</button><button id="tmStop" type="button">멈추고 둘러보기</button></div></div>
-<div id="hearts" role="dialog" aria-label="마음에 담은 꽃"><div id="heartsBox"><h2>♥ 마음에 담은 꽃</h2><p class="sub" id="heartsSub"></p><div id="heartsGrid"></div><p id="heartsEmpty" hidden>아직 담은 꽃이 없어요.<br>꽃구경 중 화면을 누르고<br>♡ 마음에 담기를 눌러 보세요.</p><div id="heartsNav"><button id="heartsPrev" type="button" aria-label="앞 쪽">‹</button><span id="heartsPg"></span><button id="heartsNext" type="button" aria-label="뒤 쪽">›</button></div><div id="heartsBar"><button id="heartsWalk" type="button">담은 꽃만 거닐기</button><button id="heartsClose" type="button">닫기</button></div></div></div><div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
+<div id="hearts" role="dialog" aria-label="마음에 담은 꽃"><div id="heartsBox"><h2>♥ 마음에 담은 꽃</h2><p class="sub" id="heartsSub"></p><p class="sub" id="heartsNote" hidden></p><div id="heartsGrid"></div><p id="heartsEmpty" hidden>아직 담은 꽃이 없어요.<br>꽃구경 중 화면을 누르고<br>♡ 마음에 담기를 눌러 보세요.</p><div id="heartsNav"><button id="heartsPrev" type="button" aria-label="앞 쪽">‹</button><span id="heartsPg"></span><button id="heartsNext" type="button" aria-label="뒤 쪽">›</button></div><div id="heartsBar"><button id="heartsWalk" type="button">담은 꽃만 거닐기</button><button id="heartsClose" type="button">닫기</button></div></div></div><div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
 
 <script>
 'use strict';
@@ -3042,7 +3043,13 @@ $('tmGo').onclick = () => resumeTour();
 $('tmHeart').onclick = () => {
   const k = heartKey(tourTarget); if (!k) return;
   const h = hearts(), sp = tourTarget, on = hearted(k); h[k] = on ? { i: sp.i, j: sp.j, t: Date.now(), d: 1 } : { i: sp.i, j: sp.j, t: Date.now() }; store.set('hearts', h); tmSync(); syncHearts();
-  if (!on) toast('마음에 담았어요', 1800);
+  if (!on) {
+    const n = heartList().length;
+    if (!curTag() && n >= 3 && !store.get('heartTagTold', false)) {   // 세 송이쯤 담았을 때 한 번만: 이름표가 담은 꽃을 지켜 준다
+      store.set('heartTagTold', true);
+      toast(user ? '이름표를 달면 담은 꽃이 사라지지 않고, 다른 기기에서도 볼 수 있어요' : '내 꽃을 찾아 이름표를 달면 담은 꽃이 사라지지 않고, 다른 기기에서도 볼 수 있어요', 6000);
+    } else toast('마음에 담았어요', 1800);
+  }
 };
 $('tmMine').onclick = () => { stopTour(); if (user) setTimeout(goMine, 200); else setTimeout(showIntro, 200); };
 $('tmStop').onclick = () => stopTour();
@@ -3054,9 +3061,10 @@ function renderHearts() {
   const L = heartList(), G = $('heartsGrid'); G.replaceChildren();
   $('heartsEmpty').hidden = L.length > 0; $('heartsWalk').disabled = !L.length;
   $('heartsSub').textContent = L.length ? `${L.length}송이 · 누르면 그 꽃으로 가요` : '';
+  $('heartsNote').hidden = !L.length || !!curTag(); $('heartsNote').textContent = user ? '이름표를 달면 담은 꽃이 다른 기기에서도 이어져요' : '내 꽃에 이름표를 달면 담은 꽃이 다른 기기에서도 이어져요';
   const box = $('heartsBox'), bw = Math.min(innerWidth * .94, box.getBoundingClientRect().width || innerWidth * .94) - 28;
   const S = Math.max(72, Math.min(140, Math.floor(Math.min(innerWidth, innerHeight) / 4.6)));
-  const cols = Math.max(2, Math.floor((bw + 8) / (S + 16))), availH = innerHeight * .94 - 230, rows = Math.max(1, Math.floor(availH / (S + 34)));
+  const cols = Math.max(2, Math.floor((bw + 8) / (S + 16))), availH = innerHeight * .94 - 230 - ($('heartsNote').hidden ? 0 : 26), rows = Math.max(1, Math.floor(availH / (S + 34)));
   const per = cols * rows, pages = Math.max(1, Math.ceil(L.length / per)); heartsPage = Math.min(heartsPage, pages - 1);
   G.style.gridTemplateColumns = `repeat(${Math.min(cols, Math.max(1, L.length))}, ${S + 8}px)`;
   $('heartsNav').style.visibility = pages > 1 ? '' : 'hidden'; $('heartsPg').textContent = `${heartsPage + 1} / ${pages}`;
