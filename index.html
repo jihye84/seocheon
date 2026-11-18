@@ -2992,7 +2992,7 @@ function startTour() {
 }
 function stopTour() {
   if (!tourOn) return;
-  tourPaused = false; $('tourMenu').classList.remove('on'); tourList = null;
+  tourPaused = false; tourSel = null; $('tourMenu').classList.remove('on'); tourList = null;
   tourOn = false; document.body.classList.remove('tour'); $('tourCap').classList.remove('on');
   try { tourLock && tourLock.release(); } catch (e) { } tourLock = null;
   const at = focus ? [focus.i, focus.j] : null;
@@ -3023,26 +3023,48 @@ function syncHearts(delay = 1500) {
   }, delay);
 }
 function tmSync() {
-  const on = hearted(heartKey(tourTarget));
-  $('tmHeart').textContent = on ? '♥ 마음에 담은 꽃' : '♡ 마음에 담기'; $('tmHeart').classList.toggle('on', on);
+  const tg = tourSel || tourTarget, on = hearted(heartKey(tg));
+  $('tmHeart').textContent = on ? '♥ 마음에 담은 꽃' : tourSel ? '♡ 고른 꽃 담기' : '♡ 마음에 담기'; $('tmHeart').classList.toggle('on', on);
+  const P = tg && (tg.P || (tg.sp && tg.sp.P) || cellP(tg.i, tg.j, tg.seed));
+  $('tourMenu').querySelector('p').textContent = tourSel ? `고른 꽃 · ${tg.sp && tg.sp.kind === 'myth' ? tg.sp.name : describe(P).name}` : '잠시 멈췄어요 · 둘레의 꽃을 눌러 고를 수도 있어요';
   $('tmMine').textContent = user ? '내 꽃 보러 가기' : '내 꽃 찾기';
+}
+function drawTourSel() {   // 고른 꽃 둘레에 은은한 빛 고리
+  const c = tourSel, [x, y] = screenOf(c.cx, c.cy), r = c.size * cam.ppu * .58, a = .55 + .25 * Math.sin(now * 3);
+  ctx.save(); ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createRadialGradient(x, y, r * .82, x, y, r * 1.12); g.addColorStop(0, 'rgba(255,214,226,0)'); g.addColorStop(.5, `rgba(255,214,226,${a * .55})`); g.addColorStop(1, 'rgba(255,214,226,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.12, 0, TAU); ctx.fill(); ctx.restore();
 }
 function pauseTour() { if (!tourOn || tourPaused) return; tourPaused = true; pauseAt = now; tmSync(); $('tourMenu').classList.add('on'); }
 function resumeTour() {
-  if (!tourPaused) return; tourPaused = false; $('tourMenu').classList.remove('on');
+  if (!tourPaused) return; tourPaused = false; tourSel = null; $('tourMenu').classList.remove('on');
   const d = now - pauseAt; if (anim) anim.t0 += d; tourNext += d;
   const sp = tourTarget; if (sp && sp.bloomT > 0) sp.tourExt = Math.max(sp.tourExt || 0, now - sp.bloomT - 7.5);   // 다 핀 꽃 앞에서 멈췄으면 이어갈 때 잠깐 더 머문다
 }
+// 멈춘 동안(또는 멈추며) 둘레의 다른 꽃을 누르면 그 꽃을 고른다: 고른 꽃에 마음을 담을 수 있다. 빈 곳을 누르면 이어간다
+let tourSel = null;
+function tourHit(sx, sy) {
+  const [wx, wy] = toWorld(sx, sy), ci = Math.floor(wx), cj = Math.floor(wy); let best = null;
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const i = ci + di, j = cj + dj, sp = specials.get(keyOf(i, j)), c = sp && sp.cx != null ? [sp.cx, sp.cy, sp.size] : cellCenter(i, j), d = Math.hypot(wx - c[0], wy - c[1]);
+    if (d < c[2] * .62 && (!best || d < best.d)) best = { i, j, d, cx: c[0], cy: c[1], size: c[2], seed: sp ? sp.seed : cellSeed(i, j), sp };
+  }
+  return best;
+}
+const isTarget = h => h && tourTarget && h.i === tourTarget.i && h.j === tourTarget.j;
 addEventListener('pointerdown', e => {
   if (!tourOn || e.target.closest('#tourMenu')) return;
   e.stopPropagation(); e.preventDefault();
-  tourPaused ? resumeTour() : pauseTour();
+  const h = tourHit(e.clientX, e.clientY);
+  if (!tourPaused) { tourSel = h && !isTarget(h) ? h : null; pauseTour(); return; }
+  if (h) { tourSel = isTarget(h) ? null : h; tmSync(); return; }
+  resumeTour();
 }, true);
 addEventListener('keydown', e => { if (!tourOn) return; e.stopPropagation(); if (e.key === 'Escape') stopTour(); else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tourPaused ? resumeTour() : pauseTour(); } }, true);
 $('tmGo').onclick = () => resumeTour();
 $('tmHeart').onclick = () => {
-  const k = heartKey(tourTarget); if (!k) return;
-  const h = hearts(), sp = tourTarget, on = hearted(k); h[k] = on ? { i: sp.i, j: sp.j, t: Date.now(), d: 1 } : { i: sp.i, j: sp.j, t: Date.now() }; store.set('hearts', h); tmSync(); syncHearts();
+  const sp = tourSel || tourTarget, k = heartKey(sp); if (!k) return;
+  const h = hearts(), on = hearted(k); h[k] = on ? { i: sp.i, j: sp.j, t: Date.now(), d: 1 } : { i: sp.i, j: sp.j, t: Date.now() }; store.set('hearts', h); tmSync(); syncHearts();
   if (!on) {
     const n = heartList().length;
     if (!curTag() && n >= 3 && !store.get('heartTagTold', false)) {   // 세 송이쯤 담았을 때 한 번만: 이름표가 담은 꽃을 지켜 준다
@@ -3907,6 +3929,7 @@ function frame(ms) {
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
   drawGuide();
+  if (tourPaused && tourSel) drawTourSel();
   tourTick();
   firstFrame = false;
   requestAnimationFrame(frame);
