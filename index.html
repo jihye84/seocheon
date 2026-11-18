@@ -103,6 +103,8 @@ input[type=date]{color-scheme:dark}
 .fname,.traits,.loc,.motto{text-wrap:balance;word-break:keep-all}   /* 끝 한두 글자만 다음 줄로 넘어가지 않게 */
 @media (prefers-reduced-motion:reduce){.wbadge,#vCard.warden .fname{animation:none}}
 #bBack{align-self:center;margin:-4px 0 -6px}
+#bHeart{margin:-10px -6px -10px auto;background:none;border:0;color:var(--dim);font-size:1.35em;line-height:1;cursor:pointer;padding:8px 10px;min-width:44px;min-height:44px}
+#bHeart.on{color:#ff9fb4}
 #bReport,#bBack{background:none;border:0;color:var(--faint);font-size:max(15px,.9em);text-decoration:underline;cursor:pointer;padding:10px 8px;margin:-10px 0 -10px 6px}
 .fname{font-size:1.75em;font-weight:700;line-height:1.3;color:var(--gold);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -318,7 +320,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
       <p class="note">같은 이름과 생일이면<br>언제 와도 같은 꽃이 피어요.<br>생일은 꽃을 고르는 데만 쓰고,<br>어디에도 남기지 않아요.</p>
     </section>
     <section class="view off" id="vCard" aria-live="polite">
-      <div class="owner"><span id="cOwner"></span><span id="cWarden" class="wbadge" hidden></span><button id="bReport" type="button" hidden>신고</button></div>
+      <div class="owner"><span id="cOwner"></span><span id="cWarden" class="wbadge" hidden></span><button id="bReport" type="button" hidden>신고</button><button id="bHeart" type="button" aria-label="마음에 담기">♡</button></div>
       <div class="fname" id="cName"></div>
       <div class="motto" id="cMotto"></div>
       <div class="swatch" id="cSw" title="이 꽃의 빛깔"></div>
@@ -3018,6 +3020,7 @@ function syncHearts(delay = 1500) {
         store.set('hearts', mergeHearts(mergeHearts(Object.fromEntries(Object.entries(now2).filter(([, v]) => v && v.i == null)), r.hearts), changed));
         if ($('hearts').classList.contains('on')) renderHearts();
         if (tourOn) tmSync();
+        if (focus) cardHeartSync();
       }
     } catch (e) { } finally { heartsSyncing = false; }
   }, delay);
@@ -3075,6 +3078,17 @@ $('tmHeart').onclick = () => {
 };
 $('tmMine').onclick = () => { stopTour(); if (user) setTimeout(goMine, 200); else setTimeout(showIntro, 200); };
 $('tmStop').onclick = () => stopTour();
+// 꽃 카드에서도 마음에 담기: 카드 이름 줄 오른쪽의 하트
+function cardHeartSync() { const on = !!focus && hearted((focus.seed >>> 0).toString(36)); $('bHeart').textContent = on ? '♥' : '♡'; $('bHeart').classList.toggle('on', on); $('bHeart').setAttribute('aria-label', on ? '마음에 담은 꽃 · 빼기' : '마음에 담기'); }
+$('bHeart').onclick = () => {
+  if (!focus) return;
+  const k = (focus.seed >>> 0).toString(36), h = hearts(), on = hearted(k);
+  h[k] = on ? { i: focus.i, j: focus.j, t: Date.now(), d: 1 } : { i: focus.i, j: focus.j, t: Date.now() }; store.set('hearts', h); cardHeartSync(); syncHearts();
+  if (on) { toast('마음에서 뺐어요', 1600); return; }
+  const n = heartList().length;
+  if (!curTag() && n >= 3 && !store.get('heartTagTold', false)) { store.set('heartTagTold', true); toast(user ? '이름표를 달면 담은 꽃이 사라지지 않고, 다른 기기에서도 볼 수 있어요' : '내 꽃을 찾아 이름표를 달면 담은 꽃이 사라지지 않고, 다른 기기에서도 볼 수 있어요', 6000); }
+  else toast('마음에 담았어요 · ♥ 담은 꽃 서랍에 모여요', 2400);
+};
 /* ---------- 마음에 담은 꽃 서랍: 쪽마다 화면에 들어가는 만큼만 (스크롤 없이) ---------- */
 const heartList = () => Object.entries(hearts()).filter(([, v]) => v && v.i != null && !v.d).sort((a, b) => a[1].t - b[1].t);
 let heartsPage = 0;
@@ -3097,7 +3111,7 @@ function renderHearts() {
     const g = cv.getContext('2d'); g.scale(dpr, dpr); g.translate(S / 2, S / 2); g.rotate(sp.P.rot0 || 0); drawFlower(g, sp.P, S * .4, { g: 1, px: S * .4 * dpr });
     const nm = document.createElement('span'); nm.textContent = sp.kind === 'myth' ? sp.name : sp.kind === 'tag' ? `${tagNames(sp)}의 꽃` : sp.kind === 'user' ? '내 꽃' : describe(sp.P).name;
     const x = document.createElement('button'); x.type = 'button'; x.className = 'hx'; x.textContent = '✕'; x.setAttribute('aria-label', '담은 꽃에서 빼기');
-    x.onclick = e => { e.stopPropagation(); const h = hearts(); h[k] = { i: v.i, j: v.j, t: Date.now(), d: 1 }; store.set('hearts', h); renderHearts(); syncHearts(); };
+    x.onclick = e => { e.stopPropagation(); const h = hearts(); h[k] = { i: v.i, j: v.j, t: Date.now(), d: 1 }; store.set('hearts', h); renderHearts(); syncHearts(); if (focus) cardHeartSync(); };
     b.append(cv, nm, x); b.onclick = () => { closeHearts(); focusCell(v.i, v.j); };
     G.append(b);
   }
@@ -3213,6 +3227,7 @@ const goMine = () => { if (!user) return; if (friendFirst) { friendFirst = false
 
 function showCard() {
   const k = focus.kind, P = focusP(), D = describe(P), sp = focus.sp;
+  cardHeartSync();
   const wd = k !== 'myth' && k !== 'other' && isWarden(sp);
   $('cWarden').hidden = !wd; $('cWarden').textContent = k === 'user' ? '✧ 서천꽃밭의 꽃감관' : '✧ 꽃감관';
   $('vCard').classList.toggle('warden', wd);
