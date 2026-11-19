@@ -1087,6 +1087,8 @@ function drawCenter(g, P, cs, lw, px) {
     cR *= SPc ? .78 : .9;
     // 라넌큘러스·달리아의 덜 핀 속처럼 반들반들한 형광 연두: 둘레 꽃잎과 같은 빛이면 묻히고, 다른 빛이면 따로 노니 — 아예 생기 도는 연두로
     const LIME = [78 + (P.seed % 9), 88, 58];
+    const FC = [T0[0], Math.min(92, T0[1] + 6), Math.max(38, Math.min(72, T0[2]))];   // 그 꽃의 주된 빛(맨 안쪽 겹 끝빛)
+    const mixHSL = (A, B, k) => { let dh = ((B[0] - A[0]) % 360 + 540) % 360 - 180; if (Math.abs(dh) > 150) dh = dh > 0 ? dh - 360 * 0 : dh; return [A[0] + dh * k, A[1] + (B[1] - A[1]) * k, A[2] + (B[2] - A[2]) * k]; };
     const sh = g.createRadialGradient(0, 0, cR * .3, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(5,3,15,.3)'); sh.addColorStop(1, 'rgba(5,3,15,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();
     const shp = P.shape === 'point' || P.shape === 'lance' || P.shape === 'serrate' ? 'point' : 'round';
@@ -1097,11 +1099,15 @@ function drawCenter(g, P, cs, lw, px) {
       const L0 = Math.max(8, T[2] - 10 - 24 * t), L1 = Math.min(92, T[2] + 2 - 12 * t);   // 밑동(오목한 속)은 짙고 끝은 맨 안쪽 겹 빛깔
       g.save(); g.rotate(m * GA + (P.seed % 7));
       const p = petalPath(len, wid, SHC), gr = g.createLinearGradient(0, 0, len, 0);
-      const Lg0 = Math.max(16, 34 - 14 * t), Lg1 = Math.min(78, LIME[2] + 10 - 10 * t);   // 밑동은 깊은 풀빛, 끝은 형광 연두
-      gr.addColorStop(0, hsla(LIME[0] + 22, 70, Lg0)); gr.addColorStop(.7, hsla(LIME[0], LIME[1], Lg1));
+      // 바깥 오므린 꽃잎은 그 꽃의 주된 빛, 안으로 갈수록 형광 연두로 물들어 간다(빛깔이 이어져 덧붙인 듯 보이지 않게)
+      // 한 장 안에서도 밑동(속)은 연두, 끝은 그 꽃의 빛 — 바깥에서 속으로, 끝에서 밑동으로 두 겹의 물듦
+      const mk = Math.pow(t, .75), tipC = mixHSL(FC, LIME, mk), baseC = mixHSL(FC, LIME, Math.min(1, .45 + mk * .7));
+      gr.addColorStop(0, hsla(baseC[0] + 10, Math.min(95, baseC[1]), Math.max(14, baseC[2] - 22 - 8 * t)));
+      gr.addColorStop(.45, hsla(baseC[0], baseC[1], baseC[2]));
+      gr.addColorStop(.92, hsla(tipC[0], tipC[1], Math.min(84, tipC[2] + 6 * (1 - t))));
       g.fillStyle = gr; g.fill(p);
       if (px * cR > 14) {   // 오므린 꽃잎의 끝 가장자리에 가는 빛(겹이 읽히게), 바깥쪽에 옅은 그늘
-        g.strokeStyle = hsla(LIME[0] - 8, 95, 82, .5); g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
+        { const ec = mixHSL(FC, LIME, Math.pow(t, .75)); g.strokeStyle = hsla(ec[0], Math.min(95, ec[1] + 5), Math.min(92, ec[2] + 20), .5); } g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
       }
       g.restore();
     }
