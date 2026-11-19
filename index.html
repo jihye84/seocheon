@@ -3153,14 +3153,15 @@ function selectFlower(h) {
 }
 function pauseTour() { if (!tourOn || tourPaused) return; tourPaused = true; pauseAt = now; pauseCam = [cam.x, cam.y]; selPan = null; capWasOn = $('tourCap').classList.contains('on'); tmSync(); $('tourMenu').classList.add('on'); }
 function resumeTour() {
-  if (!tourPaused || tourReturning) return;
+  if (!tourPaused) return;
   $('tourMenu').classList.remove('on'); if (tourSel) capBack(); tourSel = null;
-  if (pauseCam && Math.hypot(cam.x - pauseCam[0], cam.y - pauseCam[1]) * cam.ppu > 2) {   // 고른 꽃 쪽으로 옮겨 갔으면 먼저 제자리로
-    tourReturning = true; panTo(pauseCam[0], pauseCam[1], .8, () => { tourReturning = false; resumeTour(); }); return;
-  }
-  tourPaused = false; selPan = null;
-  const d = now - pauseAt; if (anim) anim.t0 += d; tourNext += d;
-  const sp = tourTarget; if (sp && sp.bloomT > 0) sp.tourExt = Math.max(sp.tourExt || 0, now - sp.bloomT - 7.5);   // 다 핀 꽃 앞에서 멈췄으면 이어갈 때 잠깐 더 머문다
+  tourPaused = false; selPan = null; tourReturning = false;
+  const d = now - pauseAt, flying = anim && now - d < anim.t0 + anim.dur;
+  if (flying && !pauseCam) { anim.t0 += d; return; }
+  if (flying && pauseCam && Math.hypot(cam.x - pauseCam[0], cam.y - pauseCam[1]) * cam.ppu <= 2) { anim.t0 += d; tourNext += d; return; }   // 날아가던 중이면 그 길을 마저
+  // 꽃 앞에서 멈췄으면(또는 고른 꽃 쪽으로 옮겨 갔으면) 머뭇거리지 않고 곧장 다음 꽃으로 날아오른다
+  anim = null; tourGo();
+  if (anim) anim.ease = u => .5 * easeIO(u) + .5 * (1 - (1 - u) * (1 - u));   // 출발부터 바로 날아오르는 느낌(끝은 부드럽게 내려앉는다)
 }
 // 멈춘 동안(또는 멈추며) 둘레의 다른 꽃을 누르면 그 꽃을 고른다: 고른 꽃에 마음을 담을 수 있다. 빈 곳을 누르면 이어간다
 let tourSel = null;
