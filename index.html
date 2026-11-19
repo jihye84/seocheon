@@ -977,14 +977,22 @@ function softDisc(g, R, r, c0, c1) {
 const passR = P => Math.max(P.cR * .9, (P.tuft.F[0] ? P.tuft.F[0][1] : .6) * .24);   // 술이 길면 가운데 기둥도 그만큼 크다
 function drawPassion(g, P, cs, lw, px) {
   const r0 = passR(P) * cs, rz = z => (mix((P.seed ^ 0x51ac) >>> 0, z) % 1000) / 1000 - .5, w = Math.max(lw, r0 * .045);
-  const cup = g.createRadialGradient(0, 0, 0, 0, 0, r0 * 1.04);
-  cup.addColorStop(0, 'hsl(92,42%,46%)'); cup.addColorStop(.7, 'hsl(96,40%,32%)'); cup.addColorStop(1, 'hsla(100,40%,24%,.95)');
-  g.fillStyle = cup; g.beginPath(); g.arc(0, 0, r0 * 1.04, 0, TAU); g.fill();               // 술 밑동을 감싼 컵: 술과 꽃잎 사이 빈틈이 없다
+  // 술 밑동을 감싼 컵: 둘레가 컴퍼스로 그린 원이 아니라 술 밑동 빛깔로 번지며 녹아든다(빈틈은 막고, 테두리는 보이지 않게)
+  const C0 = P.tuft.c[0], cup = g.createRadialGradient(0, 0, 0, 0, 0, r0 * 1.08);
+  cup.addColorStop(0, 'hsl(90,40%,44%)'); cup.addColorStop(.38, 'hsl(96,36%,34%)'); cup.addColorStop(.7, alphaOf(C0, 1)); cup.addColorStop(1, alphaOf(C0, 0));
+  g.fillStyle = cup; g.beginPath();
+  for (let q = 0; q <= 72; q++) { const a = q / 72 * TAU, rr = r0 * 1.08 * (1 + .04 * Math.sin(a * 7 + rz(7) * 9) + .03 * Math.sin(a * 13 + rz(8) * 9)); q ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  g.fill();
+  if (px > 60) {   // 술 밑동이 컵 안쪽까지 잘게 이어져 들어온다: 둥근 경계를 흩뜨린다
+    g.strokeStyle = alphaOf(C0, .9); g.lineWidth = w * .7; g.lineCap = 'round'; g.beginPath();
+    for (let q = 0; q < 90; q++) { const a = q / 90 * TAU + rz(500 + q) * .05, d0 = r0 * (.42 + .25 * (rz(600 + q) + .5)), d1 = r0 * 1.02, c = Math.cos(a), s2 = Math.sin(a); g.moveTo(c * d0, s2 * d0); g.lineTo(c * d1, s2 * d1); }
+    g.stroke();
+  }
   g.strokeStyle = 'hsla(80,40%,80%,.45)'; g.lineWidth = w * .6; g.beginPath();
   for (let q = 0; q < 40; q++) { const a = q / 40 * TAU, c = Math.cos(a), s2 = Math.sin(a); g.moveTo(c * r0 * .5, s2 * r0 * .5); g.lineTo(c * r0 * .64, s2 * r0 * .64); }
   g.stroke();                                                                                  // 내부관: 기둥 밑을 두른 짧은 술 고리
-  const col = g.createRadialGradient(-r0 * .08, -r0 * .1, 0, 0, 0, r0 * .3); col.addColorStop(0, 'hsl(84,55%,78%)'); col.addColorStop(1, 'hsl(96,40%,48%)');
-  g.fillStyle = col; g.beginPath(); g.arc(0, 0, r0 * .28, 0, TAU); g.fill();                  // 암수술대(기둥)
+  const col = g.createRadialGradient(-r0 * .06, -r0 * .08, 0, 0, 0, r0 * .32); col.addColorStop(0, 'hsla(84,55%,76%,1)'); col.addColorStop(.6, 'hsla(92,42%,52%,.9)'); col.addColorStop(1, 'hsla(96,40%,40%,0)');
+  g.fillStyle = col; g.beginPath(); g.arc(0, 0, r0 * .32, 0, TAU); g.fill();                  // 암수술대(기둥): 가장자리 없이 번지는 둥근 빛
   const a0 = rz(1) * TAU;
   // 수술: 기둥 둘레에서 흐드러지게 — 개수·길이·휨이 제각각인 가는 꽃실 끝에 샛노란 꽃밥, 둘레에 금빛 꽃가루가 흩날린다
   const NS = 18 + ((rz(5) + .5) * 14 | 0), A = 'hsl(52,95%,64%)', Ad = 'hsl(44,85%,46%)', st = [];
