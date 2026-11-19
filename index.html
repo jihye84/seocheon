@@ -990,7 +990,9 @@ function drawPassion(g, P, cs, lw, px) {
   const NS = 18 + ((rz(5) + .5) * 14 | 0), A = 'hsl(52,95%,64%)', Ad = 'hsl(44,85%,46%)', st = [];
   for (let k = 0; k < NS; k++) {
     const a = a0 + k / NS * TAU + rz(10 + k) * .35, L = r0 * (.75 + .85 * Math.pow(rz(20 + k) + .5, .8)), bend = rz(50 + k) * 1.1, c = Math.cos(a), s2 = Math.sin(a);
-    const ea = a + bend * .5, ex = Math.cos(ea) * L, ey = Math.sin(ea) * L, mx = c * L * .55 - s2 * L * bend * .25, my = s2 * L * .55 + c * L * bend * .25;
+    // 곧은 바큇살이 아니라 저마다 살짝 휜 꽃실: 가운데가 옆으로 불룩하고, 끝은 그 반대로 조금 되돌아온다
+    const sg = bend >= 0 ? 1 : -1, bb = (.18 + Math.abs(bend) * .22) * sg, ea = a - bb * .35, ex = Math.cos(ea) * L, ey = Math.sin(ea) * L;
+    const mx = c * L * .5 - s2 * L * bb, my = s2 * L * .5 + c * L * bb;
     st.push([ex, ey, mx, my, ea, k]);
   }
   g.lineCap = 'round';
