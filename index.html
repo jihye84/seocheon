@@ -971,7 +971,42 @@ function softDisc(g, R, r, c0, c1) {
   gr.addColorStop(0, c0); gr.addColorStop(.75, c1); gr.addColorStop(1, alphaOf(c1, .55));
   g.fillStyle = gr; g.fill(blobPath(R, r));
 }
+/* 시계꽃의 가운데: 둥근 술(부관) 안쪽은 꽃잎 오므린 봉오리가 아니라 암술·수술이 솟은 기둥(암수술대)이다.
+   위에서 보면 — 술 밑동을 덮는 꽃받침 컵과 그 둘레의 작은 고리(내부관), 가운데 연둣빛 기둥, 기둥 끝에서 다섯 갈래로 벌어진 수술대와
+   그 끝에 가로로 매달린 큼직한 꽃밥, 맨 위에는 씨방에서 세 갈래로 뻗은 암술대와 동그란 암술머리 */
+const passR = P => Math.max(P.cR * .9, (P.tuft.F[0] ? P.tuft.F[0][1] : .6) * .24);   // 술이 길면 가운데 기둥도 그만큼 크다
+function drawPassion(g, P, cs, lw, px) {
+  const r0 = passR(P) * cs, rz = z => (mix((P.seed ^ 0x51ac) >>> 0, z) % 1000) / 1000 - .5, w = Math.max(lw, r0 * .045);
+  const cup = g.createRadialGradient(0, 0, 0, 0, 0, r0 * 1.04);
+  cup.addColorStop(0, 'hsl(92,42%,46%)'); cup.addColorStop(.7, 'hsl(96,40%,32%)'); cup.addColorStop(1, 'hsla(100,40%,24%,.95)');
+  g.fillStyle = cup; g.beginPath(); g.arc(0, 0, r0 * 1.04, 0, TAU); g.fill();               // 술 밑동을 감싼 컵: 술과 꽃잎 사이 빈틈이 없다
+  g.strokeStyle = 'hsla(80,40%,80%,.45)'; g.lineWidth = w * .6; g.beginPath();
+  for (let q = 0; q < 40; q++) { const a = q / 40 * TAU, c = Math.cos(a), s2 = Math.sin(a); g.moveTo(c * r0 * .5, s2 * r0 * .5); g.lineTo(c * r0 * .64, s2 * r0 * .64); }
+  g.stroke();                                                                                  // 내부관: 기둥 밑을 두른 짧은 술 고리
+  const col = g.createRadialGradient(-r0 * .08, -r0 * .1, 0, 0, 0, r0 * .3); col.addColorStop(0, 'hsl(84,55%,78%)'); col.addColorStop(1, 'hsl(96,40%,48%)');
+  g.fillStyle = col; g.beginPath(); g.arc(0, 0, r0 * .28, 0, TAU); g.fill();                  // 암수술대(기둥)
+  const a0 = rz(1) * TAU, A = 'hsl(52,85%,62%)', Ad = 'hsl(44,70%,40%)';
+  for (let k = 0; k < 5; k++) {                                                               // 수술 다섯: 기둥에서 벌어져 끝에 가로 꽃밥
+    const a = a0 + k * TAU / 5 + rz(10 + k) * .12, c = Math.cos(a), s2 = Math.sin(a), L = r0 * (1.02 + rz(20 + k) * .1);
+    g.strokeStyle = 'hsl(88,45%,70%)'; g.lineWidth = w * 1.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(c * r0 * .2, s2 * r0 * .2); g.quadraticCurveTo(c * L * .6 - s2 * r0 * .05, s2 * L * .6 + c * r0 * .05, c * L * .86, s2 * L * .86); g.stroke();
+    g.save(); g.translate(c * L * .9, s2 * L * .9); g.rotate(a + Math.PI / 2 + rz(30 + k) * .4);
+    const al = r0 * .34, aw = r0 * .13, ag = g.createLinearGradient(0, -aw, 0, aw); ag.addColorStop(0, A); ag.addColorStop(1, Ad);
+    g.fillStyle = ag; g.beginPath(); g.ellipse(0, 0, al / 2, aw / 2, 0, 0, TAU); g.fill();
+    if (px > 90) { g.strokeStyle = 'rgba(90,60,0,.35)'; g.lineWidth = w * .4; g.beginPath(); g.moveTo(-al * .42, 0); g.lineTo(al * .42, 0); g.stroke(); }
+    g.restore();
+  }
+  const ov = g.createRadialGradient(-r0 * .05, -r0 * .06, 0, 0, 0, r0 * .16); ov.addColorStop(0, 'hsl(80,60%,82%)'); ov.addColorStop(1, 'hsl(92,45%,52%)');
+  g.fillStyle = ov; g.beginPath(); g.ellipse(0, 0, r0 * .16, r0 * .14, rz(2), 0, TAU); g.fill();   // 씨방
+  const sh = 300 + rz(3) * 60, b0 = a0 + TAU / 10;
+  for (let k = 0; k < 3; k++) {                                                               // 암술대 셋과 동그란 암술머리(맨 위)
+    const a = b0 + k * TAU / 3 + rz(40 + k) * .15, c = Math.cos(a), s2 = Math.sin(a), L = r0 * .62;
+    g.strokeStyle = `hsl(${sh},28%,40%)`; g.lineWidth = w * 1.5; g.beginPath(); g.moveTo(c * r0 * .08, s2 * r0 * .08); g.quadraticCurveTo(c * L * .5 + s2 * r0 * .06, s2 * L * .5 - c * r0 * .06, c * L, s2 * L); g.stroke();
+    const sg = g.createRadialGradient(c * L - r0 * .03, s2 * L - r0 * .03, 0, c * L, s2 * L, r0 * .11); sg.addColorStop(0, `hsl(${sh},30%,62%)`); sg.addColorStop(1, `hsl(${sh},35%,30%)`);
+    g.fillStyle = sg; g.beginPath(); g.arc(c * L, s2 * L, r0 * .1, 0, TAU); g.fill();
+  }
+}
 function drawCenter(g, P, cs, lw, px) {
+  if (P.tuft && P.tuft.kind === 'ring' && px > 40) { drawPassion(g, P, cs, lw, px); return; }
   let cR = P.cR * cs; const SPc = !!P.many || P.layers >= 3, r = mulberry32(P.seed ^ 0x9e37);
   if (P.cType === 'dots') {
     feather(g, cR, P.c1d, .55);
@@ -1730,7 +1765,7 @@ function drawTuft(g, P, cs, lw, px) {
   const T = P.tuft, w = lw * Math.max(1, px / 200);
   g.save(); g.lineCap = 'round';
   if (T.kind === 'ring') {      // 시계꽃: 꽃술 둘레에서 둥글게 퍼지는 가는 술, 안쪽·가운데·끝 세 띠 빛깔
-    const r0 = P.cR * .9, bands = [[0, .28], [.28, .5], [.5, 1]];
+    const r0 = (px > 40 ? passR(P) : P.cR * .9) * cs, bands = [[0, .28], [.28, .5], [.5, 1]];
     for (let b = 0; b < 3; b++) {
       g.strokeStyle = T.c[b]; g.lineWidth = w * (b === 2 ? .85 : 1.1); g.beginPath();
       for (const [a, L, wv, ph] of T.F) {
