@@ -1359,9 +1359,10 @@ function drawCalyx(g, P, sc, gr, px, lw) {
         const ang = r0 + (i + (j & 1) * .5) / C.m * TAU + rz(j * 40 + i) * .1, k = j * 40 + i;
         g.save(); g.rotate(ang);
         const ll = len * (.9 + .2 * (rz(k + 500) + .5)), wb = wobS(k), p = petalPath(ll, wmax, SH, wb); g.fillStyle = grad(len); g.fill(p);
-        if (px > 50) { g.strokeStyle = C.rim; g.lineWidth = lw * Math.max(1, px / 220); g.stroke(p); }
+        // 겹친 비늘이 유리처럼 비치지 않게: 테두리 선 대신 한쪽 반에 겹 그늘, 바깥 줄일수록 조금 더 깊게
+        g.save(); g.clip(p); g.fillStyle = `rgba(5,18,10,${.16 + .08 * (C.rows - 1 - j)})`; g.fillRect(0, 0, ll * 1.1, wmax * 1.6); g.restore();
+        if (px > 50) { g.strokeStyle = alphaOf(C.rim, .22); g.lineWidth = lw * Math.max(.6, px / 400); g.stroke(p); }
         if (px > 110) veinsS(ll, wmax, SH, k, 'parallel', wb);
-        if (rf > 0) { g.fillStyle = `rgba(255,255,240,${.1 * rf})`; g.fill(p); }
         g.restore();
       }
     }
