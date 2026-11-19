@@ -985,24 +985,44 @@ function drawPassion(g, P, cs, lw, px) {
   g.stroke();                                                                                  // 내부관: 기둥 밑을 두른 짧은 술 고리
   const col = g.createRadialGradient(-r0 * .08, -r0 * .1, 0, 0, 0, r0 * .3); col.addColorStop(0, 'hsl(84,55%,78%)'); col.addColorStop(1, 'hsl(96,40%,48%)');
   g.fillStyle = col; g.beginPath(); g.arc(0, 0, r0 * .28, 0, TAU); g.fill();                  // 암수술대(기둥)
-  const a0 = rz(1) * TAU, A = 'hsl(52,85%,62%)', Ad = 'hsl(44,70%,40%)';
-  for (let k = 0; k < 5; k++) {                                                               // 수술 다섯: 기둥에서 벌어져 끝에 가로 꽃밥
-    const a = a0 + k * TAU / 5 + rz(10 + k) * .12, c = Math.cos(a), s2 = Math.sin(a), L = r0 * (1.02 + rz(20 + k) * .1);
-    g.strokeStyle = 'hsl(88,45%,70%)'; g.lineWidth = w * 1.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(c * r0 * .2, s2 * r0 * .2); g.quadraticCurveTo(c * L * .6 - s2 * r0 * .05, s2 * L * .6 + c * r0 * .05, c * L * .86, s2 * L * .86); g.stroke();
-    g.save(); g.translate(c * L * .9, s2 * L * .9); g.rotate(a + Math.PI / 2 + rz(30 + k) * .4);
-    const al = r0 * .34, aw = r0 * .13, ag = g.createLinearGradient(0, -aw, 0, aw); ag.addColorStop(0, A); ag.addColorStop(1, Ad);
-    g.fillStyle = ag; g.beginPath(); g.ellipse(0, 0, al / 2, aw / 2, 0, 0, TAU); g.fill();
-    if (px > 90) { g.strokeStyle = 'rgba(90,60,0,.35)'; g.lineWidth = w * .4; g.beginPath(); g.moveTo(-al * .42, 0); g.lineTo(al * .42, 0); g.stroke(); }
+  const a0 = rz(1) * TAU;
+  // 수술: 기둥 둘레에서 흐드러지게 — 개수·길이·휨이 제각각인 가는 꽃실 끝에 샛노란 꽃밥, 둘레에 금빛 꽃가루가 흩날린다
+  const NS = 18 + ((rz(5) + .5) * 14 | 0), A = 'hsl(52,95%,64%)', Ad = 'hsl(44,85%,46%)', st = [];
+  for (let k = 0; k < NS; k++) {
+    const a = a0 + k / NS * TAU + rz(10 + k) * .35, L = r0 * (.75 + .85 * Math.pow(rz(20 + k) + .5, .8)), bend = rz(50 + k) * 1.1, c = Math.cos(a), s2 = Math.sin(a);
+    const ea = a + bend * .5, ex = Math.cos(ea) * L, ey = Math.sin(ea) * L, mx = c * L * .55 - s2 * L * bend * .25, my = s2 * L * .55 + c * L * bend * .25;
+    st.push([ex, ey, mx, my, ea, k]);
+  }
+  g.lineCap = 'round';
+  for (const [ex, ey, mx, my, ea, k] of st) {     // 꽃실: 밑은 연둣빛, 끝으로 갈수록 크림빛으로 가늘게
+    const fg = g.createLinearGradient(0, 0, ex, ey); fg.addColorStop(0, 'hsla(86,45%,62%,.9)'); fg.addColorStop(1, 'hsla(56,60%,88%,.95)');
+    g.strokeStyle = fg; g.lineWidth = w * (.7 + .4 * (rz(80 + k) + .5)); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(mx, my, ex, ey); g.stroke();
+  }
+  if (px > 70) {   // 꽃밥 둘레의 은은한 금빛
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (const [ex, ey] of st) { const hg = g.createRadialGradient(ex, ey, 0, ex, ey, r0 * .22); hg.addColorStop(0, 'rgba(255,230,90,.32)'); hg.addColorStop(1, 'rgba(255,230,90,0)'); g.fillStyle = hg; g.beginPath(); g.arc(ex, ey, r0 * .22, 0, TAU); g.fill(); }
     g.restore();
+  }
+  for (const [ex, ey, , , ea, k] of st) {         // 꽃밥: 통통한 두 쪽, 끝에 가로로 걸려 저마다 조금씩 기운다
+    g.save(); g.translate(ex, ey); g.rotate(ea + Math.PI / 2 + rz(30 + k) * .9);
+    const al = r0 * (.2 + .1 * (rz(90 + k) + .5)), aw = al * .55, ag = g.createLinearGradient(-al * .3, -aw, al * .3, aw); ag.addColorStop(0, 'hsl(56,100%,80%)'); ag.addColorStop(.5, A); ag.addColorStop(1, Ad);
+    g.fillStyle = ag; g.beginPath(); g.ellipse(0, -aw * .22, al / 2, aw * .42, 0, 0, TAU); g.ellipse(0, aw * .22, al / 2 * .96, aw * .42, 0, 0, TAU); g.fill();
+    g.restore();
+  }
+  if (px > 60) {   // 흩날린 꽃가루
+    g.fillStyle = 'hsla(52,100%,70%,.85)'; g.beginPath();
+    for (let q = 0; q < NS * 2; q++) { const a = rz(200 + q) * TAU, d = r0 * (.4 + 1.2 * (rz(300 + q) + .5)), rr = r0 * (.014 + .014 * (rz(400 + q) + .5)); g.moveTo(Math.cos(a) * d + rr, Math.sin(a) * d); g.arc(Math.cos(a) * d, Math.sin(a) * d, rr, 0, TAU); }
+    g.fill();
   }
   const ov = g.createRadialGradient(-r0 * .05, -r0 * .06, 0, 0, 0, r0 * .16); ov.addColorStop(0, 'hsl(80,60%,82%)'); ov.addColorStop(1, 'hsl(92,45%,52%)');
   g.fillStyle = ov; g.beginPath(); g.ellipse(0, 0, r0 * .16, r0 * .14, rz(2), 0, TAU); g.fill();   // 씨방
   const sh = 300 + rz(3) * 60, b0 = a0 + TAU / 10;
-  for (let k = 0; k < 3; k++) {                                                               // 암술대 셋과 동그란 암술머리(맨 위)
+  for (let k = 0; k < 3; k++) {
+    if (0) break;                                                               // 암술대 셋과 동그란 암술머리(맨 위)
     const a = b0 + k * TAU / 3 + rz(40 + k) * .15, c = Math.cos(a), s2 = Math.sin(a), L = r0 * .62;
-    g.strokeStyle = `hsl(${sh},28%,40%)`; g.lineWidth = w * 1.5; g.beginPath(); g.moveTo(c * r0 * .08, s2 * r0 * .08); g.quadraticCurveTo(c * L * .5 + s2 * r0 * .06, s2 * L * .5 - c * r0 * .06, c * L, s2 * L); g.stroke();
+    g.strokeStyle = `hsl(${sh},26%,46%)`; g.lineWidth = w * 1.1; g.beginPath(); g.moveTo(c * r0 * .08, s2 * r0 * .08); g.quadraticCurveTo(c * L * .5 + s2 * r0 * .06, s2 * L * .5 - c * r0 * .06, c * L, s2 * L); g.stroke();
     const sg = g.createRadialGradient(c * L - r0 * .03, s2 * L - r0 * .03, 0, c * L, s2 * L, r0 * .11); sg.addColorStop(0, `hsl(${sh},30%,62%)`); sg.addColorStop(1, `hsl(${sh},35%,30%)`);
-    g.fillStyle = sg; g.beginPath(); g.arc(c * L, s2 * L, r0 * .1, 0, TAU); g.fill();
+    g.fillStyle = sg; g.beginPath(); g.arc(c * L, s2 * L, r0 * .085, 0, TAU); g.fill();
   }
 }
 function drawCenter(g, P, cs, lw, px) {
