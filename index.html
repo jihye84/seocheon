@@ -2994,7 +2994,7 @@ function startTour() {
 }
 function stopTour() {
   if (!tourOn) return;
-  tourPaused = false; tourSel = null; $('tourMenu').classList.remove('on'); tourList = null;
+  tourPaused = false; tourSel = null; selPan = null; tourReturning = false; $('tourMenu').classList.remove('on'); tourList = null;
   tourOn = false; document.body.classList.remove('tour'); $('tourCap').classList.remove('on');
   try { tourLock && tourLock.release(); } catch (e) { } tourLock = null;
   const at = focus ? [focus.i, focus.j] : null;
@@ -3032,15 +3032,42 @@ function tmSync() {
   $('tourMenu').querySelector('p').textContent = tourSel ? `고른 꽃 · ${tg.sp && tg.sp.kind === 'myth' ? tg.sp.name : describe(P).name}` : '잠시 멈췄어요 · 둘레의 꽃을 눌러 고를 수도 있어요';
   $('tmMine').textContent = user ? '내 꽃 보러 가기' : '내 꽃 찾기';
 }
-function drawTourSel() {   // 고른 꽃 둘레에 은은한 빛 고리
-  const c = tourSel, [x, y] = screenOf(c.cx, c.cy), r = c.size * cam.ppu * .58, a = .55 + .25 * Math.sin(now * 3);
+function drawTourSel() {   // 고른 꽃에 조명: 둘레는 살며시 어두워지고, 그 꽃만 따스한 빛을 받는다
+  const c = tourSel, [x, y] = screenOf(c.cx, c.cy), r = c.size * cam.ppu * .56, k = Math.min(1, (now - (c.at || 0)) / .7), a = .55 + .2 * Math.sin(now * 2.4);
   ctx.save(); ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const g = ctx.createRadialGradient(x, y, r * .82, x, y, r * 1.12); g.addColorStop(0, 'rgba(255,214,226,0)'); g.addColorStop(.5, `rgba(255,214,226,${a * .55})`); g.addColorStop(1, 'rgba(255,214,226,0)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.12, 0, TAU); ctx.fill(); ctx.restore();
+  const R = Math.hypot(W, H), dim = ctx.createRadialGradient(x, y, r * .95, x, y, r * 2.6);
+  dim.addColorStop(0, 'rgba(4,3,14,0)'); dim.addColorStop(1, `rgba(4,3,14,${.5 * k})`);
+  ctx.fillStyle = dim; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  const lit = ctx.createRadialGradient(x, y - r * .15, 0, x, y, r * 1.05); lit.addColorStop(0, `rgba(255,240,215,${.12 * k})`); lit.addColorStop(1, 'rgba(255,240,215,0)');
+  ctx.fillStyle = lit; ctx.beginPath(); ctx.arc(x, y, r * 1.05, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  const g = ctx.createRadialGradient(x, y, r * .9, x, y, r * 1.14); g.addColorStop(0, 'rgba(255,214,226,0)'); g.addColorStop(.5, `rgba(255,214,226,${a * .45 * k})`); g.addColorStop(1, 'rgba(255,214,226,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.14, 0, TAU); ctx.fill(); ctx.restore();
 }
-function pauseTour() { if (!tourOn || tourPaused) return; tourPaused = true; pauseAt = now; tmSync(); $('tourMenu').classList.add('on'); }
+// 고른 꽃을 화면 가운데로: 멈춘 동안만 쓰는 작은 미끄러짐(꽃구경의 날갯짓은 건드리지 않고, 이어갈 때 제자리로 돌아온다)
+let pauseCam = null, selPan = null, tourReturning = false;
+function panTo(x, y, dur, done) { selPan = { x0: cam.x, y0: cam.y, x1: x, y1: y, t0: now, dur: RM ? .01 : dur, done }; }
+let capWasOn = false;
+function capBack() { if (capWasOn && tourTarget) tourCaption(tourTarget); else $('tourCap').classList.remove('on'); }   // 자막을 꽃구경하던 꽃으로 되돌린다
+function selectFlower(h) {
+  tourSel = h && !isTarget(h) ? Object.assign(h, { at: now }) : null; tmSync();
+  if (tourSel) {
+    // 멈춤 창 아래와 자막 위 사이의 빈자리 한가운데로
+    const P = (h.sp && h.sp.P) || cellP(h.i, h.j, h.seed); playMelody(P, .85, .15);
+    tourCaption(h.sp && h.sp.kind !== 'tour' ? h.sp : { kind: 'field', P, seed: h.seed, i: h.i, j: h.j });   // 자막도 고른 꽃으로
+    const mb = $('tourMenu').getBoundingClientRect().bottom, ct = $('tourCap').getBoundingClientRect().top, ty = (mb + ct) / 2;
+    panTo(h.cx, h.cy - (ty - stg.y) / cam.ppu, 1.1);
+  } else { if (pauseCam) panTo(pauseCam[0], pauseCam[1], .9); capBack(); }
+}
+function pauseTour() { if (!tourOn || tourPaused) return; tourPaused = true; pauseAt = now; pauseCam = [cam.x, cam.y]; selPan = null; capWasOn = $('tourCap').classList.contains('on'); tmSync(); $('tourMenu').classList.add('on'); }
 function resumeTour() {
-  if (!tourPaused) return; tourPaused = false; tourSel = null; $('tourMenu').classList.remove('on');
+  if (!tourPaused || tourReturning) return;
+  $('tourMenu').classList.remove('on'); if (tourSel) capBack(); tourSel = null;
+  if (pauseCam && Math.hypot(cam.x - pauseCam[0], cam.y - pauseCam[1]) * cam.ppu > 2) {   // 고른 꽃 쪽으로 옮겨 갔으면 먼저 제자리로
+    tourReturning = true; panTo(pauseCam[0], pauseCam[1], .8, () => { tourReturning = false; resumeTour(); }); return;
+  }
+  tourPaused = false; selPan = null;
   const d = now - pauseAt; if (anim) anim.t0 += d; tourNext += d;
   const sp = tourTarget; if (sp && sp.bloomT > 0) sp.tourExt = Math.max(sp.tourExt || 0, now - sp.bloomT - 7.5);   // 다 핀 꽃 앞에서 멈췄으면 이어갈 때 잠깐 더 머문다
 }
@@ -3059,8 +3086,9 @@ addEventListener('pointerdown', e => {
   if (!tourOn || e.target.closest('#tourMenu')) return;
   e.stopPropagation(); e.preventDefault();
   const h = tourHit(e.clientX, e.clientY);
-  if (!tourPaused) { tourSel = h && !isTarget(h) ? h : null; pauseTour(); return; }
-  if (h) { tourSel = isTarget(h) ? null : h; tmSync(); return; }
+  if (tourReturning) return;
+  if (!tourPaused) { pauseTour(); if (h && !isTarget(h)) selectFlower(h); return; }
+  if (h) { selectFlower(h); return; }
   resumeTour();
 }, true);
 addEventListener('keydown', e => { if (!tourOn) return; e.stopPropagation(); if (e.key === 'Escape') stopTour(); else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tourPaused ? resumeTour() : pauseTour(); } }, true);
@@ -3077,7 +3105,7 @@ $('tmHeart').onclick = () => {
   }
 };
 $('tmMine').onclick = () => { stopTour(); if (user) setTimeout(goMine, 200); else setTimeout(showIntro, 200); };
-$('tmStop').onclick = () => stopTour();
+$('tmStop').onclick = () => { const h = tourSel; stopTour(); if (h) setTimeout(() => focusCell(h.i, h.j), 60); };   // 고른 꽃이 있으면 그 꽃 카드로
 // 꽃 카드에서도 마음에 담기: 카드 이름 줄 오른쪽의 하트
 function cardHeartSync() { const on = !!focus && hearted((focus.seed >>> 0).toString(36)); $('bHeart').textContent = on ? '♥' : '♡'; $('bHeart').classList.toggle('on', on); $('bHeart').setAttribute('aria-label', on ? '마음에 담은 꽃 · 빼기' : '마음에 담기'); }
 $('bHeart').onclick = () => {
@@ -3868,7 +3896,9 @@ function frame(ms) {
   if (storyOn) { lastT = ms / 1000; requestAnimationFrame(frame); return; }   // 신화 이야기가 화면을 덮는 동안은 꽃밭을 쉬게 한다
   now = ms / 1000; const dt = Math.min(.05, now - (lastT || now)); lastT = now; frameNo++;
   if (firstFrame) { stg.x = stg.tx; stg.y = stg.ty; } else { stg.x += (stg.tx - stg.x) * .12; stg.y += (stg.ty - stg.y) * .12; }
-  if (tourPaused) { /* 꽃구경 잠시 멈춤: 카메라도 그 자리에 */ }
+  if (tourPaused) {   // 꽃구경 잠시 멈춤: 카메라는 그 자리에, 고른 꽃이 있으면 그쪽으로만 살며시
+    if (selPan) { const u = clamp01((now - selPan.t0) / selPan.dur), e = easeIO(u); cam.x = selPan.x0 + (selPan.x1 - selPan.x0) * e; cam.y = selPan.y0 + (selPan.y1 - selPan.y0) * e; if (u >= 1) { const d = selPan.done; selPan = null; d && d(); } }
+  }
   else if (anim) {
     const u = clamp01((now - anim.t0) / anim.dur), [x, y, w] = anim.f(anim.ease(u));
     cam.x = x; cam.y = y; cam.ppu = anim.sw / w;
