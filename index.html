@@ -1020,6 +1020,8 @@ function drawCenter(g, P, cs, lw, px) {
     const Lin = P.L[P.L.length - 1] || P.L[0], T0 = Lin && Lin.th ? Lin.th : [0, 0, 60], B0 = Lin && Lin.bh ? Lin.bh : T0;
     const q = .4, T = SPc ? [T0[0], T0[1] * .82, T0[2] - 8] : [B0[0] + (T0[0] - B0[0]) * q, B0[1] + (T0[1] - B0[1]) * q, B0[2] + (T0[2] - B0[2]) * q];   // 겹꽃은 안쪽 꽃잎 끝빛에서 조금만 짙게   // 둘레 꽃잎 밑동 빛에 가깝게(꽃심이 떠 보이지 않게)
     cR *= SPc ? .78 : .9;
+    // 라넌큘러스·달리아의 덜 핀 속처럼 반들반들한 형광 연두: 둘레 꽃잎과 같은 빛이면 묻히고, 다른 빛이면 따로 노니 — 아예 생기 도는 연두로
+    const LIME = [78 + (P.seed % 9), 88, 58];
     const sh = g.createRadialGradient(0, 0, cR * .3, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(5,3,15,.3)'); sh.addColorStop(1, 'rgba(5,3,15,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();
     const shp = P.shape === 'point' || P.shape === 'lance' || P.shape === 'serrate' ? 'point' : 'round';
@@ -1030,15 +1032,24 @@ function drawCenter(g, P, cs, lw, px) {
       const L0 = Math.max(8, T[2] - 10 - 24 * t), L1 = Math.min(92, T[2] + 2 - 12 * t);   // 밑동(오목한 속)은 짙고 끝은 맨 안쪽 겹 빛깔
       g.save(); g.rotate(m * GA + (P.seed % 7));
       const p = petalPath(len, wid, SHC), gr = g.createLinearGradient(0, 0, len, 0);
-      gr.addColorStop(0, hsla(T[0] - 4, Math.min(95, T[1] + 6), L0)); gr.addColorStop(.75, hsla(T[0], T[1], L1));
+      const Lg0 = Math.max(16, 34 - 14 * t), Lg1 = Math.min(78, LIME[2] + 10 - 10 * t);   // 밑동은 깊은 풀빛, 끝은 형광 연두
+      gr.addColorStop(0, hsla(LIME[0] + 22, 70, Lg0)); gr.addColorStop(.7, hsla(LIME[0], LIME[1], Lg1));
       g.fillStyle = gr; g.fill(p);
       if (px * cR > 14) {   // 오므린 꽃잎의 끝 가장자리에 가는 빛(겹이 읽히게), 바깥쪽에 옅은 그늘
-        g.strokeStyle = hsla(T[0], Math.max(0, T[1] - 10), Math.min(96, L1 + 14), .35); g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
+        g.strokeStyle = hsla(LIME[0] - 8, 95, 82, .5); g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
       }
       g.restore();
     }
-    const hole = g.createRadialGradient(0, 0, 0, 0, 0, cR * .22); hole.addColorStop(0, hsla(T[0] - 6, Math.min(95, T[1] + 8), Math.max(8, T[2] - 32), .7)); hole.addColorStop(1, hsla(T[0], T[1], T[2] - 30, 0));
+    const hole = g.createRadialGradient(0, 0, 0, 0, 0, cR * .22); hole.addColorStop(0, hsla(LIME[0] + 30, 70, 14, .75)); hole.addColorStop(1, hsla(LIME[0] + 20, 70, 24, 0));
     g.fillStyle = hole; g.beginPath(); g.arc(0, 0, cR * .22, 0, TAU); g.fill();   // 가장 깊은 속은 어둑하게
+    if (px * cR > 8) {   // 반들반들: 왼쪽 위에서 비친 윤기 한 점과, 둥근 봉오리를 따라 흐르는 엷은 빛
+      g.save(); g.globalCompositeOperation = 'lighter';
+      const hl = g.createRadialGradient(-cR * .32, -cR * .38, 0, -cR * .32, -cR * .38, cR * .55); hl.addColorStop(0, 'rgba(250,255,225,.55)'); hl.addColorStop(.35, 'rgba(230,255,180,.18)'); hl.addColorStop(1, 'rgba(230,255,180,0)');
+      g.fillStyle = hl; g.beginPath(); g.arc(-cR * .32, -cR * .38, cR * .55, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(240,255,200,.22)'; g.lineWidth = Math.max(lw, cR * .06); g.lineCap = 'round'; g.beginPath(); g.arc(0, 0, cR * .78, Math.PI * 1.05, Math.PI * 1.55); g.stroke();
+      g.restore();
+    }
+    { const glow = g.createRadialGradient(0, 0, cR * .6, 0, 0, cR * 1.35); glow.addColorStop(0, 'rgba(190,255,90,.0)'); glow.addColorStop(.5, 'rgba(190,255,90,.07)'); glow.addColorStop(1, 'rgba(190,255,90,0)'); g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = glow; g.beginPath(); g.arc(0, 0, cR * 1.35, 0, TAU); g.fill(); g.restore(); }   // 형광빛이 둘레에 살짝 번진다
   } else {
     // 고리 꽃술: 가운데 볼록한 암술머리를 꽃가루 알갱이가 둥글게 둘러싼다
     feather(g, cR, P.c1d, .5);
