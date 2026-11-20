@@ -1148,16 +1148,17 @@ function drawCenter(g, P, cs, lw, px) {
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
     // 우글우글한 주름 꽃잎을 빽빽이 우겨넣는다: 바깥 것부터, 저마다 기울고 접히고 반쯤 서 있어(짧고 넓게 보임) 구겨진 듯
     const M = px * cR > 25 ? 30 : px * cR > 10 ? 18 : 8, Q = P.pico;
+    const Lin = P.L[P.L.length - 1] || P.L[0], B = Lin.bh || T, QW = Q ? Math.max(lw * 1.4, Lin.len * (cR / P.cR) * Q.w * .32) : 0;   // 바깥 피코티와 같은 굵기
     for (let m = 0; m < M; m++) {
       const t = m / (M - 1), ang = m * 2.39996 + rz(m) * .9, off = cR * (.55 - .5 * t) * (.7 + .6 * (rz(m + 50) + .5));
       const len = cR * (.95 - .45 * t) * (.8 + .4 * (rz(m + 100) + .5)), wid = len * (.7 + .3 * (rz(m + 150) + .5));
       const stand = .45 + .55 * (rz(m + 200) + .5) * (1 - .4 * t);   // 서 있을수록 위에서 짧게 보인다
       g.save(); g.rotate(ang); g.translate(off - len * .35, 0); g.rotate(rz(m + 250) * .9); g.transform(stand, 0, rz(m + 300) * .5, 1, 0, 0);
       const p = petalPath(len, wid, P), gr = g.createLinearGradient(0, 0, len, 0);
-      gr.addColorStop(0, hsla(T[0], T[1], Math.max(8, T[2] - 34 - 8 * t))); gr.addColorStop(.6, hsla(T[0], T[1], Math.max(18, T[2] - 10 - 6 * t))); gr.addColorStop(1, hsla(T[0], T[1], Math.min(96, T[2] + 2)));
+      gr.addColorStop(0, hsla(B[0], B[1], Math.max(10, B[2] - 10 - 6 * t))); gr.addColorStop(.55, hsla((B[0] + T[0]) / 2, (B[1] + T[1]) / 2, (B[2] + T[2]) / 2)); gr.addColorStop(1, hsla(T[0], T[1], T[2]));   // 바깥 꽃잎과 같은 빛 흐름(밑동 빛 → 끝 빛)
       g.fillStyle = gr; g.fill(p);
       if (Q && px * cR > 8) {
-        g.save(); g.clip(p); g.strokeStyle = Q.col; g.lineWidth = Math.max(lw * .9, len * Q.w * .4); g.stroke(p);
+        g.save(); g.clip(p); g.strokeStyle = Q.col; g.lineWidth = QW / stand; g.stroke(p);   // 바깥 꽃잎과 같은 굵기(눌린 만큼 되돌려)
         if (Q.streak && px * cR > 22 && (m % 2)) { g.fillStyle = Q.col; for (let z = 0; z < 2; z++) { const yy = rz(m * 7 + z) * wid * .9, x1 = len * .97, x0 = len * (.62 + .2 * (rz(m * 7 + z + 3) + .5)), bw = len * .012; g.beginPath(); g.moveTo(x1, yy - bw); g.quadraticCurveTo((x0 + x1) / 2, yy - bw * .5, x0, yy); g.quadraticCurveTo((x0 + x1) / 2, yy + bw * .5, x1, yy + bw); g.fill(); } }
         g.restore();
       }
