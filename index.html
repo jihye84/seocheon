@@ -617,7 +617,7 @@ function gen(seed, hue, palO, force) {
     if (P.frill && !force.flat && rP() < .55) {
       const ph = P.pal === 6 || tip[1] < 25 ? 335 + rP() * 20 : tip[0] - 12 + rP() * 10, pl2 = tip[2] > 60 ? 24 + rP() * 8 : 14 + rP() * 6;
       P.pico = { col: hsla(ph, 72, pl2), w: .05 + rP() * .05, streak: rP() < .75, sd: (seed ^ 0x3b9a) >>> 0 };
-      if (P.shape === 'frill') { P.cType = 'heart'; P.cR = .2; P.cN = 0; }
+      if (P.shape === 'frill') { P.cType = 'heart'; P.cR = .3; P.cN = 0; }
     }
   }
   P.spots = null;
@@ -1145,14 +1145,21 @@ function drawCenter(g, P, cs, lw, px) {
     const T = (P.L[P.L.length - 1] || P.L[0]).th || [0, 0, 80], rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
     const sh = g.createRadialGradient(0, 0, 0, 0, 0, cR * 1.2); sh.addColorStop(0, 'rgba(10,4,16,.35)'); sh.addColorStop(1, 'rgba(10,4,16,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
-    const M = px * cR > 12 ? 14 : 7;
+    // 우글우글한 주름 꽃잎을 빽빽이 우겨넣는다: 바깥 것부터, 저마다 기울고 접히고 반쯤 서 있어(짧고 넓게 보임) 구겨진 듯
+    const M = px * cR > 25 ? 30 : px * cR > 10 ? 18 : 8, Q = P.pico;
     for (let m = 0; m < M; m++) {
-      const t = m / M, len = cR * (1.05 - .7 * t), wid = len * .75, ang = m * 2.39996 + rz(m) * .6;
-      g.save(); g.rotate(ang); g.translate(-len * .25 * t, 0);
+      const t = m / (M - 1), ang = m * 2.39996 + rz(m) * .9, off = cR * (.55 - .5 * t) * (.7 + .6 * (rz(m + 50) + .5));
+      const len = cR * (.95 - .45 * t) * (.8 + .4 * (rz(m + 100) + .5)), wid = len * (.7 + .3 * (rz(m + 150) + .5));
+      const stand = .45 + .55 * (rz(m + 200) + .5) * (1 - .4 * t);   // 서 있을수록 위에서 짧게 보인다
+      g.save(); g.rotate(ang); g.translate(off - len * .35, 0); g.rotate(rz(m + 250) * .9); g.transform(stand, 0, rz(m + 300) * .5, 1, 0, 0);
       const p = petalPath(len, wid, P), gr = g.createLinearGradient(0, 0, len, 0);
-      gr.addColorStop(0, hsla(T[0], T[1], Math.max(10, T[2] - 30 - 10 * t))); gr.addColorStop(1, hsla(T[0], T[1], Math.max(20, T[2] - 6 * t)));
+      gr.addColorStop(0, hsla(T[0], T[1], Math.max(8, T[2] - 34 - 8 * t))); gr.addColorStop(.6, hsla(T[0], T[1], Math.max(18, T[2] - 10 - 6 * t))); gr.addColorStop(1, hsla(T[0], T[1], Math.min(96, T[2] + 2)));
       g.fillStyle = gr; g.fill(p);
-      if (P.pico && px * cR > 10) { g.save(); g.clip(p); g.strokeStyle = P.pico.col; g.lineWidth = Math.max(lw, len * P.pico.w * .45); g.stroke(p); g.restore(); }
+      if (Q && px * cR > 8) {
+        g.save(); g.clip(p); g.strokeStyle = Q.col; g.lineWidth = Math.max(lw * .9, len * Q.w * .4); g.stroke(p);
+        if (Q.streak && px * cR > 22 && (m % 2)) { g.fillStyle = Q.col; for (let z = 0; z < 2; z++) { const yy = rz(m * 7 + z) * wid * .9, x1 = len * .97, x0 = len * (.62 + .2 * (rz(m * 7 + z + 3) + .5)), bw = len * .012; g.beginPath(); g.moveTo(x1, yy - bw); g.quadraticCurveTo((x0 + x1) / 2, yy - bw * .5, x0, yy); g.quadraticCurveTo((x0 + x1) / 2, yy + bw * .5, x1, yy + bw); g.fill(); } }
+        g.restore();
+      }
       g.restore();
     }
   } else if (P.cType === 'cushion') {
