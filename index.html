@@ -610,6 +610,16 @@ function gen(seed, hue, palO, force) {
   P.sepal = hsla(110 + r() * 30, 35, 28);
   // 점박이(나리꽃처럼 꽃잎 안쪽에 흩뿌린 점): 따로 뽑아서 다른 생김새는 그대로 둔다
   const r2 = mulberry32(seed ^ 0x2f6e2b1);
+  // 피코티(카네이션 가장자리 물들임): 주름꽃·패랭이 꽃잎 테두리를 따라 짙은 포도주빛 가는 테, 군데군데 결 따라 붓으로 그은 듯한 줄무늬
+  // 주름꽃이면 겹을 늘리고 한가운데를 작은 주름 꽃잎으로 덮어 꽃심이 보이지 않게(카네이션처럼) — 따로 뽑아 다른 생김새는 그대로
+  P.pico = null;
+  { const rP = mulberry32((seed ^ 0x1d872b41) >>> 0);
+    if (P.frill && !force.flat && rP() < .55) {
+      const ph = P.pal === 6 || tip[1] < 25 ? 335 + rP() * 20 : tip[0] - 12 + rP() * 10, pl2 = tip[2] > 60 ? 24 + rP() * 8 : 14 + rP() * 6;
+      P.pico = { col: hsla(ph, 72, pl2), w: .05 + rP() * .05, streak: rP() < .75, sd: (seed ^ 0x3b9a) >>> 0 };
+      if (P.shape === 'frill') { P.cType = 'heart'; P.cR = .2; P.cN = 0; }
+    }
+  }
   P.spots = null;
   if (r2() < .22 && P.pal !== 6 && !force.flat && count <= 13) {
     const n = 7 + ((r2() * 12) | 0), big = .7 + r2() * .7, S = [];
@@ -1131,6 +1141,20 @@ function drawCenter(g, P, cs, lw, px) {
       for (let k = 0; k < tips.length; k += 3) { const ar = tips[k + 2] * cs; g.moveTo(tips[k] + ar, tips[k + 1]); g.ellipse(tips[k], tips[k + 1], ar, ar * .75, k, 0, TAU); }
       g.fill();
     }
+  } else if (P.cType === 'heart') {   // 카네이션의 한가운데: 작은 주름 꽃잎이 구겨지듯 오므라들어 꽃심을 덮는다
+    const T = (P.L[P.L.length - 1] || P.L[0]).th || [0, 0, 80], rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
+    const sh = g.createRadialGradient(0, 0, 0, 0, 0, cR * 1.2); sh.addColorStop(0, 'rgba(10,4,16,.35)'); sh.addColorStop(1, 'rgba(10,4,16,0)');
+    g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
+    const M = px * cR > 12 ? 14 : 7;
+    for (let m = 0; m < M; m++) {
+      const t = m / M, len = cR * (1.05 - .7 * t), wid = len * .75, ang = m * 2.39996 + rz(m) * .6;
+      g.save(); g.rotate(ang); g.translate(-len * .25 * t, 0);
+      const p = petalPath(len, wid, P), gr = g.createLinearGradient(0, 0, len, 0);
+      gr.addColorStop(0, hsla(T[0], T[1], Math.max(10, T[2] - 30 - 10 * t))); gr.addColorStop(1, hsla(T[0], T[1], Math.max(20, T[2] - 6 * t)));
+      g.fillStyle = gr; g.fill(p);
+      if (P.pico && px * cR > 10) { g.save(); g.clip(p); g.strokeStyle = P.pico.col; g.lineWidth = Math.max(lw, len * P.pico.w * .45); g.stroke(p); g.restore(); }
+      g.restore();
+    }
   } else if (P.cType === 'cushion') {
     drawCushion(g, P, cR, lw, px);
   } else if (P.cType === 'bud') {
@@ -1570,6 +1594,20 @@ function drawFlower(g, P, R, o) {
         }
         g.fill(path);
         if (curve) { g.fillStyle = curve; g.fill(path); g.fillStyle = fill; }
+        if (P.pico && px > 22 && es > .3) {   // 피코티: 안쪽만 보이게 오려서 테두리를 굵게 그으면 가장자리를 따라 가는 테가 된다
+          const Q = P.pico, q0 = SP ? 0 : n % P.count, rq = z => (mix(Q.sd, k * 131 + q0 * 17 + z) % 1000) / 1000 - .5;
+          g.save(); g.clip(path); g.strokeStyle = Q.col; g.lineJoin = 'round';
+          g.lineWidth = Math.max(lw * 1.4, len * Q.w * .32); g.globalAlpha *= Math.min(1, (es - .3) / .3); g.stroke(path);
+          if (px > 60) { g.lineWidth = len * Q.w * .9; g.globalAlpha *= .12; g.stroke(path); g.globalAlpha /= .12; }   // 테 안쪽으로 번진 엷은 물
+          if (Q.streak && px > 50) {   // 결 따라 그은 줄무늬: 끝 가장자리에서 안쪽으로, 굵기·길이 제각각
+            g.fillStyle = Q.col; const ns = 2 + ((rq(1) + .5) * 4 | 0);
+            for (let z = 0; z < ns; z++) {
+              const yy = (rq(10 + z) * 1.5) * wid * .8, x1 = len * (.98 - .02 * Math.abs(rq(20 + z))), x0 = x1 - len * (.12 + .3 * (rq(30 + z) + .5)), bw = len * (.006 + .01 * (rq(40 + z) + .5));
+              g.beginPath(); g.moveTo(x1, yy - bw); g.quadraticCurveTo((x0 + x1) / 2, yy - bw * .6 + rq(50 + z) * wid * .06, x0, yy); g.quadraticCurveTo((x0 + x1) / 2, yy + bw * .6, x1, yy + bw); g.fill();
+            }
+          }
+          g.restore(); g.fillStyle = fill;
+        }
         if (px > 56) {   // 살아 있는 꽃잎: 가운데로 살짝 접힌 골(한쪽 반은 그늘, 골 위로 가는 윤기)과, 빛이 비쳐 드는 얇은 가장자리
           const Wv = hand > 0 ? wobOf(k, SP ? 0 : n % P.count) : null, cv = P.curl + (Wv ? Wv[6] : 0), ax = s => cv * len * s * s;
           g.save(); g.clip(path);
@@ -1628,7 +1666,7 @@ function drawFlower(g, P, R, o) {
           g.restore(); g.fillStyle = fill;
         }
       }
-      if ((P.cTone === 'dark' || P.cTone === 'same') && top && px > 30 && es > .45 && P.cType !== 'bud' && P.cType !== 'cushion' && P.pal !== 6) {
+      if ((P.cTone === 'dark' || P.cTone === 'same') && top && px > 30 && es > .45 && P.cType !== 'bud' && P.cType !== 'cushion' && P.cType !== 'heart' && P.pal !== 6) {
         // 짙은 꽃심 둘레: 원을 오려 붙인 듯한 경계 대신, 양귀비·아네모네·루드베키아처럼 꽃잎 밑동이 꽃심 빛으로 물들어 번지고
         // 그 끝이 꽃잎 결을 따라 짧은 붓질처럼 흩어진다(꽃잎마다 번진 길이가 조금씩 다르게)
         const q0 = SP ? 0 : n % P.count, rz = z => (mix((P.seed ^ 0x5a5a) >>> 0, k * 97 + q0 * 31 + z) % 1000) / 1000 - .5;
