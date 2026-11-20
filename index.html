@@ -1092,15 +1092,18 @@ function drawCenter(g, P, cs, lw, px) {
     const sh = g.createRadialGradient(0, 0, cR * .3, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(5,3,15,.3)'); sh.addColorStop(1, 'rgba(5,3,15,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();
     const shp = P.shape === 'point' || P.shape === 'lance' || P.shape === 'serrate' ? 'point' : 'round';
-    const SHC = { shape: 'round', a: shapeA(.55), b: .6, curl: 0 };   // 덜 핀 속은 둥근 꽃잎으로 감싸여 둘레가 동그랗다
+    const SHC = { shape: shp === 'point' ? 'point' : P.shape === 'notch' ? 'notch' : 'round', a: P.a, b: P.b, curl: 0 };   // 그 꽃의 꽃잎 꼴을 그대로 작게
     const N = (px * cR > 30 ? 22 : px * cR > 10 ? 14 : 8) + (SPc ? 6 : 0), GA = 2.39996;
-    { const bc = mixHSL(FC, LIME, .25), bd = g.createRadialGradient(0, 0, 0, 0, 0, cR); bd.addColorStop(0, hsla(LIME[0] + 20, 70, 26)); bd.addColorStop(1, hsla(bc[0], bc[1], bc[2] - 6));
-      g.fillStyle = bd; g.beginPath(); g.arc(0, 0, cR * .99, 0, TAU); g.fill(); }   // 둥근 바탕: 꽃잎 사이 빈틈이 없고 둘레가 동그랗다
-    g.save(); g.beginPath(); g.arc(0, 0, cR * 1.01, 0, TAU); g.clip();
-    for (let m = 0; m < N; m++) {
-      const t = m / (N - 1), len = cR * (t < .35 ? 1 : 1 - .8 * (t - .35) / .65), wid = len * .62 * (1 - .25 * t);   // 바깥 겹은 길이를 고르게: 둘레가 원에 가깝게
+    { const bc = mixHSL(FC, LIME, .25), bd = g.createRadialGradient(0, 0, 0, 0, 0, cR * .62); bd.addColorStop(0, hsla(LIME[0] + 20, 70, 26)); bd.addColorStop(.8, hsla(bc[0], bc[1], bc[2] - 6)); bd.addColorStop(1, hsla(bc[0], bc[1], bc[2] - 6, 0));
+      g.fillStyle = bd; g.beginPath(); g.arc(0, 0, cR * .62, 0, TAU); g.fill(); }   // 꽃잎 밑동 사이 빈틈만 메우는 작은 바탕(꽃잎 끝은 그대로 드러난다)   // 둥근 바탕: 꽃잎 사이 빈틈이 없고 둘레가 동그랗다
+    // 한쪽으로 치우치지 않게: 겹마다 같은 길이의 꽃잎을 고르게 돌려 놓고, 겹마다 반 칸씩 엇갈린다(바깥 겹 → 안쪽 겹)
+    const RINGS = (px * cR > 10 ? (SPc ? [9, 8, 7, 6, 5, 3] : [7, 6, 5, 4, 3]) : [6, 5, 3]), PET = [];
+    { const r0a = (P.seed % 7); RINGS.forEach((cnt, ri) => { for (let q = 0; q < cnt; q++) PET.push([ri / (RINGS.length - 1), r0a + (q + (ri & 1) * .5) / cnt * TAU + ri * .37]); }); }
+    g.save();
+    for (let m = 0; m < PET.length; m++) {
+      const [t, ang] = PET[m], len = cR * (1 - .78 * t), wid = len * (shp === 'point' ? .3 : SPc ? .38 : .5) * (1 - .25 * t);
       const L0 = Math.max(8, T[2] - 10 - 24 * t), L1 = Math.min(92, T[2] + 2 - 12 * t);   // 밑동(오목한 속)은 짙고 끝은 맨 안쪽 겹 빛깔
-      g.save(); g.rotate(m * GA + (P.seed % 7));
+      g.save(); g.rotate(ang);
       const p = petalPath(len, wid, SHC), gr = g.createLinearGradient(0, 0, len, 0);
       // 바깥 오므린 꽃잎은 그 꽃의 주된 빛, 안으로 갈수록 형광 연두로 물들어 간다(빛깔이 이어져 덧붙인 듯 보이지 않게)
       // 한 장 안에서도 밑동(속)은 연두, 끝은 그 꽃의 빛 — 바깥에서 속으로, 끝에서 밑동으로 두 겹의 물듦
