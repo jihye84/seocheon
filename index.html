@@ -617,7 +617,7 @@ function gen(seed, hue, palO, force) {
     if (P.frill && !force.flat && rP() < .55) {
       const ph = P.pal === 6 || tip[1] < 25 ? 335 + rP() * 20 : tip[0] - 12 + rP() * 10, pl2 = tip[2] > 60 ? 24 + rP() * 8 : 14 + rP() * 6;
       P.pico = { col: hsla(ph, 72, pl2), w: .05 + rP() * .05, streak: rP() < .75, sd: (seed ^ 0x3b9a) >>> 0 };
-      if (P.shape === 'frill') { P.cType = 'heart'; P.cR = .3; P.cN = 0; }
+      if (P.shape === 'frill') { P.c0 = [P.cType, P.cR, P.cN]; P.cType = 'heart'; P.cR = Math.max(.36, inner * .9); P.cN = 0; }   // 가장 안쪽 꽃잎 밖으로 넘쳐 나올 만큼 크게
     }
   }
   P.spots = null;
@@ -704,7 +704,8 @@ function gen(seed, hue, palO, force) {
     for (let q = 0; q < nf; q++) F.push([(q + r6()) / nf * 2 - 1, .78 + r6() * .12, 1.08 + r6() * .3]);
     const eh = 340 + r6() * 16;
     P.eye = { se, F, c0: hsla(eh, 82, 34), c1: hsla(eh, 85, 42, .85) };
-  }
+  }  if (P.cType === 'heart' && (P.eye || P.tuft)) { [P.cType, P.cR, P.cN] = P.c0; }   // 단심·술이 있는 꽃은 가운데를 덮지 않는다(무늬가 가려지지 않게)
+
   // 깃털무늬(브레이커 튤립처럼 꽃잎 가장자리에서 안으로 붓질하듯 번지는 무늬)
   const r9 = mulberry32(seed ^ 0x9b05688d);
   P.breaker = null;
