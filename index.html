@@ -4507,7 +4507,7 @@ whenSized(function start() {
   }
   if (anim && anim.startLate) anim.t0 = 1e9;   // 인트로가 끝날 때까지 첫 장면을 멈춰 둔다
   const seen = store.get('introSeen', false), today = new Date().toDateString();
-  const mode = friend ? 'friend' : !seen ? 'first' : user && store.get('introDay', '') !== today ? 'back' : null;
+  const mode = friend ? 'friend' : !seen ? 'first' : user ? 'back' : null;   // 이름표를 단 이는 들어올 때마다 '내 꽃은 잘 있어요' 인사를 본다(하루에 여러 번이라도)
   // 여는 이야기가 끝나면 꽃밭이 물러나며 펼쳐지고, 조금 뒤 저절로 꽃구경이 시작된다(받은 링크·내 꽃 링크는 그 꽃부터)
   let touched = false; addEventListener('pointerdown', () => { touched = true; }, { capture: true });
   const autoWalk = () => (touched = false, setTimeout(() => {
