@@ -595,7 +595,9 @@ function gen(seed, hue, palO, force) {
       if (P.pal === 6) { core = [82 + rC() * 20, 55, 38]; rim = [70, 30, 86]; }                                   // 흰 꽃: 속은 연둣빛(흰 스프레이 국화처럼)
       else if (th >= 35 && th <= 70) { core = [26 + rC() * 10, 80, 30]; rim = [th, ts, Math.min(80, tl + 4)]; }     // 노랑: 속은 주황빛 갈색
       else { core = [th - 12, Math.min(75, ts + 25), 20 + rC() * 6]; rim = [th, Math.min(80, ts + 8), Math.min(84, Math.max(62, tl))]; }   // 그 꽃 빛이 짙어진 자줏빛 속
-      P.cush = { core, rim, sp: rC() < .7, sd: (seed ^ 0x7ac1) >>> 0 };
+      { const La = P.L[0], Lb = P.L[P.layers - 1], Li = Lb.bh[2] > La.bh[2] ? Lb : La, q = .35, dh = (((Li.th[0] - Li.bh[0]) % 360 + 540) % 360 - 180);   // 바깥 테는 둘레에 활짝 핀 꽃잎 빛 그대로(겹 가운데 더 환한 쪽, 밑동에서 끝으로 조금 간 빛)
+        rim = [Li.bh[0] + dh * q, (Li.bh[1] + (Li.th[1] - Li.bh[1]) * q) * .85, Math.min(92, Li.bh[2] + (Li.th[2] - Li.bh[2]) * q - 4)]; }
+      P.cush = { core, rim, sp: rC() < .7 && false, sd: (seed ^ 0x7ac1) >>> 0 };   // 끝의 점(구멍처럼 보임)은 없앤다 — 뽑기는 그대로 두어 다른 생김새가 바뀌지 않게
       P.cN = 0;
     }
   }
@@ -1043,23 +1045,23 @@ function drawPistil(g, P, cR, lw, px) {
 }
 /* 소복한 방석 꽃심: 자잘한 통꽃이 해바라기씨 차례(황금각)로 빽빽하다. 바깥 것부터 그려 가운데가 위로 솟아 보이게 */
 function drawCushion(g, P, cR, lw, px) {
-  const C = P.cush, mixC = (k) => [C.core[0] + (((C.rim[0] - C.core[0]) % 360 + 540) % 360 - 180) * k, C.core[1] + (C.rim[1] - C.core[1]) * k, C.core[2] + (C.rim[2] - C.core[2]) * k];
+  const C = P.cush, mixC = (k) => [C.core[0] + (((C.rim[0] - C.core[0]) % 360 + 540) % 360 - 180) * k, C.core[1] + (C.rim[1] - C.core[1]) * Math.sqrt(k), C.core[2] + (C.rim[2] - C.core[2]) * k];
   const rz = z => (mix(C.sd, z) % 1000) / 1000 - .5, Rp = cR * px;
   const sh = g.createRadialGradient(0, 0, cR * .8, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(8,4,16,.28)'); sh.addColorStop(1, 'rgba(8,4,16,0)');
   g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();                       // 꽃잎 위에 드리운 방석 그늘
   const bd = g.createRadialGradient(0, 0, 0, 0, 0, cR);
-  for (const k of [0, .35, .7, 1]) { const c = mixC(Math.pow(k, 1.4)); bd.addColorStop(k, hsla(c[0], c[1], c[2] - (k < 1 ? 4 : 0), k < 1 ? 1 : .0)); }
+  for (const k of [0, .35, .7, 1]) { const c = mixC(Math.min(1, Math.pow(k / .8, 1.6))); bd.addColorStop(k, hsla(c[0], c[1], c[2] - (k < 1 ? 4 : 0), k < 1 ? 1 : .0)); }
   g.fillStyle = bd; g.beginPath(); g.arc(0, 0, cR, 0, TAU); g.fill();
   if (Rp < 10) return;
   // 통꽃 하나하나: 가운데 것은 끝이 다섯 갈래로 벌어진 작은 별(대롱 입구), 바깥 테두리 것은 바깥으로 뻗은 대롱꽃잎
   const N = Rp > 90 ? 200 : Rp > 45 ? 120 : Rp > 22 ? 70 : 40, GA = 2.39996, QS = { shape: 'point', a: shapeA(.5), b: .9, curl: 0 };
   for (let k = N - 1; k >= 0; k--) {
-    const t = Math.sqrt((k + .5) / N), r = cR * t * .96, a = k * GA + rz(k) * .15, c = Math.cos(a), s2 = Math.sin(a), cc = mixC(Math.pow(t, 1.5));
+    const t = Math.sqrt((k + .5) / N), r = cR * t * .96, a = k * GA + rz(k) * .15, c = Math.cos(a), s2 = Math.sin(a), cc = mixC(Math.min(1, Math.pow(t / .8, 1.6)));   // 테두리 꽃잎 무렵엔 이미 바깥 꽃잎 빛
     const lt = Math.min(92, cc[2] + 8), dk = Math.max(8, cc[2] - 14);
     if (t > .74) {   // 바깥 대롱꽃잎
       const len = cR * (.16 + .14 * (t - .74) / .26) * (.85 + .3 * (rz(k + 900) + .5)), wid = len * .34;
       g.save(); g.translate(c * (r - len * .5), s2 * (r - len * .5)); g.rotate(a + rz(k + 300) * .4);
-      const p = petalPath(len, wid, QS), gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, hsla(cc[0], cc[1], dk)); gr.addColorStop(1, hsla(cc[0] + 4, cc[1], lt));
+      const p = petalPath(len, wid, QS), gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, hsla(cc[0], cc[1], Math.max(8, cc[2] - 8))); gr.addColorStop(1, hsla(cc[0], cc[1], cc[2]));   // 끝은 바깥 꽃잎 빛 그대로
       g.fillStyle = gr; g.fill(p);
       if (C.sp && Rp > 25 && (k % 2)) { const d = mixC(0); g.fillStyle = hsla(d[0], Math.min(85, d[1] + 5), Math.max(14, d[2] + 6), .75); g.beginPath(); g.ellipse(len * .72, 0, len * .1, wid * .28, 0, 0, TAU); g.fill(); }   // 끝의 짙은 점
       g.restore();
