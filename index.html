@@ -2058,6 +2058,35 @@ function drawTuft(g, P, cs, lw, px) {
       }
       g.stroke();
     }
+  } else if (px > 110) {          // 가까이: 술 다발을 하나하나 — 짙은 꽃받기 위에, 살짝 휜 술대가 바깥부터 차례로 서고, 끝마다 꽃밥과 꽃가루
+    const R0 = P.cR * 1.15 * cs, th = +(/hsla\(([-\d.]+)/.exec(T.c[1]) || [0, 0])[1], pure = P.pal === 6;
+    const rh = pure ? 90 : th + ((((100 - th) % 360) + 540) % 360 - 180) * .45;   // 꽃받기 빛: 술 빛에서 풀빛 쪽으로 반쯤(살아 있는 꽃받기의 짙은 초록빛)
+    const rc = g.createRadialGradient(0, 0, 0, 0, 0, R0 * 1.18);
+    rc.addColorStop(0, hsla(rh, pure ? 12 : 32, 14)); rc.addColorStop(.55, hsla(rh, pure ? 10 : 28, 22, .95)); rc.addColorStop(.85, hsla(rh, pure ? 8 : 24, 28, .55)); rc.addColorStop(1, hsla(rh, 20, 30, 0));
+    g.fillStyle = rc; g.beginPath(); g.arc(0, 0, R0 * 1.18, 0, TAU); g.fill();
+    const tc = /hsla\(([-\d.]+),\s*([\d.]+)%,\s*([\d.]+)%/.exec(T.c[1]), TS = tc ? +tc[2] : 70, TL = tc ? +tc[3] : 70;
+    const F = T.F.map((f, k) => [f, k]).sort((A, B) => B[0][2] - A[0][2]);   // 바깥(기운 술)부터 그리고 가운데(곧게 선 술)를 위에
+    const ww = lw * Math.max(1, Math.min(2.6, px / 260)), BK = 4, paths = [];   // 술대는 가늘게(아주 가까이 봐도 굵어지지 않게)
+    for (let b = 0; b < BK; b++) paths.push([new Path2D(), new Path2D(), new Path2D()]);   // 빛깔 갈래마다: 그림자·술대·꽃밥
+    for (const [[a, L, o, tw], k] of F) {
+      const jr = (mix(P.seed + k, 0x7a11) % 1000) / 1000, bk = Math.min(BK - 1, (jr * BK) | 0), ca = Math.cos(a), sa = Math.sin(a);
+      const x0 = ca * o * R0, y0 = sa * o * R0, ll = L * cs * (.4 + .6 * o) * (.85 + jr * .3), a2 = a + tw * .3;
+      const ex = x0 + Math.cos(a2) * ll, ey = y0 + Math.sin(a2) * ll, bend = (jr - .5) * ll * .35, mx = (x0 + ex) / 2 - Math.sin(a2) * bend, my = (y0 + ey) / 2 + Math.cos(a2) * bend;
+      const [ps, pf, pa] = paths[bk];
+      ps.moveTo(x0 + ww * .6, y0 + ww * .9); ps.quadraticCurveTo(mx + ww * .6, my + ww * .9, ex + ww * .6, ey + ww * .9);   // 아래로 드리운 가는 그림자
+      pf.moveTo(x0, y0); pf.quadraticCurveTo(mx, my, ex, ey);
+      if (o > .12) { const an = Math.atan2(ey - my, ex - mx), al = R0 * (.028 + jr * .014), aw = al * .48; pa.moveTo(ex + Math.cos(an) * al, ey + Math.sin(an) * al); pa.ellipse(ex, ey, al, aw, an, 0, TAU); }
+    }
+    for (let b = 0; b < BK; b++) {
+      const [ps, pf, pa] = paths[b], dl = (b - (BK - 1) / 2) * 7;
+      g.strokeStyle = 'rgba(6,10,14,.22)'; g.lineWidth = ww * 1.2; g.stroke(ps);
+      const fg = g.createRadialGradient(0, 0, 0, 0, 0, R0 * 1.6); fg.addColorStop(0, hsla(th, Math.max(20, TS - 20), Math.max(22, TL - 24 + dl))); fg.addColorStop(1, hsla(th, TS, Math.min(90, TL + dl)));
+      g.strokeStyle = fg; g.lineWidth = ww * (.85 + b * .12); g.stroke(pf);   // 밑동은 짙고 끝으로 밝아지는 술대
+      g.fillStyle = hsla(th + 10, Math.min(95, TS + 10), Math.min(92, TL + 12 + dl)); g.fill(pa);   // 꽃밥
+      g.strokeStyle = hsla(th, TS, Math.max(20, TL - 30), .55); g.lineWidth = ww * .35; g.stroke(pa);
+    }
+    g.fillStyle = hsla(th + 20, 90, 92, .8);   // 꽃밥에서 날린 꽃가루 몇 점
+    for (let k = 0; k < 40; k++) { const jr = (mix(P.seed + k, 0x9011) % 10000) / 10000, an = jr * TAU * 7, rr = R0 * (.2 + 1.1 * ((mix(P.seed + k, 0x9022) % 1000) / 1000)); g.beginPath(); g.arc(Math.cos(an) * rr, Math.sin(an) * rr, R0 * .007, 0, TAU); g.fill(); }
   } else {                       // 엉겅퀴: 가운데에 솔처럼 촘촘히 모여 솟은 술, 끝으로 갈수록 빛깔이 짙어짐
     const R0 = P.cR * 1.15;
     g.fillStyle = T.c[0]; g.globalAlpha = .9; g.beginPath(); g.arc(0, 0, R0 * cs, 0, TAU); g.fill(); g.globalAlpha = 1;   // 술이 모인 바탕
