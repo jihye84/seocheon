@@ -1047,8 +1047,8 @@ function drawPistil(g, P, cR, lw, px) {
 function drawCushion(g, P, cR, lw, px) {
   const C = P.cush, mixC = (k) => [C.core[0] + (((C.rim[0] - C.core[0]) % 360 + 540) % 360 - 180) * k, C.core[1] + (C.rim[1] - C.core[1]) * Math.sqrt(k), C.core[2] + (C.rim[2] - C.core[2]) * k];
   const rz = z => (mix(C.sd, z) % 1000) / 1000 - .5, Rp = cR * px;
-  const sh = g.createRadialGradient(0, 0, cR * .8, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(8,4,16,.28)'); sh.addColorStop(1, 'rgba(8,4,16,0)');
-  g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();                       // 꽃잎 위에 드리운 방석 그늘
+  const sh = g.createRadialGradient(0, 0, cR * .9, 0, 0, cR * 1.6), rc = C.rim; sh.addColorStop(0, hsla(rc[0], rc[1], rc[2], .55)); sh.addColorStop(.5, hsla(rc[0], rc[1], rc[2], .22)); sh.addColorStop(1, hsla(rc[0], rc[1], rc[2], 0));   // 그늘 대신: 둘레 꽃잎 밑동의 짙은 빛을 꽃잎 빛으로 엷게 덮어 꽃심과 꽃잎이 이어지게
+  g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.6, 0, TAU); g.fill();
   const bd = g.createRadialGradient(0, 0, 0, 0, 0, cR);
   for (const k of [0, .35, .7, 1]) { const c = mixC(Math.min(1, Math.pow(k / .8, 1.6))); bd.addColorStop(k, hsla(c[0], c[1], c[2] - (k < 1 ? 4 : 0), k < 1 ? 1 : .0)); }
   g.fillStyle = bd; g.beginPath(); g.arc(0, 0, cR, 0, TAU); g.fill();
