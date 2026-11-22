@@ -1049,6 +1049,25 @@ function feather(g, R, col, a) {
   f.addColorStop(0, alphaOf(col, a)); f.addColorStop(1, alphaOf(col, 0));
   g.fillStyle = f; g.beginPath(); g.arc(0, 0, R * 1.5, 0, TAU); g.fill();
 }
+// 씨앗 꽃술의 꽃받기(가까이): 가장자리는 꽃잎 밑동으로 번져 스며들고, 낱꽃이 나선으로 촘촘히 솟아(위는 빛, 아래는 그늘) 가운데가 둥글게 부푼다
+function natDisc(g, R, P, px) {
+  const hp = c => { const m = /hsla?\(([-\d.]+),\s*([\d.]+)%,\s*([\d.]+)%/.exec(c); return m ? [+m[1], +m[2], +m[3]] : [30, 30, 20]; };
+  const D = hp(P.c1d), C0 = hp(P.c1), C = P.cTone === 'dark' ? [D[0], 22, 12] : C0, Lb = (P.L[P.layers - 1] || P.L[0]).bh || C;   // 짙은 꽃받기는 꽃잎 제 빛깔의 짙은 갈래로(초록이 끼지 않게)
+  const ed = [C[0], C[1] * .8, C[2] + 4];   // 가장자리는 제 빛 그대로 옅어지며 꽃잎에 스민다(다른 빛이 끼지 않게)   // 가장자리: 꽃잎 밑동 빛과 꽃받기 빛의 사이
+  const RB = R * (C[2] > 45 ? 1.1 : 1.22), base = g.createRadialGradient(0, 0, 0, 0, 0, RB);   // 밝은 꽃받기는 번짐을 짧게(빛무리처럼 뜨지 않게)
+  base.addColorStop(0, hsla(D[0], D[1], D[2])); base.addColorStop(.6 * R / RB * 1.1, hsla(C[0], C[1], C[2])); base.addColorStop(.88 * R / RB, hsla(ed[0], ed[1], ed[2], .8)); base.addColorStop(1, hsla(ed[0], ed[1], ed[2], 0));
+  g.fillStyle = base; g.beginPath(); g.arc(0, 0, RB, 0, TAU); g.fill();
+  const N = Math.min(260, Math.max(60, Math.round(px * R * .9))), GA = 2.39996, sz0 = R * Math.sqrt(Math.PI / N) * .5;
+  for (let k = 0; k < N; k++) {   // 낱꽃: 가운데는 작고 덜 핀(짙게), 바깥으로 갈수록 크고 밝게
+    const t = Math.sqrt((k + .5) / N), a = k * GA, x = Math.cos(a) * R * .97 * t, y = Math.sin(a) * R * .97 * t, sz = sz0 * (.75 + .5 * t);
+    const l = D[2] + (C[2] + 8 - D[2]) * t, gg = g.createRadialGradient(x - sz * .35, y - sz * .4, sz * .1, x, y, sz * 1.1);
+    gg.addColorStop(0, hsla(C[0] + 8, Math.min(90, C[1] + 10), Math.min(70, l + 14))); gg.addColorStop(.7, hsla(C[0], C[1], l)); gg.addColorStop(1, hsla(D[0], D[1], Math.max(4, l - 8), 0));
+    g.fillStyle = gg; g.beginPath(); g.arc(x, y, sz * 1.1, 0, TAU); g.fill();
+  }
+  const hl = g.createRadialGradient(-R * .3, -R * .35, 0, -R * .3, -R * .35, R * .8);   // 둥글게 부푼 윗면의 빛, 아래쪽 그늘
+  hl.addColorStop(0, 'rgba(255,250,240,.12)'); hl.addColorStop(1, 'rgba(255,250,240,0)'); g.fillStyle = hl; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+  const dk = g.createRadialGradient(R * .3, R * .35, 0, R * .3, R * .35, R * .9); dk.addColorStop(0, 'rgba(6,3,12,.18)'); dk.addColorStop(1, 'rgba(6,3,12,0)'); g.fillStyle = dk; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+}
 function softDisc(g, R, r, c0, c1) {
   const gr = g.createRadialGradient(-R * .15, -R * .15, 0, 0, 0, R * 1.05);
   gr.addColorStop(0, c0); gr.addColorStop(.75, c1); gr.addColorStop(1, alphaOf(c1, .55));
@@ -1207,8 +1226,8 @@ function drawCenter(g, P, cs, lw, px) {
   if (P.tuft && P.tuft.kind === 'ring' && px > 40) { drawPassion(g, P, cs, lw, px); return; }
   let cR = P.cR * cs; const SPc = !!P.many || P.layers >= 3, r = mulberry32(P.seed ^ 0x9e37);
   if (P.cType === 'dots') {
-    feather(g, cR, P.c1d, .55);
-    softDisc(g, cR, r, P.c1, P.c1d);
+    if (px * cR > 18) natDisc(g, cR, P, px);   // 가까이: 판에 찍은 원이 아니라, 자잘한 낱꽃이 소복이 솟은 살아 있는 꽃받기
+    else { feather(g, cR, P.c1d, .55); softDisc(g, cR, r, P.c1, P.c1d); }
     if (px * cR > 6) {
       // 꽃가루 알갱이: 크기·자리가 조금씩 어긋나고, 바깥쪽은 테두리 밖으로도 흩어진다
       const dots = [];
