@@ -115,6 +115,7 @@ input[type=date]{color-scheme:dark}
 #corner button:hover{color:var(--gold)}
 #fsBtn[hidden]{display:none}
 #fsBtn .ic{font-size:1.55em;line-height:1;vertical-align:-.12em}
+#snd{padding:0;display:inline-flex;align-items:center;justify-content:center}
 #snd.off{opacity:.6}
 #snd.tip{animation:tipGlow 1.3s ease-in-out 3;color:var(--gold)}
 body.narrow #corner{right:auto;left:12px;top:max(12px,env(safe-area-inset-top))}
@@ -194,10 +195,14 @@ body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.na
 #hud{position:fixed;z-index:4;right:clamp(12px,2vw,28px);bottom:clamp(12px,2vh,24px);
   color:var(--faint);font-size:max(15px,.9em);text-align:right;pointer-events:none;line-height:1.5}
 #mythBtn{pointer-events:auto;background:none;border:0;font:inherit;color:var(--dim);cursor:pointer;padding:13px 0 13px 14px;margin:-13px 0;display:block;margin-left:auto}
-#hudLinks{display:flex;justify-content:flex-end;margin:-6px 0 -11px}
-#hudLinks button{pointer-events:auto;background:none;border:0;font:inherit;color:var(--faint);cursor:pointer;padding:11px 0 11px 14px;text-decoration:underline;text-underline-offset:3px}
-#hudLinks #tourBtn{color:var(--dim)}
-#hudLinks button:hover{color:var(--gold)}
+#hudLinks{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:6px}
+#hudLinks button{pointer-events:auto;min-height:40px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:rgba(12,15,34,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font:inherit;color:var(--ink);cursor:pointer;white-space:nowrap}
+#hudLinks #tourBtn{border-color:rgba(241,214,160,.55);color:var(--gold)}
+#hudLinks #heartsBtn{border-color:rgba(255,179,196,.45);color:#ffc4d1}
+#hudLinks button:hover{color:var(--gold);background:rgba(30,34,70,.75)}
+#replayBtn .sm{display:none} body.narrow #replayBtn .lg{display:none} body.narrow #replayBtn .sm{display:inline}
+body.narrow #hudLinks button{padding:0 11px}
+#mythBtn{text-shadow:0 1px 3px rgba(0,0,0,.8)} #hudCount{text-shadow:0 1px 3px rgba(0,0,0,.8);transition:opacity .6s} #hudCount.dim{opacity:0}
 #mythBtn:hover{color:var(--gold)} #mythBtn.done{color:var(--gold)}
 #guide{position:fixed;z-index:5;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;color:var(--gold);
   font-size:.9em;white-space:nowrap;text-shadow:0 0 10px rgba(6,8,24,.95),0 0 3px rgba(6,8,24,.95);will-change:transform}
@@ -234,6 +239,8 @@ body.tour #invite{display:none}
 #storySkip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));background:none;border:0;color:var(--faint);font:inherit;font-size:16px;padding:10px 12px;cursor:pointer}
 #storySkip:hover{color:#a4abc6}
 .btns button.story{border-color:rgba(241,214,160,.55);color:var(--gold)}
+.btns #bMine{border:0;background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700}
+.btns #bMine:hover{background:linear-gradient(180deg,#fbeccb,#ecca8c)}
 .btns button.story.glow,#bTag.glow,#bPair.glow,#bMine.glow{animation:storyTip 1.4s ease-in-out infinite}
 @keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
@@ -358,10 +365,10 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="intro" aria-live="polite"><canvas id="introCv" aria-hidden="true"></canvas><div id="introText"></div><button id="introSkip" type="button">건너뛰기 ›</button></div>
 <div id="hint">끌어서 둘러보고, 휠이나 두 손가락으로 가까이 · 멀리</div>
 <button id="pairSave" type="button" hidden>두 꽃 이미지 저장</button>
-<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="heartsBtn" type="button" hidden>♥ 담은 꽃</button><button id="tourBtn" type="button">꽃 감상</button><button id="replayBtn" type="button">여는 이야기 다시 보기</button></div></div>
-<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumRuin" type="button" hidden>금단의 꽃 찾기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃 감상</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
+<div id="hud"><button id="mythBtn" type="button"></button><span id="hudCount"></span><div id="hudLinks"><button id="heartsBtn" type="button" hidden>♥ 담은 꽃</button><button id="tourBtn" type="button">꽃구경</button><button id="replayBtn" type="button"><span class="lg">여는 이야기 다시 보기</span><span class="sm">여는 이야기</span></button></div></div>
+<div id="album" role="dialog" aria-label="신화 속 꽃 여섯 송이" aria-hidden="true"><canvas id="albumCv"></canvas><div id="albumBar"><button id="albumName" type="button" hidden>내 꽃 찾아 이름 넣기</button><button id="albumRuin" type="button" hidden>금단의 꽃 찾기</button><button id="albumStory" type="button">신화 이야기</button><button id="albumTour" type="button">꽃구경</button><button id="albumStats" type="button">꽃밭 통계</button><button id="albumSave" type="button">합동 사진 저장</button><button id="albumClose" type="button">꽃밭으로</button></div></div>
 <div id="guide" aria-live="polite"><i></i><span></span></div>
-<div id="corner"><button id="fsBtn" type="button" aria-label="전체 화면" hidden><span class="ic">⛶</span><span class="lab"> 전체 화면</span></button><button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button></div>
+<div id="corner"><button id="fsBtn" type="button" aria-label="전체 화면" hidden><span class="ic">⛶</span><span class="lab"> 전체 화면</span></button><button id="snd" type="button" aria-label="소리 끄기" title="소리 끄기"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.2 9a4.2 4.2 0 0 1 0 6M17.6 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button></div>
 <div id="toast"></div>
 <div id="invite" role="status"><p id="inviteText"></p><div><button id="inviteGo" type="button">찾으러 가기</button><button id="inviteNo" type="button">나중에</button></div></div>
 <div id="nextMenu" role="dialog" aria-label="이제 무엇을 할까요"><p>이제 어디로 가 볼까요?</p><div><button id="nmTour" type="button">꽃구경 하기</button><button id="nmMine" type="button">내 꽃 찾기</button><button id="nmHearts" type="button" hidden>♥ 담은 꽃 거닐기</button><button id="nmStay" type="button">혼자 둘러보기</button></div></div><div id="tourCap" aria-live="off"></div><div id="tourMenu" role="dialog" aria-label="꽃구경 잠시 멈춤"><p>잠시 멈췄어요</p><div><button id="tmGo" type="button">꽃구경 이어가기</button><button id="tmHeart" type="button">♡ 마음에 담기</button><button id="tmMine" type="button">내 꽃 찾기</button><button id="tmStop" type="button">꽃구경 마치고 이 꽃 보기</button></div></div>
@@ -2102,12 +2109,14 @@ function layout() {
   }
   measureStage();
 }
+let hudPPU = 0, hudZoomT = -9;
 function measureStage() {
   if (!(W > 0 && H > 0)) return;
   if (tourOn) { stg.tx = W / 2; stg.ty = H * .46; stg.w = W; stg.h = H * .86; return; }   // 꽃 감상: 화면 가득
   const r = panel.getBoundingClientRect();
   if (wide) { const left = r.right + 8; stg.tx = (left + W) / 2; stg.ty = H / 2; stg.w = W - left; stg.h = H; }
-  else { const top = r.top - 8; stg.tx = W / 2; stg.ty = Math.max(40, top / 2 + 6); stg.w = W; stg.h = Math.max(80, top); }
+  else { const top = r.top - 8, hb = $('hud').getBoundingClientRect(), cb = $('corner').getBoundingClientRect(), pad = Math.min(top * .4, Math.max(cb.bottom, $('hud').classList.contains('hide') ? 0 : hb.bottom) + 6);   // 위 단추들과 카드 사이 빈자리에 꽃을 앉힌다
+    stg.tx = W / 2; stg.ty = Math.max(40, (pad + top) / 2); stg.w = W; stg.h = Math.max(80, top - pad); }
 }
 const toWorld = (sx, sy) => [cam.x + (sx - stg.x) / cam.ppu, cam.y + (sy - stg.y) / cam.ppu];
 const minPPU = () => .9, maxPPU = () => Math.min(stg.w, stg.h) * 2.2;
@@ -3747,7 +3756,8 @@ addEventListener('keydown', audio, { once: true });
 })();
 // 홈 화면에 추가해 앱처럼 열 수 있게 (안드로이드 크롬 등)
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
-function updSnd() { $('snd').textContent = soundOn ? '♪ 소리 켜짐' : '♪ 소리 꺼짐'; $('snd').classList.toggle('off', !soundOn); }
+const SV_ON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.2 9a4.2 4.2 0 0 1 0 6M17.6 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>', SV_OFF = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+function updSnd() { const b = $('snd'); b.innerHTML = soundOn ? SV_ON : SV_OFF; const l = soundOn ? '소리 끄기' : '소리 켜기'; b.setAttribute('aria-label', l); b.title = l; b.classList.toggle('off', !soundOn); }   // 지금 들리는 상태를 그림으로, 누르면 반대로
 $('snd').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); updSnd(); if (storyAudio && AC) storyAudio.gain.setTargetAtTime(soundOn ? 1 : 0, AC.currentTime, .1); if (soundOn) { audio(); if (focus) playMelody(focusP(), .8); } };
 updSnd();
 const PENTA = [0, 2, 4, 7, 9];
@@ -4259,6 +4269,7 @@ function frame(ms) {
     const got = allM ? MYTHS.length + (ruinFound() ? 1 : 0) : mythFound.size, tot = allM ? MYTHS.length + 1 : MYTHS.length;
     $('mythBtn').textContent = `${allM ? '꽃감관 · ' : ''}신화 속 꽃 ${got}/${tot}${allM && got === tot ? '' : guiding ? ' · 길잡이 끄기' : ' ›'}`; $('mythBtn').classList.toggle('done', allM); $('mythBtn').style.visibility = !user && !mythFound.size ? 'hidden' : ''; { const n = heartList().length; $('heartsBtn').hidden = !n; if (n) $('heartsBtn').textContent = `♥ 담은 꽃 ${n}`; }   // 처음 온 이에게는 숫자 놀이를 보이지 않는다
     $('hudCount').textContent = `지금 보이는 꽃 ${fmtCount((W / ppu) * (H / ppu))}송이`;
+    if (Math.abs(Math.log(ppu / (hudPPU || ppu))) > .02) hudZoomT = now; hudPPU = ppu; $('hudCount').classList.toggle('dim', now - hudZoomT > 2.2);   // 가까이·멀리 할 때만 잠깐 보이고 스러진다
     if (focus && focus.kind === 'user') $('bFar').textContent = ppu > focusPPU(.95) * .35 ? '꽃밭 멀리 보기' : '내 꽃 다시 보기';
   }
   drawGuide();
