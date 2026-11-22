@@ -1008,7 +1008,7 @@ function drawPistil(g, P, cR, lw, px) {
   const sh = (P.pal === 6 ? 70 : (P.tipHSL ? P.tipHSL[0] : 60) + 20), cl = P.pal === 6 ? [80, 30, 88] : [sh, 35, 82];
   const R = cR * .18, a0 = rz(3) * TAU;
   // 암술대: 씨방(정중앙)에서 솟아 살짝 휘며 한쪽으로 기운다 — 그래서 암술머리는 정중앙이 아니라 조금 비껴 있다
-  const lean = rz(4) * TAU, reach = cR * (.22 + .22 * (rz(5) + .5)), ex = Math.cos(lean) * reach, ey = Math.sin(lean) * reach;
+  const lean = rz(4) * TAU, reach = cR * (.22 + .22 * (rz(5) + .5)) / 3, ex = Math.cos(lean) * reach, ey = Math.sin(lean) * reach;
   const bend = (rz(6) < 0 ? -1 : 1) * (.25 + .3 * (rz(7) + .5)), mx = ex * .5 - ey * bend * .5, my = ey * .5 + ex * bend * .5;
   if (Rp > 10) {
     const w0 = Math.max(lw * 1.2, R * .55), w1 = Math.max(lw * .9, R * .38), N = 10, L = [], Rt = [];
