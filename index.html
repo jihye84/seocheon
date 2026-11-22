@@ -1773,7 +1773,8 @@ function drawFlower(g, P, R, o) {
         g.save(); g.clip(path); g.globalAlpha = Math.min(1, (es - .4) / .4);
         const eg = g.createRadialGradient(0, 0, 0, 0, 0, re);
         eg.addColorStop(0, E.c0); eg.addColorStop(.82, E.c0); eg.addColorStop(1, E.c1);
-        g.fillStyle = eg; g.beginPath(); g.ellipse(0, 0, re * 1.06, re * .96, 0, 0, TAU); g.fill();   // 꽃잎 가운데 쪽이 살짝 더 둥글게 부푼 무늬
+        const disc = () => { g.fillStyle = eg; g.beginPath(); g.ellipse(0, 0, re * 1.06, re * .96, 0, 0, TAU); g.fill(); };   // 꽃잎 가운데 쪽이 살짝 더 둥글게 부푼 무늬
+        if (!FU) disc();   // 통꽃은 갈래마다 같은 둥근 무늬가 겹쳐 그려지니, 결을 먼저 긋고 그 위에 덮는다(마지막 갈래만 결이 드러나 빈틈처럼 보이지 않게)
         if (px > 44) {       // 가장자리: 가는 결이 꽃잎 쪽으로 번진다
           g.strokeStyle = E.c1; g.lineCap = 'round';
           const span = Math.PI / P.count * 1.05, fw = lw * Math.max(.9, px / 200);
@@ -1783,10 +1784,12 @@ function drawFlower(g, P, R, o) {
             g.lineWidth = fw * .7; g.beginPath(); g.moveTo(ca * (rr0 + rr1) / 2, sa * (rr0 + rr1) / 2); g.lineTo(ca * rr1, sa * rr1); g.stroke();
           }
         }
+        if (FU) disc();
         g.restore(); g.fillStyle = fill; g.strokeStyle = Ly.edge; g.lineWidth = lw * .8;
       }
       if (P.net && top && px > 40 && es > .5) {   // 핏줄무늬
         g.save(); g.clip(path); g.globalAlpha = (es - .5) * 2; g.strokeStyle = P.netCol; g.lineCap = 'round';
+        if (FU && P.eye && es > .4) { const re = P.eye.se * len, ex = new Path2D(); ex.rect(-len * 2, -len * 2, len * 4, len * 4); ex.ellipse(0, 0, re * 1.04, re * .94, 0, 0, TAU); g.clip(ex, 'evenodd'); }   // 통꽃: 핏줄은 단심 바깥에만(마지막 갈래의 핏줄만 단심 위에 남아 한쪽이 끊겨 보이지 않게)
         if (FU) g.rotate((G.dA[n % P.count] + G.dA[(n + 1) % P.count]) / 2);   // 통꽃: 갈래 한가운데를 축으로
         // 통꽃은 꽃잎 꼴이 아니라 갈래 부채꼴을 따라: 목구멍에서 부챗살처럼 퍼져 나간다
         const W = FU ? ss => ss * len * Math.tan(Math.PI / P.count) * .85 : ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(ss, P.a)), P.b);
@@ -1959,8 +1962,10 @@ function drawFlower(g, P, R, o) {
           for (let i = NS; i >= 0; i--) g.lineTo(C[i][0], C[i][1] - C[i][2] * wk / 2);
           g.fill();
         };
+        if (FU && P.eye && es > .4) { const re = P.eye.se * len, ex = new Path2D(); ex.rect(-len * 2, -len * 2, len * 4, len * 4); ex.arc(0, 0, re * .97, 0, TAU); g.save(); g.clip(ex, 'evenodd'); }   // 통꽃: 결은 단심 바깥에만
         if (fine) for (const side of [-1, 1]) for (const f of px > 150 ? [.18, .38, .58, .76] : [.3, .55]) line(.14, .74 + rz(side * 3 + f * 10) * .08, side * (f + rz(side * 5 + f * 20) * .08), lw * 1, 'rgba(255,255,255,.12)', side * 2 + f * 4);
         if (vein) line(.08, .8 + rz(9) * .06, 0, lw * 1.6, 'rgba(255,255,255,.27)', 0);
+        if (FU && P.eye && es > .4) g.restore();
         g.fillStyle = fill;
       }
       g.restore();
