@@ -1253,7 +1253,7 @@ function drawCenter(g, P, cs, lw, px) {
     const Lv = P.L[0], Li = P.L[P.L.length - 1] || Lv, rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
     const mixC = (A, Bc, k) => { const dh = ((Bc[0] - A[0]) % 360 + 540) % 360 - 180; return [A[0] + dh * k, A[1] + (Bc[1] - A[1]) * k, A[2] + (Bc[2] - A[2]) * k]; };
     // 한 송이처럼: 가운데 주름 꽃잎은 둘레에 활짝 보이는 꽃잎(바깥 겹)의 빛을 이어받는다 — 끝은 바깥 꽃잎 끝빛, 밑동은 바깥 꽃잎 밑동빛에서 조금 깊게(채도는 바깥보다 튀지 않게)
-    const Vt = Lv.th || [0, 0, 80], Vb = Lv.bh || Vt, Ib = Li.bh || Vb, sCap = Math.max(Vt[1], Vb[1]);
+    const Vt = mixC(Lv.th || [0, 0, 80], Li.th || Lv.th || [0, 0, 80], .5), Vb = Lv.bh || Vt, Ib = Li.bh || Vb, sCap = Math.max(Vt[1], Vb[1]);   // 바로 둘레에 닿는 안쪽 겹과 바깥 겹의 중간 빛에서 이어진다
     const T = [Vt[0], Math.min(sCap, Vt[1]) * .8, Math.min(92, Vt[2] + 3)], B0 = mixC(Vb, Ib, .3);   // 바깥 꽃잎은 결·윤기에 덮여 실제보다 옅게 보이니, 가운데도 그만큼 채도를 덜어 맞춘다
     const sh = g.createRadialGradient(0, 0, 0, 0, 0, cR * 1.2); sh.addColorStop(0, 'rgba(10,4,16,.35)'); sh.addColorStop(1, 'rgba(10,4,16,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
@@ -1274,9 +1274,27 @@ function drawCenter(g, P, cs, lw, px) {
         g.save(); g.clip(p);
         const cv = g.createLinearGradient(0, -wid, 0, wid); cv.addColorStop(0, 'rgba(20,10,30,.12)'); cv.addColorStop(.22, 'rgba(20,10,30,.03)'); cv.addColorStop(.45, 'rgba(255,255,255,0)'); cv.addColorStop(.8, 'rgba(255,255,255,.05)'); cv.addColorStop(1, 'rgba(255,255,255,.11)');
         g.fillStyle = cv; g.fillRect(-len * .1, -wid * 1.3, len * 1.3, wid * 2.6);
-        g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = lw * .45 / stand; g.beginPath();
-        for (let z = -5; z <= 5; z++) { const yy = z / 5.5 * wid * .75; g.moveTo(len * .08, yy * .3); g.quadraticCurveTo(len * .5, yy * .9, len * .9, yy); }
-        g.stroke(); g.restore();
+        const Wd = ss => wid * Math.pow(Math.sin(Math.PI * Math.pow(Math.min(ss, .99), P.a)), P.b), cyc = ss => wb ? wb[6] * len * ss * ss : 0;
+        if (P.breaker) {   // 바깥 꽃잎과 같은 깃털무늬(가장자리에서 안으로 번짐)
+          const Bk = P.breaker; g.fillStyle = Bk.col; g.beginPath();
+          for (const [ss, sd, ln, ang, bend] of Bk.Fe) {
+            const w = Wd(ss), x0 = ss * len, y0 = cyc(ss) + sd * w * 1.02, l = ln * w, x1 = x0 - l * (.6 + ang), y1 = y0 - sd * l, bw = len * (.008 + ln * .02), mx = (x0 + x1) / 2 + bend * l, my = (y0 + y1) / 2;
+            g.moveTo(x0 - bw, y0); g.quadraticCurveTo(mx - bw * .5, my, x1, y1); g.quadraticCurveTo(mx + bw * .5, my, x0 + bw, y0); g.closePath();
+          }
+          g.fill();
+        }
+        {   // 바깥 꽃잎과 같은 잔결과 가운데 잎맥: 축을 따라 휘고 끝으로 가늘고 흐려진다
+          const rq = z => wb ? (mix(wb[8] + 77, z) % 1000) / 1000 - .5 : 0, LW = lw / stand;
+          const line = (s0, s1, off, wk, col, id) => {
+            const NS = 10, C = [];
+            for (let i = 0; i <= NS; i++) { const t = i / NS, ss = s0 + (s1 - s0) * t; C.push([ss * len, cyc(ss) + off * Wd(ss) * Math.min(1, t * 1.6) + (wb ? wb[7] * wid * .5 * Math.sin(t * 7 + id * 1.9 + wb[3]) * Math.sin(Math.PI * t) : 0), Math.sin(Math.PI * Math.min(1, t * .9 + .1)) * (1 - .55 * t)]); }
+            const lg = g.createLinearGradient(s0 * len, 0, s1 * len, 0); lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.25, col); lg.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = lg; g.beginPath(); C.forEach(([x, y, w], i) => i ? g.lineTo(x, y + w * wk / 2) : g.moveTo(x, y + w * wk / 2)); for (let i = NS; i >= 0; i--) g.lineTo(C[i][0], C[i][1] - C[i][2] * wk / 2); g.fill();
+          };
+          for (const side of [-1, 1]) for (const f2 of [.18, .38, .58, .76]) line(.14, .74 + rq(side * 3 + f2 * 10) * .08, side * (f2 + rq(side * 5 + f2 * 20) * .08), LW, 'rgba(255,255,255,.12)', side * 2 + f2 * 4);
+          if (P.vein) line(.08, .8 + rq(9) * .06, 0, LW * 1.6, 'rgba(255,255,255,.27)', 0);
+        }
+        g.restore();
       }
       if (Q && px * cR > 8) {
         g.save(); g.clip(p); g.globalAlpha = .75; g.strokeStyle = Q.col; g.lineWidth = QW * .55 / stand; g.stroke(p); g.globalAlpha = 1;   // 바깥 꽃잎과 같은 굵기(눌린 만큼 되돌려)
