@@ -213,10 +213,16 @@ body.narrow #vCard.myth .traits{display:block} @media (max-height:560px){body.na
 #mythBtn.tip{color:var(--gold);animation:mythTip 1.2s ease-in-out infinite}
 @keyframes mythTip{50%{text-shadow:0 0 12px rgba(241,214,160,.9)}}
 body.tour #invite{display:none}
-#tourMenu{position:fixed;z-index:9;left:50%;top:max(64px,11vh);transform:translate(-50%,6px);width:min(90vw,21em);padding:14px 14px 12px;border-radius:18px;background:rgba(18,22,50,.9);
+#tourMenu,#nextMenu{position:fixed;z-index:9;left:50%;top:max(64px,11vh);transform:translate(-50%,6px);width:min(90vw,21em);padding:14px 14px 12px;border-radius:18px;background:rgba(18,22,50,.9);
   border:1px solid rgba(241,214,160,.45);box-shadow:0 8px 30px rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-align:center;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s}
-#tourMenu.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
-#tourMenu p{margin:0 0 .55em;color:var(--dim)}
+#tourMenu.on,#nextMenu.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+#tourMenu p,#nextMenu p{margin:0 0 .55em;color:var(--dim)}
+#nextMenu{top:auto;bottom:calc(env(safe-area-inset-bottom) + 100px);z-index:12}
+#nextMenu div{display:grid;gap:.45em}
+#nextMenu button{min-height:48px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:inherit;cursor:pointer;padding:0 10px}
+#nextMenu #nmTour{border:0;background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700}
+#nextMenu #nmHearts{color:#ffb3c4;border-color:rgba(255,179,196,.5)}
+#nextMenu #nmStay{border:0;background:none;color:var(--dim);min-height:38px;text-decoration:underline;text-underline-offset:4px}
 #tourMenu div{display:grid;grid-template-columns:1fr 1fr;gap:.45em}
 #tourMenu button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:inherit;cursor:pointer;padding:0 10px}
 #tourMenu #tmGo{grid-column:1/-1;border:0;background:linear-gradient(180deg,#f6e2b6,#e4bf7a);color:#1c1408;font-weight:700}
@@ -358,7 +364,7 @@ body.narrow #hint{top:auto;bottom:auto;top:calc(max(12px,env(safe-area-inset-top
 <div id="corner"><button id="fsBtn" type="button" aria-label="전체 화면" hidden><span class="ic">⛶</span><span class="lab"> 전체 화면</span></button><button id="snd" type="button" aria-label="소리 켜고 끄기">♪ 소리 켜짐</button></div>
 <div id="toast"></div>
 <div id="invite" role="status"><p id="inviteText"></p><div><button id="inviteGo" type="button">찾으러 가기</button><button id="inviteNo" type="button">나중에</button></div></div>
-<div id="tourCap" aria-live="off"></div><div id="tourMenu" role="dialog" aria-label="꽃구경 잠시 멈춤"><p>잠시 멈췄어요</p><div><button id="tmGo" type="button">꽃구경 이어가기</button><button id="tmHeart" type="button">♡ 마음에 담기</button><button id="tmMine" type="button">내 꽃 찾기</button><button id="tmStop" type="button">꽃구경 마치고 이 꽃 보기</button></div></div>
+<div id="nextMenu" role="dialog" aria-label="이제 무엇을 할까요"><p>이제 어디로 가 볼까요?</p><div><button id="nmTour" type="button">꽃구경 하기</button><button id="nmMine" type="button">내 꽃 찾기</button><button id="nmHearts" type="button" hidden>♥ 담은 꽃 거닐기</button><button id="nmStay" type="button">혼자 둘러보기</button></div></div><div id="tourCap" aria-live="off"></div><div id="tourMenu" role="dialog" aria-label="꽃구경 잠시 멈춤"><p>잠시 멈췄어요</p><div><button id="tmGo" type="button">꽃구경 이어가기</button><button id="tmHeart" type="button">♡ 마음에 담기</button><button id="tmMine" type="button">내 꽃 찾기</button><button id="tmStop" type="button">꽃구경 마치고 이 꽃 보기</button></div></div>
 <div id="hearts" role="dialog" aria-label="마음에 담은 꽃"><div id="heartsBox"><h2>♥ 마음에 담은 꽃</h2><p class="sub" id="heartsSub"></p><p class="sub" id="heartsNote" hidden></p><div id="heartsGrid"></div><p id="heartsEmpty" hidden>아직 담은 꽃이 없어요.<br>꽃구경 중 화면을 누르고<br>♡ 마음에 담기를 눌러 보세요.</p><div id="heartsNav"><button id="heartsPrev" type="button" aria-label="앞 쪽">‹</button><span id="heartsPg"></span><button id="heartsNext" type="button" aria-label="뒤 쪽">›</button></div><div id="heartsBar"><button id="heartsWalk" type="button">담은 꽃만 거닐기</button><button id="heartsClose" type="button">닫기</button></div></div></div><div id="stats" role="dialog" aria-label="서천꽃밭 통계"><div id="statsBox"><h2>꽃밭 통계</h2><dl id="statsList"></dl><div id="statsCol"></div><p id="statsNote"></p><button id="statsClose" type="button">닫기</button></div></div>
 
 <script>
@@ -4352,8 +4358,23 @@ $('replayBtn').onclick = () => {
   hideInvite(); if (pair) exitPair();
   const box = document.createElement('div'); box.id = 'intro'; box.setAttribute('aria-live', 'polite'); box.innerHTML = INTRO_HTML;
   document.body.append(box);
-  runIntro('first', null);
+  runIntro('first', () => setTimeout(showNext, 900));
 };
+// 여는 이야기를 다시 본 뒤: 할 수 있는 일을 바로 눈앞에 — 꽃구경 / 내 꽃 보기(없으면 찾기) / 담은 꽃 / 혼자 둘러보기
+function showNext(tries = 0) {
+  if ($('intro')) { if (tries < 20) setTimeout(() => showNext(tries + 1), 300); return; }   // 여는 이야기 막이 다 걷힌 뒤에
+  if (tourOn || pair || albumOn) return;
+  $('nmMine').textContent = user ? `내 꽃 보러 가기 · ${user.name}` : '내 꽃 찾기';
+  const n = heartList().length; $('nmHearts').hidden = !n; $('nmHearts').textContent = `♥ 담은 꽃 ${n}송이 거닐기`;
+  if (!wide) setSheet(false);   // 폰: 꽃 카드가 열려 있으면 접어서 고를 거리가 가려지지 않게
+  $('nextMenu').classList.add('on');
+}
+const hideNext = () => $('nextMenu').classList.remove('on');
+$('nmTour').onclick = () => { hideNext(); startTour(); };
+$('nmMine').onclick = () => { hideNext(); if (user) goMine(); else showIntro(); };
+$('nmHearts').onclick = () => { hideNext(); $('heartsWalk').onclick(); };
+$('nmStay').onclick = hideNext;
+addEventListener('pointerdown', e => { if ($('nextMenu').classList.contains('on') && !e.target.closest('#nextMenu')) hideNext(); }, { capture: true });
 function runIntro(mode, onEnd) {
   const box = $('intro'), cv = $('introCv'), tx = $('introText'), g = cv.getContext('2d');
   let w = 0, h = 0, dpr = 1, done = false, t0 = performance.now();
