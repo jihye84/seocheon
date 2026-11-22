@@ -2343,7 +2343,16 @@ function buildPicker(el, nameEl, onPick) {
   el._name = nameEl;
 }
 function markPicker(el, k) { [...el.children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.k === k)); el._name.textContent = COLORS[k] ? COLORS[k].n : ''; }
+// 사람마다의 꽃은 꽃밭의 꽃보다 더 고와야 한다: 흠 점수가 조금이라도 있으면(0 초과) 고른 빛깔 그대로 흠 없는 생김새를 찾아 피운다.
+// 일부러 고른 진한 빛깔·검정·순백은 짙음 자체가 뜻이라 그대로 둔다.
 function userP(seed, ck) {
+  const c = COLORS[ck] || COLORS[0], P = userP0(seed, ck);
+  if (c.pure || c.black || c.deep || aesPen(P) === 0) return P;
+  let best = P, bp = aesPen(P);
+  for (let k = 1; k <= 40; k++) { const Q = userP0(mix(seed, 0x5eed + k) >>> 0, ck), q = aesPen(Q); if (q === 0) return Q; if (q < bp) { best = Q; bp = q; } }
+  return best;
+}
+function userP0(seed, ck) {
   const c = COLORS[ck] || COLORS[0];
   if (c.pure) return gen(seed, 0, 6);   // 순백: 다른 빛이 하나도 섞이지 않은 흰 꽃
   if (c.black) return gen(seed, 250, 8);   // 검정: 밤빛이 살짝 도는 검은 꽃
@@ -4463,7 +4472,7 @@ function runIntro(mode, onEnd) {
   let steps, center, others = [], total;
   const pickVaried = () => {      // 생김새가 서로 다른 꽃 여섯 송이
     const seen = new Set(), out = []; let sd = (Math.random() * 1e9) | 0;
-    while (out.length < 6) { sd = (sd + 2654435761) >>> 0; const P = gen(sd), key = P.fused ? 'fused' : P.many ? 'many' : P.shape; if (seen.has(key)) continue; seen.add(key); out.push(P); }
+    while (out.length < 6) { sd = (sd + 2654435761) >>> 0; const P = gen(sd), key = P.fused ? 'fused' : P.many ? 'many' : P.shape; if (seen.has(key) || aesPen(P) > 0) continue; seen.add(key); out.push(P); }   // 여는 이야기의 꽃도 고운 꽃만
     return out;
   };
   if (mode === 'friend') {
@@ -4473,7 +4482,8 @@ function runIntro(mode, onEnd) {
     center = { P: user.P, b0: .6, b1: 4.6 };
     steps = [[.5, 3.3, L('서천꽃밭에', '다시 바람이 분다.')], [3.8, 7, L(`${user.name}의 꽃은`, '그대로 피어 있다.')]]; total = 7.5;
   } else {
-    center = { P: gen((Math.random() * 1e9) >>> 0), b0: 7.9, b1: 11.6, dot: 4.6 };
+    let cP; do cP = gen((Math.random() * 1e9) >>> 0); while (aesPen(cP) > 0);   // 처음 보여 주는 한 송이는 흠 없는 꽃으로
+    center = { P: cP, b0: 7.9, b1: 11.6, dot: 4.6 };
     others = pickVaried().map((P, i) => ({ P, a: -Math.PI / 2 + (i + .5) * TAU / 6, b0: 11.8 + i * .45, b1: 14.6 + i * .45 }));
     steps = [[.6, 3.6, L('서쪽 하늘 끝,', '해가 지는 곳 너머에')], [4.1, 7.1, L('서천꽃밭이 있다.')],
       [7.6, 11, L('세상에 사람이 하나 태어나면', '그곳에 꽃이 한 송이 핀다.')], [11.5, 14.9, L('그 꽃들은', '하나하나 서로 다르다.')],
