@@ -1006,9 +1006,23 @@ function drawPistil(g, P, cR, lw, px) {
   const kind = P.fused ? (rz(1) < .25 ? 'head' : 'lobes') : rz(1) < -.15 ? 'head' : rz(1) < .25 ? 'lobes' : 'star';
   const nl = kind === 'lobes' ? (rz(2) < 0 ? 3 : 5) : kind === 'star' ? 5 : 0;
   const sh = (P.pal === 6 ? 70 : (P.tipHSL ? P.tipHSL[0] : 60) + 20), cl = P.pal === 6 ? [80, 30, 88] : [sh, 35, 82];
-  const R = cR * .18, a0 = rz(3) * TAU, dx = rz(4) * cR * .06, dy = rz(5) * cR * .06;
-  // 암술대: 위에서 보면 거의 끝만 보이니 가운데서 살짝 비껴 솟은 짧은 기둥(그늘과 빛)
-  g.save(); g.translate(dx, dy);
+  const R = cR * .18, a0 = rz(3) * TAU;
+  // 암술대: 씨방(정중앙)에서 솟아 살짝 휘며 한쪽으로 기운다 — 그래서 암술머리는 정중앙이 아니라 조금 비껴 있다
+  const lean = rz(4) * TAU, reach = cR * (.22 + .22 * (rz(5) + .5)), ex = Math.cos(lean) * reach, ey = Math.sin(lean) * reach;
+  const bend = (rz(6) < 0 ? -1 : 1) * (.25 + .3 * (rz(7) + .5)), mx = ex * .5 - ey * bend * .5, my = ey * .5 + ex * bend * .5;
+  if (Rp > 10) {
+    const w0 = Math.max(lw * 1.2, R * .55), w1 = Math.max(lw * .9, R * .38), N = 10, L = [], Rt = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, x = (1 - t) * (1 - t) * 0 + 2 * (1 - t) * t * mx + t * t * ex, y = 2 * (1 - t) * t * my + t * t * ey;
+      const tx = 2 * (1 - t) * mx + 2 * t * (ex - mx), ty = 2 * (1 - t) * my + 2 * t * (ey - my), tl = Math.hypot(tx, ty) || 1, w = (w0 + (w1 - w0) * t) / 2;
+      L.push([x - ty / tl * w, y + tx / tl * w]); Rt.push([x + ty / tl * w, y - tx / tl * w]);
+    }
+    g.fillStyle = 'rgba(10,6,20,.2)'; g.beginPath(); L.forEach(([x, y], i) => i ? g.lineTo(x + R * .25, y + R * .3) : g.moveTo(x + R * .25, y + R * .3)); for (let i = N; i >= 0; i--) g.lineTo(Rt[i][0] + R * .25, Rt[i][1] + R * .3); g.fill();   // 대의 그늘
+    const sg = g.createLinearGradient(-ey, ex, ey, -ex); sg.addColorStop(0, hsla(cl[0], cl[1], Math.min(96, cl[2] + 6))); sg.addColorStop(1, hsla(cl[0], cl[1] + 5, cl[2] - 22));
+    g.fillStyle = sg; g.beginPath(); L.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); for (let i = N; i >= 0; i--) g.lineTo(Rt[i][0], Rt[i][1]); g.closePath(); g.fill();
+    g.fillStyle = hsla(cl[0], cl[1] + 5, cl[2] - 16); g.beginPath(); g.arc(0, 0, w0 * .62, 0, TAU); g.fill();   // 씨방 꼭대기(대가 솟는 자리)
+  }
+  g.save(); g.translate(ex, ey); g.rotate(rz(8) * .5);
   const st = g.createRadialGradient(-R * .3, -R * .3, 0, 0, 0, R * 1.4); st.addColorStop(0, hsla(cl[0], cl[1], Math.min(96, cl[2] + 8))); st.addColorStop(1, hsla(cl[0], cl[1] + 5, cl[2] - 26));
   g.fillStyle = 'rgba(10,6,20,.25)'; g.beginPath(); g.arc(R * .25, R * .3, R * 1.15, 0, TAU); g.fill();   // 수술 위에 드리운 그늘
   g.fillStyle = st;
