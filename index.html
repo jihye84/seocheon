@@ -1219,7 +1219,7 @@ function drawCenter(g, P, cs, lw, px) {
     cR *= SPc ? .78 : .9;
     // 라넌큘러스·달리아의 덜 핀 속처럼 반들반들한 형광 연두: 둘레 꽃잎과 같은 빛이면 묻히고, 다른 빛이면 따로 노니 — 아예 생기 도는 연두로
     const LIME = [78 + (P.seed % 9), 88, 58];
-    const FC = [T0[0], Math.min(92, T0[1] + 6), Math.max(38, Math.min(72, T0[2]))];   // 그 꽃의 주된 빛(맨 안쪽 겹 끝빛)
+    const FC = [T0[0], Math.max(P.pal === 6 ? 20 : 48, Math.min(92, T0[1] + 10)), Math.max(38, Math.min(60, T0[2] - 4))];   // 옅은 꽃이라도 속 꽃잎은 살이 차게(우윳빛이면 얇은 허물처럼 보인다)   // 그 꽃의 주된 빛(맨 안쪽 겹 끝빛)
     const mixHSL = (A, B, k) => { let dh = ((B[0] - A[0]) % 360 + 540) % 360 - 180; if (Math.abs(dh) > 150) dh = dh > 0 ? dh - 360 * 0 : dh; return [A[0] + dh * k, A[1] + (B[1] - A[1]) * k, A[2] + (B[2] - A[2]) * k]; };
     const sh = g.createRadialGradient(0, 0, cR * .3, 0, 0, cR * 1.25); sh.addColorStop(0, 'rgba(5,3,15,.3)'); sh.addColorStop(1, 'rgba(5,3,15,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.25, 0, TAU); g.fill();
@@ -1245,7 +1245,8 @@ function drawCenter(g, P, cs, lw, px) {
       gr.addColorStop(.92, hsla(tipC[0], tipC[1], Math.min(84, tipC[2] + 6 * (1 - t))));
       g.fillStyle = gr; g.fill(p);
       if (px * cR > 14) {   // 오므린 꽃잎의 끝 가장자리에 가는 빛(겹이 읽히게), 바깥쪽에 옅은 그늘
-        { const ec = mixHSL(FC, LIME, Math.pow(t, .75)); g.strokeStyle = hsla(ec[0], Math.min(95, ec[1] + 5), Math.min(92, ec[2] + 20), .5); } g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
+        { const ec = mixHSL(FC, LIME, Math.pow(t, .75)); g.strokeStyle = hsla(ec[0], Math.min(95, ec[1] + 5), Math.max(12, ec[2] - 22), .55); }   // 밝은 테 대신 겹 사이 옅은 그늘(밝은 테는 막처럼 보인다) g.lineWidth = Math.max(lw * .6, len * .025); g.stroke(p);
+        g.lineWidth = Math.max(lw * .6, len * .03); g.stroke(p);
       }
       g.restore();
     }
@@ -1254,9 +1255,8 @@ function drawCenter(g, P, cs, lw, px) {
     g.fillStyle = hole; g.beginPath(); g.arc(0, 0, cR * .22, 0, TAU); g.fill();   // 가장 깊은 속은 어둑하게
     if (px * cR > 8) {   // 반들반들: 왼쪽 위에서 비친 윤기 한 점과, 둥근 봉오리를 따라 흐르는 엷은 빛
       g.save(); g.globalCompositeOperation = 'lighter';
-      const hl = g.createRadialGradient(-cR * .32, -cR * .38, 0, -cR * .32, -cR * .38, cR * .55); hl.addColorStop(0, 'rgba(250,255,225,.55)'); hl.addColorStop(.35, 'rgba(230,255,180,.18)'); hl.addColorStop(1, 'rgba(230,255,180,0)');
+      const hl = g.createRadialGradient(-cR * .32, -cR * .38, 0, -cR * .32, -cR * .38, cR * .55); hl.addColorStop(0, 'rgba(250,255,225,.32)'); hl.addColorStop(.35, 'rgba(230,255,180,.08)'); hl.addColorStop(1, 'rgba(230,255,180,0)');
       g.fillStyle = hl; g.beginPath(); g.arc(-cR * .32, -cR * .38, cR * .55, 0, TAU); g.fill();
-      g.strokeStyle = 'rgba(240,255,200,.22)'; g.lineWidth = Math.max(lw, cR * .06); g.lineCap = 'round'; g.beginPath(); g.arc(0, 0, cR * .78, Math.PI * 1.05, Math.PI * 1.55); g.stroke();
       g.restore();
     }
     { const glow = g.createRadialGradient(0, 0, cR * .6, 0, 0, cR * 1.35); glow.addColorStop(0, 'rgba(190,255,90,.0)'); glow.addColorStop(.5, 'rgba(190,255,90,.07)'); glow.addColorStop(1, 'rgba(190,255,90,0)'); g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = glow; g.beginPath(); g.arc(0, 0, cR * 1.35, 0, TAU); g.fill(); g.restore(); }   // 형광빛이 둘레에 살짝 번진다
