@@ -1144,6 +1144,7 @@ function drawCenter(g, P, cs, lw, px) {
       g.fill();
     }
   } else if (P.cType === 'heart') {   // 카네이션의 한가운데: 작은 주름 꽃잎이 구겨지듯 오므라들어 꽃심을 덮는다
+    cR *= .55 + .45 * cs;   // 봉오리일 땐 바깥 꽃잎 속에 머물 만큼 작게, 피며 함께 부푼다
     const T = (P.L[P.L.length - 1] || P.L[0]).th || [0, 0, 80], rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
     const sh = g.createRadialGradient(0, 0, 0, 0, 0, cR * 1.2); sh.addColorStop(0, 'rgba(10,4,16,.35)'); sh.addColorStop(1, 'rgba(10,4,16,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
@@ -1151,9 +1152,9 @@ function drawCenter(g, P, cs, lw, px) {
     const M = px * cR > 25 ? 30 : px * cR > 10 ? 18 : 8, Q = P.pico;
     const Lin = P.L[P.L.length - 1] || P.L[0], B = Lin.bh || T, QW = Q ? Math.max(lw * 1.4, Lin.len * (cR / P.cR) * Q.w * .32) : 0;   // 바깥 피코티와 같은 굵기
     for (let m = 0; m < M; m++) {
-      const t = m / (M - 1), ang = m * 2.39996 + rz(m) * .9, off = cR * (.55 - .5 * t) * (.7 + .6 * (rz(m + 50) + .5));
+      const t = m / (M - 1), ang = m * 2.39996 + rz(m) * .9, off = cR * (.55 - .5 * t) * (.7 + .6 * (rz(m + 50) + .5)) * (.35 + .65 * cs);   // 피어날수록 바깥으로 벌어진다
       const len = cR * (.95 - .45 * t) * (.8 + .4 * (rz(m + 100) + .5)), wid = len * (.7 + .3 * (rz(m + 150) + .5));
-      const stand = .45 + .55 * (rz(m + 200) + .5) * (1 - .4 * t);   // 서 있을수록 위에서 짧게 보인다
+      const stand = (.45 + .55 * (rz(m + 200) + .5) * (1 - .4 * t)) * (.55 + .45 * cs);   // 서 있을수록 위에서 짧게 보인다(덜 피었을 땐 더 곧추선다)
       g.save(); g.rotate(ang); g.translate(off - len * .35, 0); g.rotate(rz(m + 250) * .9); g.transform(stand, 0, rz(m + 300) * .5, 1, 0, 0);
       const p = petalPath(len, wid, P), gr = g.createLinearGradient(0, 0, len, 0);
       gr.addColorStop(0, hsla(B[0], B[1], Math.max(10, B[2] - 10 - 6 * t))); gr.addColorStop(.55, hsla((B[0] + T[0]) / 2, (B[1] + T[1]) / 2, (B[2] + T[2]) / 2)); gr.addColorStop(1, hsla(T[0], T[1], T[2]));   // 바깥 꽃잎과 같은 빛 흐름(밑동 빛 → 끝 빛)
@@ -1899,7 +1900,7 @@ function drawFlower(g, P, R, o) {
   }
   g.globalAlpha = 1;
   if (o.dew && px > 130 && gr > .45) drawDew(g, P, clamp01((gr - .45) / .2), o.t, full ? 1 : .55 + .45 * ease3(clamp01((gr - .34) / .6)));   // 피어나는 동안에도 맺혀 구른다
-  const cs = full ? 1 : ease3(clamp01((gr - .6) / .3));
+  const cs = full ? 1 : P.cType === 'heart' ? ease3(clamp01((gr - .15) / .6)) : ease3(clamp01((gr - .6) / .3));   // 카네이션은 한가운데 주름 꽃잎도 처음부터 함께 부푼다
   if (P.tuft && px > 40 && cs > 0 && P.tuft.kind === 'ring') drawTuft(g, P, cs, lw, px);
   if (cs > 0) drawCenter(g, P, cs, lw, px);
   if (P.tuft && P.cType !== 'cushion' && px > 40 && cs > 0 && P.tuft.kind === 'brush') drawTuft(g, P, cs, lw, px);
