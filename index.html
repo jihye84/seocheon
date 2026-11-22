@@ -232,6 +232,7 @@ body.tour #invite{display:none}
 @keyframes storyTip{50%{box-shadow:0 0 0 5px rgba(241,214,160,.18),0 0 20px rgba(241,214,160,.45)}}
 /* 꽃감관의 권한: 꽃 감상(저절로 넘어가며 피어나는 꽃), 꽃밭 통계 */
 body.tour #panel,body.tour #hud,body.tour #corner,body.tour #guide,body.tour #hint{opacity:0!important;pointer-events:none!important;transition:opacity .8s}
+body.tour #panel{transition:none!important;visibility:hidden}   /* 꽃구경이 시작되며 카드가 첫 꽃으로 바뀌는 순간이 비치지 않게 곧장 감춘다 */
 #tourCap{position:fixed;z-index:8;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);text-align:center;pointer-events:none;
   opacity:0;transition:opacity 1.2s;color:var(--ink);text-shadow:0 0 12px rgba(6,8,24,.95),0 0 4px rgba(6,8,24,.95);width:min(92vw,34em);line-height:1.55}
 #tourCap.on{opacity:1}
