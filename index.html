@@ -4112,9 +4112,9 @@ function drawSprites(x0, y0, x1, y1, alpha, t) {
     const sx = cx + (wx - cam.x) * ppu, sy = cy + (wy - cam.y) * ppu, dpx = ppu * size * 1.34;
     if (sx < -dpx || sy < -dpx || sx > W + dpx || sy > H + dpx) continue;
     const dev = dpx * DPR, bi = dev < 40 ? 0 : dev < 80 ? 1 : dev < 160 ? 2 : dev < 320 ? 3 : 4;
-    const P = cellP(i, j, s);
-    if (!hasSprite(s, bi)) missing.push([P, bi, (sx - cx) * (sx - cx) + (sy - cy) * (sy - cy)]);
-    const spr = getSprite(s, bi);
+    const P = cellP(i, j, s);   // 바꿔 심은 꽃은 씨앗이 달라지니, 그림은 꽃 자신의 씨앗으로 찾는다(자리 씨앗으로 찾으면 영영 점으로 남는다)
+    if (!hasSprite(P.seed, bi)) missing.push([P, bi, (sx - cx) * (sx - cx) + (sy - cy) * (sy - cy)]);
+    const spr = getSprite(P.seed, bi);
     const a = alpha * (.45 + .55 * nebAt(i, j));
     if (!spr) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = a * .8;
