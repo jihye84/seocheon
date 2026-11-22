@@ -1250,19 +1250,23 @@ function drawCenter(g, P, cs, lw, px) {
     drawPistil(g, P, cR, lw, px);
   } else if (P.cType === 'heart') {   // 카네이션의 한가운데: 작은 주름 꽃잎이 구겨지듯 오므라들어 꽃심을 덮는다
     cR *= .55 + .45 * cs;   // 봉오리일 땐 바깥 꽃잎 속에 머물 만큼 작게, 피며 함께 부푼다
-    const T = (P.L[P.L.length - 1] || P.L[0]).th || [0, 0, 80], rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
+    const Lv = P.L[0], Li = P.L[P.L.length - 1] || Lv, rz = z => (mix((P.seed ^ 0x77a1) >>> 0, z) % 1000) / 1000 - .5;
+    const mixC = (A, Bc, k) => { const dh = ((Bc[0] - A[0]) % 360 + 540) % 360 - 180; return [A[0] + dh * k, A[1] + (Bc[1] - A[1]) * k, A[2] + (Bc[2] - A[2]) * k]; };
+    // 한 송이처럼: 가운데 주름 꽃잎은 둘레에 활짝 보이는 꽃잎(바깥 겹)의 빛을 이어받는다 — 끝은 바깥 꽃잎 끝빛, 밑동은 바깥 꽃잎 밑동빛에서 조금 깊게(채도는 바깥보다 튀지 않게)
+    const Vt = Lv.th || [0, 0, 80], Vb = Lv.bh || Vt, Ib = Li.bh || Vb, sCap = Math.max(Vt[1], Vb[1]);
+    const T = [Vt[0], Math.min(sCap, Vt[1]) * .8, Math.min(92, Vt[2] + 3)], B0 = mixC(Vb, Ib, .3);   // 바깥 꽃잎은 결·윤기에 덮여 실제보다 옅게 보이니, 가운데도 그만큼 채도를 덜어 맞춘다
     const sh = g.createRadialGradient(0, 0, 0, 0, 0, cR * 1.2); sh.addColorStop(0, 'rgba(10,4,16,.35)'); sh.addColorStop(1, 'rgba(10,4,16,0)');
     g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.2, 0, TAU); g.fill();
     // 우글우글한 주름 꽃잎을 빽빽이 우겨넣는다: 바깥 것부터, 저마다 기울고 접히고 반쯤 서 있어(짧고 넓게 보임) 구겨진 듯
     const M = px * cR > 25 ? 30 : px * cR > 10 ? 18 : 8, Q = P.pico;
-    const Lin = P.L[P.L.length - 1] || P.L[0], B = Lin.bh || T, QW = Q ? Math.max(lw * 1.4, Lin.len * (cR / P.cR) * Q.w * .32) : 0;   // 바깥 피코티와 같은 굵기
+    const Lin = Li, B = [B0[0], Math.min(sCap, B0[1]) * .8, B0[2]], QW = Q ? Math.max(lw * 1.4, Lin.len * (cR / P.cR) * Q.w * .32) : 0;   // 바깥 피코티와 같은 굵기
     for (let m = 0; m < M; m++) {
       const t = m / (M - 1), ang = m * 2.39996 + rz(m) * .9, off = cR * (.55 - .5 * t) * (.7 + .6 * (rz(m + 50) + .5)) * (.35 + .65 * cs);   // 피어날수록 바깥으로 벌어진다
       const len = cR * (.95 - .45 * t) * (.8 + .4 * (rz(m + 100) + .5)), wid = len * (.7 + .3 * (rz(m + 150) + .5));
       const stand = (.45 + .55 * (rz(m + 200) + .5) * (1 - .4 * t)) * (.55 + .45 * cs);   // 서 있을수록 위에서 짧게 보인다(덜 피었을 땐 더 곧추선다)
       g.save(); g.rotate(ang); g.translate(off - len * .35, 0); g.rotate(rz(m + 250) * .9); g.transform(stand, 0, rz(m + 300) * .5, 1, 0, 0);
       const p = petalPath(len, wid, P), gr = g.createLinearGradient(0, 0, len, 0);
-      gr.addColorStop(0, hsla(B[0], B[1], Math.max(10, B[2] - 10 - 6 * t))); gr.addColorStop(.55, hsla((B[0] + T[0]) / 2, (B[1] + T[1]) / 2, (B[2] + T[2]) / 2)); gr.addColorStop(1, hsla(T[0], T[1], T[2]));   // 바깥 꽃잎과 같은 빛 흐름(밑동 빛 → 끝 빛)
+      gr.addColorStop(0, hsla(B[0], B[1], Math.max(10, B[2] - 6 - 5 * t))); gr.addColorStop(.55, hsla((B[0] + T[0]) / 2, (B[1] + T[1]) / 2, (B[2] + T[2]) / 2)); gr.addColorStop(1, hsla(T[0], T[1], T[2]));   // 바깥 꽃잎과 같은 빛 흐름(밑동 빛 → 끝 빛)
       g.fillStyle = gr; g.fill(p);
       if (Q && px * cR > 8) {
         g.save(); g.clip(p); g.strokeStyle = Q.col; g.lineWidth = QW / stand; g.stroke(p);   // 바깥 꽃잎과 같은 굵기(눌린 만큼 되돌려)
