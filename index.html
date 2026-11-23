@@ -3561,6 +3561,7 @@ function tourHit(sx, sy) {
 const isTarget = h => h && tourTarget && h.i === tourTarget.i && h.j === tourTarget.j;
 addEventListener('pointerdown', e => {
   if (!tourOn || e.target.closest('#tourMenu')) return;
+  if (tourPaused && e.target === cv && !tourReturning) return;   // 멈춘 동안에는 꽃밭을 끌고·벌려 마음껏 가까이·멀리 볼 수 있다(가볍게 누르면 아래 tap에서 고르거나 이어간다)
   e.stopPropagation(); e.preventDefault();
   const h = tourHit(e.clientX, e.clientY);
   if (tourReturning) return;
@@ -4054,6 +4055,7 @@ addEventListener('keydown', e => {
 });
 const screenOf = (wx, wy) => [stg.x + (wx - cam.x) * cam.ppu, stg.y + (wy - cam.y) * cam.ppu];
 function tap(sx, sy) {
+  if (tourOn && tourPaused) { const h = tourHit(sx, sy); if (h) selectFlower(h); else resumeTour(); return; }   // 꽃구경 멈춤 중: 꽃은 고르고, 빈 곳은 이어가기
   if (pair) { exitPair(); return; }
   const [wx, wy] = toWorld(sx, sy);
   if (cam.ppu < 24) {
