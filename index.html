@@ -1119,7 +1119,7 @@ function drawPistil(g, P, cR, lw, px) {
 function drawCushion(g, P, cR, lw, px) {
   const C = P.cush, mixC = (k) => [C.core[0] + (((C.rim[0] - C.core[0]) % 360 + 540) % 360 - 180) * k, C.core[1] + (C.rim[1] - C.core[1]) * Math.sqrt(k), C.core[2] + (C.rim[2] - C.core[2]) * k];
   const rz = z => (mix(C.sd, z) % 1000) / 1000 - .5, Rp = cR * px;
-  const sh = g.createRadialGradient(0, 0, cR * .9, 0, 0, cR * 1.6), rc = C.rim; sh.addColorStop(0, hsla(rc[0], rc[1], rc[2], .55)); sh.addColorStop(.5, hsla(rc[0], rc[1], rc[2], .22)); sh.addColorStop(1, hsla(rc[0], rc[1], rc[2], 0));   // 그늘 대신: 둘레 꽃잎 밑동의 짙은 빛을 꽃잎 빛으로 엷게 덮어 꽃심과 꽃잎이 이어지게
+  const sh = g.createRadialGradient(0, 0, cR * .9, 0, 0, cR * 1.6), tp = P.tipHSL || C.rim, rc = [C.rim[0], (C.rim[1] + tp[1]) / 2, Math.max(C.rim[2], (C.rim[2] + tp[2]) / 2)];   // 둘레 꽃잎에 보이는 밝기에 가깝게(희뿌연 테가 생기지 않게) sh.addColorStop(0, hsla(rc[0], rc[1], rc[2], .55)); sh.addColorStop(.5, hsla(rc[0], rc[1], rc[2], .22)); sh.addColorStop(1, hsla(rc[0], rc[1], rc[2], 0));   // 그늘 대신: 둘레 꽃잎 밑동의 짙은 빛을 꽃잎 빛으로 엷게 덮어 꽃심과 꽃잎이 이어지게
   g.fillStyle = sh; g.beginPath(); g.arc(0, 0, cR * 1.6, 0, TAU); g.fill();
   const bd = g.createRadialGradient(0, 0, 0, 0, 0, cR);
   for (const k of [0, .35, .7, 1]) { const c = mixC(Math.min(1, Math.pow(k / .8, 1.6))); bd.addColorStop(k, hsla(c[0], c[1], c[2] - (k < 1 ? 4 : 0), k < 1 ? 1 : .0)); }
@@ -1141,7 +1141,7 @@ function drawCushion(g, P, cR, lw, px) {
       const sp0 = cR * Math.sqrt(Math.PI / N), len = sp0 * (1.5 + 1.3 * t) * (.9 + .2 * (rz(k + 900) + .5)), wid = len * (.95 - .25 * t), x = c * r, y = s2 * r;
       g.save(); g.translate(x, y); g.rotate(a + rz(k + 300) * .25);
       const b0 = -len * .45, t0 = len * .55;
-      if (Rp > 30) { const sg = g.createRadialGradient(len * .3, 0, 0, len * .3, 0, len * .55); sg.addColorStop(0, hsla(cc[0], cc[1], Math.max(5, dk - 14), .32)); sg.addColorStop(1, hsla(cc[0], cc[1], Math.max(5, dk - 14), 0)); g.fillStyle = sg; g.beginPath(); g.arc(len * .3, 0, len * .55, 0, TAU); g.fill(); }   // 바깥 꽃잎 위로 번지는 부드러운 그늘
+      if (Rp > 30 && t < .62) { const sg = g.createRadialGradient(len * .3, 0, 0, len * .3, 0, len * .55); sg.addColorStop(0, hsla(cc[0], cc[1], Math.max(5, dk - 14), .14 * (1 - t))); sg.addColorStop(1, hsla(cc[0], cc[1], Math.max(5, dk - 14), 0)); g.fillStyle = sg; g.beginPath(); g.arc(len * .3, 0, len * .55, 0, TAU); g.fill(); }   // 바깥 꽃잎 위로 번지는 부드러운 그늘
       const pp = new Path2D(); pp.moveTo(b0, 0); pp.bezierCurveTo(b0 + len * .1, -wid * .55, t0 - len * .12, -wid * .62, t0, 0); pp.bezierCurveTo(t0 - len * .12, wid * .62, b0 + len * .1, wid * .55, b0, 0);
       const gr = g.createLinearGradient(b0, 0, t0, 0); gr.addColorStop(0, hsla(cc[0], cc[1], Math.max(6, dk - 6))); gr.addColorStop(.55, hsla(cc[0], cc[1], cc[2])); gr.addColorStop(1, hsla(cc[0] + 5, cc[1], Math.min(94, lt + 6)));
       g.fillStyle = gr; g.fill(pp);
@@ -1155,7 +1155,7 @@ function drawCushion(g, P, cR, lw, px) {
   // 소복하게 솟은 느낌: 왼쪽 위로 엷은 빛, 오른쪽 아래로 엷은 그늘
   const hl = g.createRadialGradient(-cR * .3, -cR * .35, 0, -cR * .3, -cR * .35, cR * .8); hl.addColorStop(0, 'rgba(255,250,255,.2)'); hl.addColorStop(1, 'rgba(255,250,255,0)');
   g.fillStyle = hl; g.beginPath(); g.arc(0, 0, cR, 0, TAU); g.fill();
-  const dk = g.createRadialGradient(cR * .35, cR * .4, 0, cR * .35, cR * .4, cR * .9); dk.addColorStop(0, 'rgba(10,4,20,.26)'); dk.addColorStop(1, 'rgba(10,4,20,0)');
+  const dk = g.createRadialGradient(cR * .35, cR * .4, 0, cR * .35, cR * .4, cR * .9); dk.addColorStop(0, 'rgba(10,4,20,.1)'); dk.addColorStop(1, 'rgba(10,4,20,0)');
   g.fillStyle = dk; g.beginPath(); g.arc(0, 0, cR, 0, TAU); g.fill();
 }
 /* 시계꽃의 가운데: 둥근 술(부관) 안쪽은 꽃잎 오므린 봉오리가 아니라 암술·수술이 솟은 기둥(암수술대)이다.
